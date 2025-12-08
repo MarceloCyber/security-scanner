@@ -1,31 +1,29 @@
+# Core FastAPI
 fastapi==0.104.1
-uvicorn==0.24.0
+uvicorn[standard]==0.24.0
 python-multipart==0.0.6
+
+# Authentication
 python-jose[cryptography]==3.3.0
-bcrypt==4.1.2
+passlib[bcrypt]==1.7.4
+
+# Database
 sqlalchemy==2.0.23
+psycopg2-binary==2.9.9
+
+# Pydantic
 pydantic==2.5.0
-requests==2.31.0
-beautifulsoup4==4.12.2
-bandit==1.7.5
-safety==2.3.5
-semgrep==1.45.0
-aiohttp==3.9.1
+pydantic-settings==2.1.0
+
+# HTTP Requests
+requests>=2.31.0
+aiohttp>=3.9.0
+
+# Utils
 python-dotenv==1.0.0
 email-validator==2.1.0
-
-# PDF Generation
-reportlab==4.0.7
-matplotlib==3.8.2
-pillow==10.1.0
-
-# CVE and Dependency Analysis
-vulners==2.1.0
-packaging==23.2
-pip-audit==2.6.1
-
-# Network and Port Scanning
-python-nmap==0.7.1
+beautifulsoup4>=4.12.0
+PyYAML>=6.0
 
 # Docker Analysis
 docker==7.0.0

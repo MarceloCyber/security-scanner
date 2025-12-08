@@ -1,0 +1,667 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cadastro - Security Scanner Pro</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #667eea;
+            --primary-dark: #5568d3;
+            --secondary: #764ba2;
+            --success: #48bb78;
+            --error: #f56565;
+            --dark: #1a1d29;
+            --dark-light: #2d3748;
+            --text: #e2e8f0;
+            --text-dark: #a0aec0;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: var(--dark);
+            color: var(--text);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+        }
+
+        .register-container {
+            background: var(--dark-light);
+            border-radius: 20px;
+            padding: 3rem;
+            max-width: 500px;
+            width: 100%;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+        }
+
+        .register-header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .logo {
+            font-size: 2rem;
+            margin-bottom: 1rem;
+            color: var(--primary);
+        }
+
+        .register-header h1 {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .register-header p {
+            color: var(--text-dark);
+        }
+
+        .plan-badge {
+            display: inline-block;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            margin-top: 1rem;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+        }
+
+        .form-group label .required {
+            color: var(--error);
+        }
+
+        .input-wrapper {
+            position: relative;
+        }
+
+        .input-wrapper i {
+            position: absolute;
+            left: 1rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-dark);
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 0.875rem 1rem 0.875rem 3rem;
+            background: var(--dark);
+            border: 2px solid transparent;
+            border-radius: 10px;
+            color: var(--text);
+            font-size: 1rem;
+            transition: all 0.3s;
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: var(--primary);
+            background: rgba(102, 126, 234, 0.05);
+        }
+
+        .form-control.error {
+            border-color: var(--error);
+        }
+
+        .form-control.success {
+            border-color: var(--success);
+        }
+
+        .error-message {
+            color: var(--error);
+            font-size: 0.875rem;
+            margin-top: 0.5rem;
+            display: none;
+        }
+
+        .error-message.show {
+            display: block;
+        }
+
+        .password-strength {
+            margin-top: 0.5rem;
+            height: 4px;
+            background: var(--dark);
+            border-radius: 2px;
+            overflow: hidden;
+        }
+
+        .password-strength-bar {
+            height: 100%;
+            width: 0;
+            transition: all 0.3s;
+            border-radius: 2px;
+        }
+
+        .password-strength-bar.weak {
+            width: 33%;
+            background: var(--error);
+        }
+
+        .password-strength-bar.medium {
+            width: 66%;
+            background: #f6ad55;
+        }
+
+        .password-strength-bar.strong {
+            width: 100%;
+            background: var(--success);
+        }
+
+        .password-requirements {
+            font-size: 0.875rem;
+            color: var(--text-dark);
+            margin-top: 0.5rem;
+        }
+
+        .password-requirements ul {
+            list-style: none;
+            padding-left: 0;
+        }
+
+        .password-requirements li {
+            padding: 0.25rem 0;
+        }
+
+        .password-requirements li.valid {
+            color: var(--success);
+        }
+
+        .password-requirements li i {
+            width: 20px;
+        }
+
+        .checkbox-group {
+            display: flex;
+            align-items: start;
+            gap: 0.5rem;
+            margin: 1.5rem 0;
+        }
+
+        .checkbox-group input[type="checkbox"] {
+            margin-top: 0.25rem;
+        }
+
+        .checkbox-group label {
+            font-size: 0.9rem;
+            color: var(--text-dark);
+            margin-bottom: 0;
+        }
+
+        .checkbox-group label a {
+            color: var(--primary);
+            text-decoration: none;
+        }
+
+        .checkbox-group label a:hover {
+            text-decoration: underline;
+        }
+
+        .btn-submit {
+            width: 100%;
+            padding: 1rem;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            border: none;
+            border-radius: 10px;
+            color: white;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-submit:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.5);
+        }
+
+        .btn-submit:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .login-link {
+            text-align: center;
+            margin-top: 1.5rem;
+            color: var(--text-dark);
+        }
+
+        .login-link a {
+            color: var(--primary);
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .login-link a:hover {
+            text-decoration: underline;
+        }
+
+        .loading {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.8);
+            z-index: 9999;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .loading.show {
+            display: flex;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid rgba(255,255,255,0.3);
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        @media (max-width: 600px) {
+            .register-container {
+                padding: 2rem 1.5rem;
+            }
+
+            .register-header h1 {
+                font-size: 1.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="loading" id="loading">
+        <div class="spinner"></div>
+    </div>
+
+    <div class="register-container">
+        <div class="register-header">
+            <div class="logo">
+                <i class="fas fa-shield-alt"></i>
+            </div>
+            <h1>Criar Conta</h1>
+            <p>Cadastre-se no Security Scanner Pro</p>
+            <div class="plan-badge" id="planBadge">
+                <i class="fas fa-crown"></i> Plano Free
+            </div>
+        </div>
+
+        <form id="registerForm" novalidate>
+            <div class="form-group">
+                <label for="fullName">
+                    Nome Completo <span class="required">*</span>
+                </label>
+                <div class="input-wrapper">
+                    <i class="fas fa-user"></i>
+                    <input 
+                        type="text" 
+                        id="fullName" 
+                        name="fullName" 
+                        class="form-control" 
+                        placeholder="Digite seu nome completo"
+                        required
+                    >
+                </div>
+                <div class="error-message" id="fullNameError"></div>
+            </div>
+
+            <div class="form-group">
+                <label for="username">
+                    Nome de Usuário <span class="required">*</span>
+                </label>
+                <div class="input-wrapper">
+                    <i class="fas fa-at"></i>
+                    <input 
+                        type="text" 
+                        id="username" 
+                        name="username" 
+                        class="form-control" 
+                        placeholder="Digite seu nome de usuário"
+                        required
+                    >
+                </div>
+                <div class="error-message" id="usernameError"></div>
+            </div>
+
+            <div class="form-group">
+                <label for="email">
+                    Email <span class="required">*</span>
+                </label>
+                <div class="input-wrapper">
+                    <i class="fas fa-envelope"></i>
+                    <input 
+                        type="email" 
+                        id="email" 
+                        name="email" 
+                        class="form-control" 
+                        placeholder="seu@email.com"
+                        required
+                    >
+                </div>
+                <div class="error-message" id="emailError"></div>
+            </div>
+
+            <div class="form-group">
+                <label for="password">
+                    Senha <span class="required">*</span>
+                </label>
+                <div class="input-wrapper">
+                    <i class="fas fa-lock"></i>
+                    <input 
+                        type="password" 
+                        id="password" 
+                        name="password" 
+                        class="form-control" 
+                        placeholder="Digite uma senha forte"
+                        required
+                    >
+                </div>
+                <div class="password-strength">
+                    <div class="password-strength-bar" id="strengthBar"></div>
+                </div>
+                <div class="password-requirements">
+                    <ul id="passwordReqs">
+                        <li id="req-length"><i class="fas fa-times"></i> Mínimo 8 caracteres</li>
+                        <li id="req-upper"><i class="fas fa-times"></i> Uma letra maiúscula</li>
+                        <li id="req-lower"><i class="fas fa-times"></i> Uma letra minúscula</li>
+                        <li id="req-number"><i class="fas fa-times"></i> Um número</li>
+                    </ul>
+                </div>
+                <div class="error-message" id="passwordError"></div>
+            </div>
+
+            <div class="form-group">
+                <label for="confirmPassword">
+                    Confirmar Senha <span class="required">*</span>
+                </label>
+                <div class="input-wrapper">
+                    <i class="fas fa-lock"></i>
+                    <input 
+                        type="password" 
+                        id="confirmPassword" 
+                        name="confirmPassword" 
+                        class="form-control" 
+                        placeholder="Digite a senha novamente"
+                        required
+                    >
+                </div>
+                <div class="error-message" id="confirmPasswordError"></div>
+            </div>
+
+            <div class="checkbox-group">
+                <input type="checkbox" id="terms" name="terms" required>
+                <label for="terms">
+                    Eu concordo com os <a href="#">Termos de Uso</a> e <a href="#">Política de Privacidade</a>
+                </label>
+            </div>
+            <div class="error-message" id="termsError"></div>
+
+            <button type="submit" class="btn-submit" id="submitBtn">
+                <i class="fas fa-user-plus"></i> Criar Conta
+            </button>
+        </form>
+
+        <div class="login-link">
+            Já tem uma conta? <a href="index.html">Fazer Login</a>
+        </div>
+    </div>
+
+    <script>
+        // Get plan from URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const selectedPlan = urlParams.get('plan') || 'free';
+        
+        const planNames = {
+            'free': 'Free',
+            'starter': 'Starter',
+            'professional': 'Professional',
+            'enterprise': 'Enterprise'
+        };
+
+        document.getElementById('planBadge').innerHTML = `
+            <i class="fas fa-crown"></i> Plano ${planNames[selectedPlan]}
+        `;
+
+        // Form validation
+        const form = document.getElementById('registerForm');
+        const inputs = {
+            fullName: document.getElementById('fullName'),
+            username: document.getElementById('username'),
+            email: document.getElementById('email'),
+            password: document.getElementById('password'),
+            confirmPassword: document.getElementById('confirmPassword'),
+            terms: document.getElementById('terms')
+        };
+
+        // Email validation
+        function validateEmail(email) {
+            const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            return re.test(email);
+        }
+
+        // Password strength checker
+        inputs.password.addEventListener('input', function() {
+            const password = this.value;
+            const strengthBar = document.getElementById('strengthBar');
+            
+            let strength = 0;
+            const requirements = {
+                length: password.length >= 8,
+                upper: /[A-Z]/.test(password),
+                lower: /[a-z]/.test(password),
+                number: /[0-9]/.test(password)
+            };
+
+            // Update requirements UI
+            Object.keys(requirements).forEach(req => {
+                const element = document.getElementById(`req-${req}`);
+                if (requirements[req]) {
+                    element.classList.add('valid');
+                    element.querySelector('i').className = 'fas fa-check';
+                    strength++;
+                } else {
+                    element.classList.remove('valid');
+                    element.querySelector('i').className = 'fas fa-times';
+                }
+            });
+
+            // Update strength bar
+            strengthBar.className = 'password-strength-bar';
+            if (strength <= 2) {
+                strengthBar.classList.add('weak');
+            } else if (strength === 3) {
+                strengthBar.classList.add('medium');
+            } else {
+                strengthBar.classList.add('strong');
+            }
+        });
+
+        // Real-time validation
+        inputs.fullName.addEventListener('blur', function() {
+            const error = document.getElementById('fullNameError');
+            if (this.value.trim().length < 3) {
+                this.classList.add('error');
+                this.classList.remove('success');
+                error.textContent = 'Nome deve ter pelo menos 3 caracteres';
+                error.classList.add('show');
+            } else {
+                this.classList.remove('error');
+                this.classList.add('success');
+                error.classList.remove('show');
+            }
+        });
+
+        inputs.username.addEventListener('blur', function() {
+            const error = document.getElementById('usernameError');
+            const username = this.value.trim();
+            if (username.length < 3) {
+                this.classList.add('error');
+                this.classList.remove('success');
+                error.textContent = 'Nome de usuário deve ter pelo menos 3 caracteres';
+                error.classList.add('show');
+            } else if (!/^[a-zA-Z0-9_]+$/.test(username)) {
+                this.classList.add('error');
+                this.classList.remove('success');
+                error.textContent = 'Apenas letras, números e underscore são permitidos';
+                error.classList.add('show');
+            } else {
+                this.classList.remove('error');
+                this.classList.add('success');
+                error.classList.remove('show');
+            }
+        });
+
+        inputs.email.addEventListener('blur', function() {
+            const error = document.getElementById('emailError');
+            if (!validateEmail(this.value)) {
+                this.classList.add('error');
+                this.classList.remove('success');
+                error.textContent = 'Email inválido';
+                error.classList.add('show');
+            } else {
+                this.classList.remove('error');
+                this.classList.add('success');
+                error.classList.remove('show');
+            }
+        });
+
+        inputs.confirmPassword.addEventListener('blur', function() {
+            const error = document.getElementById('confirmPasswordError');
+            if (this.value !== inputs.password.value) {
+                this.classList.add('error');
+                this.classList.remove('success');
+                error.textContent = 'As senhas não correspondem';
+                error.classList.add('show');
+            } else {
+                this.classList.remove('error');
+                this.classList.add('success');
+                error.classList.remove('show');
+            }
+        });
+
+        // Form submission
+        form.addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            // Final validation
+            let isValid = true;
+            const password = inputs.password.value;
+
+            // Check all requirements
+            if (inputs.fullName.value.trim().length < 3) {
+                isValid = false;
+                showError('fullName', 'Nome deve ter pelo menos 3 caracteres');
+            }
+
+            if (inputs.username.value.trim().length < 3) {
+                isValid = false;
+                showError('username', 'Nome de usuário deve ter pelo menos 3 caracteres');
+            }
+
+            if (!validateEmail(inputs.email.value)) {
+                isValid = false;
+                showError('email', 'Email inválido');
+            }
+
+            if (password.length < 8 || !/[A-Z]/.test(password) || !/[a-z]/.test(password) || !/[0-9]/.test(password)) {
+                isValid = false;
+                showError('password', 'Senha não atende aos requisitos');
+            }
+
+            if (inputs.confirmPassword.value !== password) {
+                isValid = false;
+                showError('confirmPassword', 'As senhas não correspondem');
+            }
+
+            if (!inputs.terms.checked) {
+                isValid = false;
+                document.getElementById('termsError').textContent = 'Você deve aceitar os termos';
+                document.getElementById('termsError').classList.add('show');
+            }
+
+            if (!isValid) return;
+
+            // Show loading
+            document.getElementById('loading').classList.add('show');
+            document.getElementById('submitBtn').disabled = true;
+
+            try {
+                // Register user
+                const response = await fetch('/api/auth/register', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        username: inputs.username.value.trim(),
+                        email: inputs.email.value.trim(),
+                        password: inputs.password.value,
+                        full_name: inputs.fullName.value.trim(),
+                        selected_plan: selectedPlan
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    // Store user info
+                    localStorage.setItem('registeredEmail', inputs.email.value);
+                    localStorage.setItem('registeredUsername', inputs.username.value);
+                    localStorage.setItem('selectedPlan', selectedPlan);
+                    
+                    // Redirect based on plan
+                    if (selectedPlan === 'free') {
+                        // Auto login and go to dashboard
+                        localStorage.setItem('token', data.access_token);
+                        window.location.href = 'dashboard.html?welcome=true';
+                    } else {
+                        // Go to checkout
+                        window.location.href = `checkout.html?plan=${selectedPlan}`;
+                    }
+                } else {
+                    throw new Error(data.detail || 'Erro ao criar conta');
+                }
+            } catch (error) {
+                alert('Erro ao criar conta: ' + error.message);
+            } finally {
+                document.getElementById('loading').classList.remove('show');
+                document.getElementById('submitBtn').disabled = false;
+            }
+        });
+
+        function showError(field, message) {
+            const input = inputs[field];
+            const error = document.getElementById(field + 'Error');
+            input.classList.add('error');
+            input.classList.remove('success');
+            error.textContent = message;
+            error.classList.add('show');
+        }
+    </script>
+</body>
+</html>

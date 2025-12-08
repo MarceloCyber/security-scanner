@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Security Scanner Pro - Ferramentas de Segurança</title>
+    <link rel="stylesheet" href="/css/modern-style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <!-- Sidebar Overlay para mobile -->
+    <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
+    
+    <!-- Menu Toggle Button (mobile) -->
+    <button class="menu-toggle" onclick="toggleSidebarMobile()" aria-label="Menu">
+        <i class="fas fa-bars"></i>
+    </button>
+    
+    <!-- Sidebar -->
+    <div class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <i class="fas fa-shield-halved"></i>
+            <h2>Security Scanner Pro</h2>
+        </div>
+        <nav class="sidebar-nav">
+            <a href="#dashboard" class="nav-item active" data-page="dashboard">
+                <i class="fas fa-home"></i>
+                <span>Dashboard</span>
+            </a>
+            <a href="#phishing" class="nav-item" data-page="phishing">
+                <i class="fas fa-fish"></i>
+                <span>Phishing Generator</span>
+            </a>
+            <a href="#payloads" class="nav-item" data-page="payloads">
+                <i class="fas fa-bomb"></i>
+                <span>Payload Generator</span>
+            </a>
+            <a href="#encoder" class="nav-item" data-page="encoder">
+                <i class="fas fa-code"></i>
+                <span>Encoder/Decoder</span>
+            </a>
+            <a href="#scanner" class="nav-item" data-page="scanner">
+                <i class="fas fa-bug"></i>
+                <span>Code Scanner</span>
+            </a>
+            <a href="#port-scan" class="nav-item" data-page="port-scan">
+                <i class="fas fa-network-wired"></i>
+                <span>Port Scanner</span>
+            </a>
+            <a href="#reports" class="nav-item" data-page="reports">
+                <i class="fas fa-file-pdf"></i>
+                <span>Reports</span>
+            </a>
+        </nav>
+        <div class="sidebar-footer">
+            <div class="user-info">
+                <i class="fas fa-user-circle"></i>
+                <span id="username">Admin</span>
+            </div>
+            <button class="btn-logout" onclick="logout()">
+                <i class="fas fa-sign-out-alt"></i>
+                Sair
+            </button>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <!-- Header -->
+        <header class="header">
+            <button class="btn-toggle-sidebar" onclick="toggleSidebar()">
+                <i class="fas fa-bars"></i>
+            </button>
+            <div class="header-search">
+                <i class="fas fa-search"></i>
+                <input type="text" placeholder="Pesquisar ferramentas...">
+            </div>
+            <div class="header-actions">
+                <button class="btn-icon">
+                    <i class="fas fa-bell"></i>
+                    <span class="badge">3</span>
+                </button>
+            </div>
+        </header>
+
+        <!-- Dashboard Page -->
+        <div class="page active" id="dashboard-page">
+            <div class="page-header">
+                <h1>Dashboard</h1>
+                <p>Bem-vindo ao Security Scanner Professional</p>
+            </div>
+
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-icon" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                        <i class="fas fa-shield-halved"></i>
+                    </div>
+                    <div class="stat-content">
+                        <h3 id="total-scans">0</h3>
+                        <p>Total de Scans</p>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+                        <i class="fas fa-exclamation-triangle"></i>
+                    </div>
+                    <div class="stat-content">
+                        <h3 id="total-vulns">0</h3>
+                        <p>Vulnerabilidades</p>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
+                        <i class="fas fa-fish"></i>
+                    </div>
+                    <div class="stat-content">
+                        <h3 id="total-phishing">0</h3>
+                        <p>Páginas Phishing</p>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon" style="background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);">
+                        <i class="fas fa-file-pdf"></i>
+                    </div>
+                    <div class="stat-content">
+                        <h3 id="total-reports">0</h3>
+                        <p>Relatórios</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="tools-grid">
+                <div class="tool-card">
+                    <div class="tool-icon">
+                        <i class="fas fa-fish"></i>
+                    </div>
+                    <h3>Phishing Generator</h3>
+                    <p>Crie páginas de phishing realistas para testes de segurança</p>
+                    <button class="btn-primary" onclick="navigateTo('phishing')">
+                        <span>Abrir</span>
+                        <i class="fas fa-arrow-right"></i>
+                    </button>
+                </div>
+                <div class="tool-card">
+                    <div class="tool-icon">
+                        <i class="fas fa-bomb"></i>
+                    </div>
+                    <h3>Payload Generator</h3>
+                    <p>Gere payloads para XSS, SQL Injection e mais</p>
+                    <button class="btn-primary" onclick="navigateTo('payloads')">
+                        <span>Abrir</span>
+                        <i class="fas fa-arrow-right"></i>
+                    </button>
+                </div>
+                <div class="tool-card">
+                    <div class="tool-icon">
+                        <i class="fas fa-code"></i>
+                    </div>
+                    <h3>Encoder/Decoder</h3>
+                    <p>Codifique e decodifique textos em diversos formatos</p>
+                    <button class="btn-primary" onclick="navigateTo('encoder')">
+                        <span>Abrir</span>
+                        <i class="fas fa-arrow-right"></i>
+                    </button>
+                </div>
+                <div class="tool-card">
+                    <div class="tool-icon">
+                        <i class="fas fa-bug"></i>
+                    </div>
+                    <h3>Code Scanner</h3>
+                    <p>Analise código em 7+ linguagens para vulnerabilidades</p>
+                    <button class="btn-primary" onclick="navigateTo('scanner')">
+                        <span>Abrir</span>
+                        <i class="fas fa-arrow-right"></i>
+                    </button>
+                </div>
+                <div class="tool-card">
+                    <div class="tool-icon">
+                        <i class="fas fa-network-wired"></i>
+                    </div>
+                    <h3>Port Scanner</h3>
+                    <p>Escaneie portas e serviços de rede</p>
+                    <button class="btn-primary" onclick="navigateTo('port-scan')">
+                        <span>Abrir</span>
+                        <i class="fas fa-arrow-right"></i>
+                    </button>
+                </div>
+                <div class="tool-card">
+                    <div class="tool-icon">
+                        <i class="fas fa-file-pdf"></i>
+                    </div>
+                    <h3>PDF Reports</h3>
+                    <p>Gere relatórios profissionais em PDF</p>
+                    <button class="btn-primary" onclick="navigateTo('reports')">
+                        <span>Abrir</span>
+                        <i class="fas fa-arrow-right"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Phishing Generator Page -->
+        <div class="page" id="phishing-page">
+            <div class="page-header">
+                <h1><i class="fas fa-fish"></i> Phishing Page Generator</h1>
+                <p>Crie páginas de phishing para testes de conscientização de segurança</p>
+            </div>
+
+            <div class="content-grid">
+                <div class="card">
+                    <div class="card-header">
+                        <h2>Configuração</h2>
+                    </div>
+                    <div class="card-body">
+                        <div class="form-group">
+                            <label>Template</label>
+                            <select id="phishing-template" class="form-control">
+                                <option value="">Carregando...</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>URL de Redirecionamento</label>
+                            <input type="url" id="redirect-url" class="form-control" value="https://google.com" placeholder="https://exemplo.com">
+                        </div>
+                        <div class="form-group">
+                            <label>Webhook de Captura (opcional)</label>
+                            <input type="url" id="capture-webhook" class="form-control" placeholder="https://webhook.site/...">
+                        </div>
+                        <div class="form-group">
+                            <label>Título Personalizado (opcional)</label>
+                            <input type="text" id="custom-title" class="form-control" placeholder="Deixe vazio para usar padrão">
+                        </div>
+                        <button class="btn-primary btn-block" onclick="generatePhishingPage()">
+                            <i class="fas fa-plus"></i>
+                            Gerar Página
+                        </button>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <h2>Páginas Geradas</h2>
+                        <button class="btn-sm" onclick="loadPhishingPages()">
+                            <i class="fas fa-sync"></i>
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <div id="phishing-pages-list">
+                            <p class="text-muted">Nenhuma página gerada ainda</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="alert alert-warning">
+                <i class="fas fa-exclamation-triangle"></i>
+                <strong>Aviso Legal:</strong> Use apenas para testes autorizados e treinamentos de segurança. O uso não autorizado pode ser ilegal.
+            </div>
+        </div>
+
+        <!-- Payload Generator Page -->
+        <div class="page" id="payloads-page">
+            <div class="page-header">
+                <h1><i class="fas fa-bomb"></i> Payload Generator</h1>
+                <p>Gere payloads para testes de penetração</p>
+            </div>
+
+            <div class="content-grid">
+                <div class="card">
+                    <div class="card-header">
+                        <h2>Configuração</h2>
+                    </div>
+                    <div class="card-body">
+                        <div class="form-group">
+                            <label>Categoria</label>
+                            <select id="payload-category" class="form-control">
+                                <option value="">Carregando...</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>
+                                <input type="checkbox" id="encode-payload">
+                                Codificar Payloads
+                            </label>
+                        </div>
+                        <div class="form-group" id="encoding-type-group" style="display: none;">
+                            <label>Tipo de Codificação</label>
+                            <select id="encoding-type" class="form-control">
+                                <option value="url">URL Encoding</option>
+                                <option value="base64">Base64</option>
+                                <option value="html">HTML Entities</option>
+                                <option value="double_url">Double URL</option>
+                            </select>
+                        </div>
+                        <button class="btn-primary btn-block" onclick="generatePayloads()">
+                            <i class="fas fa-bomb"></i>
+                            Gerar Payloads
+                        </button>
+                    </div>
+                </div>
+
+                <div class="card card-full">
+                    <div class="card-header">
+                        <h2>Payloads Gerados</h2>
+                        <span id="payload-count" class="badge">0</span>
+                    </div>
+                    <div class="card-body">
+                        <div id="payloads-list">
+                            <p class="text-muted">Selecione uma categoria e clique em "Gerar Payloads"</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Encoder/Decoder Page -->
+        <div class="page" id="encoder-page">
+            <div class="page-header">
+                <h1><i class="fas fa-code"></i> Encoder / Decoder / Hash</h1>
+                <p>Codifique, decodifique e gere hashes</p>
+            </div>
+
+            <div class="tabs">
+                <button class="tab-btn active" data-tab="encode-tab">Codificar</button>
+                <button class="tab-btn" data-tab="decode-tab">Decodificar</button>
+                <button class="tab-btn" data-tab="hash-tab">Hash</button>
+            </div>
+
+            <div class="tab-content active" id="encode-tab">
+                <div class="card">
+                    <div class="card-body">
+                        <div class="form-group">
+                            <label>Texto para Codificar</label>
+                            <textarea id="encode-input" class="form-control" rows="5" placeholder="Digite o texto aqui..."></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label>Tipo de Codificação</label>
+                            <select id="encode-type" class="form-control">
+                                <option value="">Carregando...</option>
+                            </select>
+                        </div>
+                        <button class="btn-primary" onclick="encodeText()">
+                            <i class="fas fa-lock"></i>
+                            Codificar
+                        </button>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-header">
+                        <h2>Resultado</h2>
+                        <button class="btn-sm" onclick="copyToClipboard('encode-output')">
+                            <i class="fas fa-copy"></i>
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <textarea id="encode-output" class="form-control" rows="5" readonly></textarea>
+                    </div>
+                </div>
+            </div>
+
+            <div class="tab-content" id="decode-tab">
+                <div class="card">
+                    <div class="card-body">
+                        <div class="form-group">
+                            <label>Texto para Decodificar</label>
+                            <textarea id="decode-input" class="form-control" rows="5" placeholder="Cole o texto codificado aqui..."></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label>Tipo de Decodificação</label>
+                            <select id="decode-type" class="form-control">
+                                <option value="">Carregando...</option>
+                            </select>
+                        </div>
+                        <button class="btn-primary" onclick="decodeText()">
+                            <i class="fas fa-unlock"></i>
+                            Decodificar
+                        </button>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-header">
+                        <h2>Resultado</h2>
+                        <button class="btn-sm" onclick="copyToClipboard('decode-output')">
+                            <i class="fas fa-copy"></i>
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <textarea id="decode-output" class="form-control" rows="5" readonly></textarea>
+                    </div>
+                </div>
+            </div>
+
+            <div class="tab-content" id="hash-tab">
+                <div class="card">
+                    <div class="card-body">
+                        <div class="form-group">
+                            <label>Texto para Hash</label>
+                            <textarea id="hash-input" class="form-control" rows="5" placeholder="Digite o texto para gerar hash..."></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label>Algoritmo de Hash</label>
+                            <select id="hash-type" class="form-control">
+                                <option value="">Carregando...</option>
+                            </select>
+                        </div>
+                        <button class="btn-primary" onclick="hashText()">
+                            <i class="fas fa-hashtag"></i>
+                            Gerar Hash
+                        </button>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-header">
+                        <h2>Resultado</h2>
+                        <button class="btn-sm" onclick="copyToClipboard('hash-output')">
+                            <i class="fas fa-copy"></i>
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <textarea id="hash-output" class="form-control" rows="3" readonly></textarea>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Scanner, Port Scan, Reports pages placeholder -->
+        <div class="page" id="scanner-page">
+            <div class="page-header">
+                <h1><i class="fas fa-bug"></i> Code Scanner</h1>
+                <p>Em breve - Análise de código multi-linguagem</p>
+            </div>
+        </div>
+
+        <div class="page" id="port-scan-page">
+            <div class="page-header">
+                <h1><i class="fas fa-network-wired"></i> Port Scanner</h1>
+                <p>Em breve - Scanner de portas e serviços</p>
+            </div>
+        </div>
+
+        <div class="page" id="reports-page">
+            <div class="page-header">
+                <h1><i class="fas fa-file-pdf"></i> Reports</h1>
+                <p>Em breve - Geração de relatórios PDF</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div class="toast" id="toast"></div>
+
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loading">
+        <div class="spinner"></div>
+    </div>
+
+    <script src="/js/modern-app.js"></script>
+</body>
+</html>

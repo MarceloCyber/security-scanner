@@ -1,0 +1,697 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manual de Uso - Security Scanner</title>
+    <link rel="stylesheet" href="css/manual.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    <!-- Header -->
+    <header class="manual-header">
+        <div class="container">
+            <div class="header-content">
+                <div class="logo-section">
+                    <i class="fas fa-shield-alt"></i>
+                    <h1>Security Scanner</h1>
+                </div>
+                <a href="dashboard.html" class="btn-back">
+                    <i class="fas fa-arrow-left"></i> Voltar ao Dashboard
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <!-- Hero Section -->
+    <section class="hero-section">
+        <div class="container">
+            <h2>Manual de Uso Completo</h2>
+            <p>Guia completo para utilizar todas as ferramentas da plataforma com segurança e eficiência</p>
+        </div>
+    </section>
+
+    <!-- Navigation -->
+    <nav class="manual-nav sticky">
+        <div class="container">
+            <ul class="nav-list">
+                <li><a href="#intro" class="nav-link active">Introdução</a></li>
+                <li><a href="#tools" class="nav-link">Ferramentas</a></li>
+                <li><a href="#plans" class="nav-link">Planos</a></li>
+                <li><a href="#responsibility" class="nav-link">Responsabilidade</a></li>
+                <li><a href="#support" class="nav-link">Suporte</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="manual-content">
+        <div class="container">
+            <!-- Introdução -->
+            <section id="intro" class="content-section">
+                <div class="section-header">
+                    <i class="fas fa-book-open"></i>
+                    <h2>Introdução</h2>
+                </div>
+                
+                <div class="content-card">
+                    <h3>Bem-vindo ao Security Scanner</h3>
+                    <p>O Security Scanner é uma plataforma profissional de análise de segurança que oferece diversas ferramentas para identificar vulnerabilidades em sistemas, redes e aplicações.</p>
+                    
+                    <div class="info-box info">
+                        <i class="fas fa-info-circle"></i>
+                        <div>
+                            <strong>Objetivo da Plataforma</strong>
+                            <p>Auxiliar profissionais de segurança, desenvolvedores e administradores de sistemas a identificar e corrigir vulnerabilidades antes que sejam exploradas por agentes maliciosos.</p>
+                        </div>
+                    </div>
+
+                    <h4>Para quem é esta plataforma?</h4>
+                    <ul class="feature-list">
+                        <li><i class="fas fa-check"></i> Profissionais de Segurança da Informação</li>
+                        <li><i class="fas fa-check"></i> Pentesters e Ethical Hackers</li>
+                        <li><i class="fas fa-check"></i> Desenvolvedores de Software</li>
+                        <li><i class="fas fa-check"></i> Administradores de Sistemas e Redes</li>
+                        <li><i class="fas fa-check"></i> Estudantes de Cibersegurança</li>
+                    </ul>
+                </div>
+            </section>
+
+            <!-- Ferramentas -->
+            <section id="tools" class="content-section">
+                <div class="section-header">
+                    <i class="fas fa-tools"></i>
+                    <h2>Ferramentas Disponíveis</h2>
+                </div>
+
+                <!-- Port Scanner -->
+                <div class="tool-card">
+                    <div class="tool-header">
+                        <div class="tool-icon port-scanner">
+                            <i class="fas fa-network-wired"></i>
+                        </div>
+                        <div>
+                            <h3>Port Scanner</h3>
+                            <span class="badge badge-free">Gratuito</span>
+                        </div>
+                    </div>
+                    
+                    <div class="tool-content">
+                        <h4>O que faz?</h4>
+                        <p>O Port Scanner identifica portas abertas em um servidor ou dispositivo de rede, detectando serviços em execução e possíveis vulnerabilidades de configuração.</p>
+
+                        <h4>Como usar?</h4>
+                        <div class="steps">
+                            <div class="step">
+                                <span class="step-number">1</span>
+                                <div class="step-content">
+                                    <strong>Acesse a ferramenta</strong>
+                                    <p>No dashboard, clique em "Port Scanner"</p>
+                                </div>
+                            </div>
+                            <div class="step">
+                                <span class="step-number">2</span>
+                                <div class="step-content">
+                                    <strong>Insira o alvo</strong>
+                                    <p>Digite o IP ou domínio que deseja escanear (ex: 192.168.1.1 ou example.com)</p>
+                                </div>
+                            </div>
+                            <div class="step">
+                                <span class="step-number">3</span>
+                                <div class="step-content">
+                                    <strong>Configure as portas</strong>
+                                    <p>Escolha o range de portas (ex: 1-1000 ou portas específicas: 80,443,3306)</p>
+                                </div>
+                            </div>
+                            <div class="step">
+                                <span class="step-number">4</span>
+                                <div class="step-content">
+                                    <strong>Execute o scan</strong>
+                                    <p>Clique em "Iniciar Scan" e aguarde os resultados</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <h4>Informações fornecidas:</h4>
+                        <ul class="feature-list">
+                            <li><i class="fas fa-check-circle"></i> Portas abertas e fechadas</li>
+                            <li><i class="fas fa-check-circle"></i> Serviços em execução</li>
+                            <li><i class="fas fa-check-circle"></i> Versões de software detectadas</li>
+                            <li><i class="fas fa-check-circle"></i> Banners dos serviços</li>
+                            <li><i class="fas fa-check-circle"></i> Nível de risco de cada porta</li>
+                        </ul>
+
+                        <div class="info-box warning">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            <div>
+                                <strong>Atenção</strong>
+                                <p>Apenas escaneie sistemas que você possui ou tem autorização explícita para testar. Scans não autorizados podem ser ilegais.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Code Scanner -->
+                <div class="tool-card">
+                    <div class="tool-header">
+                        <div class="tool-icon code-scanner">
+                            <i class="fas fa-code"></i>
+                        </div>
+                        <div>
+                            <h3>Code Scanner</h3>
+                            <span class="badge badge-premium">Premium</span>
+                        </div>
+                    </div>
+                    
+                    <div class="tool-content">
+                        <h4>O que faz?</h4>
+                        <p>Analisa código-fonte em busca de vulnerabilidades de segurança, más práticas e padrões de código inseguro em diversas linguagens de programação.</p>
+
+                        <h4>Como usar?</h4>
+                        <div class="steps">
+                            <div class="step">
+                                <span class="step-number">1</span>
+                                <div class="step-content">
+                                    <strong>Selecione o arquivo</strong>
+                                    <p>Faça upload do arquivo de código (.py, .js, .php, .java, etc.)</p>
+                                </div>
+                            </div>
+                            <div class="step">
+                                <span class="step-number">2</span>
+                                <div class="step-content">
+                                    <strong>Aguarde a análise</strong>
+                                    <p>O sistema irá processar o código automaticamente</p>
+                                </div>
+                            </div>
+                            <div class="step">
+                                <span class="step-number">3</span>
+                                <div class="step-content">
+                                    <strong>Revise os resultados</strong>
+                                    <p>Analise as vulnerabilidades encontradas por nível de severidade</p>
+                                </div>
+                            </div>
+                            <div class="step">
+                                <span class="step-number">4</span>
+                                <div class="step-content">
+                                    <strong>Corrija as falhas</strong>
+                                    <p>Implemente as correções sugeridas em seu código</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <h4>Vulnerabilidades detectadas:</h4>
+                        <ul class="feature-list">
+                            <li><i class="fas fa-bug"></i> SQL Injection</li>
+                            <li><i class="fas fa-bug"></i> Cross-Site Scripting (XSS)</li>
+                            <li><i class="fas fa-bug"></i> Command Injection</li>
+                            <li><i class="fas fa-bug"></i> Path Traversal</li>
+                            <li><i class="fas fa-bug"></i> Hardcoded Credentials</li>
+                            <li><i class="fas fa-bug"></i> Weak Cryptography</li>
+                            <li><i class="fas fa-bug"></i> Insecure Deserialization</li>
+                            <li><i class="fas fa-bug"></i> E muitas outras...</li>
+                        </ul>
+
+                        <div class="info-box success">
+                            <i class="fas fa-lightbulb"></i>
+                            <div>
+                                <strong>Dica</strong>
+                                <p>Execute o Code Scanner regularmente durante o desenvolvimento para identificar problemas antes de colocar o código em produção.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- API Scanner -->
+                <div class="tool-card">
+                    <div class="tool-header">
+                        <div class="tool-icon api-scanner">
+                            <i class="fas fa-plug"></i>
+                        </div>
+                        <div>
+                            <h3>API Scanner</h3>
+                            <span class="badge badge-premium">Premium</span>
+                        </div>
+                    </div>
+                    
+                    <div class="tool-content">
+                        <h4>O que faz?</h4>
+                        <p>Testa APIs REST em busca de vulnerabilidades de autenticação, autorização, injeção e outras falhas de segurança específicas de APIs.</p>
+
+                        <h4>Como usar?</h4>
+                        <div class="steps">
+                            <div class="step">
+                                <span class="step-number">1</span>
+                                <div class="step-content">
+                                    <strong>Insira a URL da API</strong>
+                                    <p>Digite o endpoint completo da API (ex: https://api.example.com/v1)</p>
+                                </div>
+                            </div>
+                            <div class="step">
+                                <span class="step-number">2</span>
+                                <div class="step-content">
+                                    <strong>Configure autenticação (se necessário)</strong>
+                                    <p>Adicione tokens, API keys ou credenciais necessárias</p>
+                                </div>
+                            </div>
+                            <div class="step">
+                                <span class="step-number">3</span>
+                                <div class="step-content">
+                                    <strong>Execute os testes</strong>
+                                    <p>O scanner testará diversos vetores de ataque automaticamente</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <h4>Testes realizados:</h4>
+                        <ul class="feature-list">
+                            <li><i class="fas fa-shield-alt"></i> Autenticação e Autorização</li>
+                            <li><i class="fas fa-shield-alt"></i> Injeção de SQL/NoSQL</li>
+                            <li><i class="fas fa-shield-alt"></i> Rate Limiting</li>
+                            <li><i class="fas fa-shield-alt"></i> CORS Misconfiguration</li>
+                            <li><i class="fas fa-shield-alt"></i> Information Disclosure</li>
+                            <li><i class="fas fa-shield-alt"></i> Mass Assignment</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Dependency Scanner -->
+                <div class="tool-card">
+                    <div class="tool-header">
+                        <div class="tool-icon dependency-scanner">
+                            <i class="fas fa-cubes"></i>
+                        </div>
+                        <div>
+                            <h3>Dependency Scanner</h3>
+                            <span class="badge badge-premium">Premium</span>
+                        </div>
+                    </div>
+                    
+                    <div class="tool-content">
+                        <h4>O que faz?</h4>
+                        <p>Analisa as dependências do seu projeto (bibliotecas, frameworks, módulos) e identifica versões com vulnerabilidades conhecidas (CVEs).</p>
+
+                        <h4>Como usar?</h4>
+                        <div class="steps">
+                            <div class="step">
+                                <span class="step-number">1</span>
+                                <div class="step-content">
+                                    <strong>Faça upload do arquivo</strong>
+                                    <p>Envie o arquivo de dependências (package.json, requirements.txt, pom.xml, etc.)</p>
+                                </div>
+                            </div>
+                            <div class="step">
+                                <span class="step-number">2</span>
+                                <div class="step-content">
+                                    <strong>Análise automática</strong>
+                                    <p>O sistema verifica cada dependência em bancos de dados de vulnerabilidades</p>
+                                </div>
+                            </div>
+                            <div class="step">
+                                <span class="step-number">3</span>
+                                <div class="step-content">
+                                    <strong>Revise o relatório</strong>
+                                    <p>Veja quais pacotes têm vulnerabilidades e versões seguras recomendadas</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <h4>Informações fornecidas:</h4>
+                        <ul class="feature-list">
+                            <li><i class="fas fa-exclamation-circle"></i> CVEs conhecidos</li>
+                            <li><i class="fas fa-exclamation-circle"></i> Severidade das vulnerabilidades</li>
+                            <li><i class="fas fa-exclamation-circle"></i> Versões seguras recomendadas</li>
+                            <li><i class="fas fa-exclamation-circle"></i> Dependências transitivas vulneráveis</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Docker Scanner -->
+                <div class="tool-card">
+                    <div class="tool-header">
+                        <div class="tool-icon docker-scanner">
+                            <i class="fab fa-docker"></i>
+                        </div>
+                        <div>
+                            <h3>Docker Scanner</h3>
+                            <span class="badge badge-premium">Premium</span>
+                        </div>
+                    </div>
+                    
+                    <div class="tool-content">
+                        <h4>O que faz?</h4>
+                        <p>Analisa imagens Docker em busca de vulnerabilidades, más configurações e problemas de segurança em containers.</p>
+
+                        <h4>Como usar?</h4>
+                        <div class="steps">
+                            <div class="step">
+                                <span class="step-number">1</span>
+                                <div class="step-content">
+                                    <strong>Upload do Dockerfile ou imagem</strong>
+                                    <p>Envie o Dockerfile ou especifique a imagem Docker</p>
+                                </div>
+                            </div>
+                            <div class="step">
+                                <span class="step-number">2</span>
+                                <div class="step-content">
+                                    <strong>Análise de camadas</strong>
+                                    <p>O scanner analisa cada camada da imagem</p>
+                                </div>
+                            </div>
+                            <div class="step">
+                                <span class="step-number">3</span>
+                                <div class="step-content">
+                                    <strong>Resultados detalhados</strong>
+                                    <p>Receba relatório com vulnerabilidades e recomendações</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <h4>Verificações realizadas:</h4>
+                        <ul class="feature-list">
+                            <li><i class="fas fa-container-storage"></i> Vulnerabilidades em pacotes do sistema</li>
+                            <li><i class="fas fa-container-storage"></i> Configurações inseguras</li>
+                            <li><i class="fas fa-container-storage"></i> Secrets expostos</li>
+                            <li><i class="fas fa-container-storage"></i> Permissões inadequadas</li>
+                            <li><i class="fas fa-container-storage"></i> Imagens base desatualizadas</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- GraphQL Scanner -->
+                <div class="tool-card">
+                    <div class="tool-header">
+                        <div class="tool-icon graphql-scanner">
+                            <i class="fas fa-project-diagram"></i>
+                        </div>
+                        <div>
+                            <h3>GraphQL Scanner</h3>
+                            <span class="badge badge-premium">Premium</span>
+                        </div>
+                    </div>
+                    
+                    <div class="tool-content">
+                        <h4>O que faz?</h4>
+                        <p>Testa APIs GraphQL em busca de vulnerabilidades específicas como introspection habilitada, queries excessivas, injection e falhas de autorização.</p>
+
+                        <h4>Como usar?</h4>
+                        <div class="steps">
+                            <div class="step">
+                                <span class="step-number">1</span>
+                                <div class="step-content">
+                                    <strong>Insira o endpoint GraphQL</strong>
+                                    <p>Digite a URL do endpoint (ex: https://api.example.com/graphql)</p>
+                                </div>
+                            </div>
+                            <div class="step">
+                                <span class="step-number">2</span>
+                                <div class="step-content">
+                                    <strong>Configure headers (opcional)</strong>
+                                    <p>Adicione tokens de autenticação se necessário</p>
+                                </div>
+                            </div>
+                            <div class="step">
+                                <span class="step-number">3</span>
+                                <div class="step-content">
+                                    <strong>Inicie o scan</strong>
+                                    <p>O sistema testará diversos vetores de ataque</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <h4>Testes realizados:</h4>
+                        <ul class="feature-list">
+                            <li><i class="fas fa-search"></i> Introspection habilitada</li>
+                            <li><i class="fas fa-search"></i> Query depth excessiva</li>
+                            <li><i class="fas fa-search"></i> Batch attacks</li>
+                            <li><i class="fas fa-search"></i> Field duplication</li>
+                            <li><i class="fas fa-search"></i> Injection vulnerabilities</li>
+                            <li><i class="fas fa-search"></i> Authorization bypass</li>
+                        </ul>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Planos -->
+            <section id="plans" class="content-section">
+                <div class="section-header">
+                    <i class="fas fa-star"></i>
+                    <h2>Planos e Limites</h2>
+                </div>
+
+                <div class="plans-grid">
+                    <div class="plan-card free">
+                        <div class="plan-badge">Gratuito</div>
+                        <h3>FREE</h3>
+                        <div class="plan-price">R$ 0<span>/mês</span></div>
+                        <ul class="plan-features">
+                            <li><i class="fas fa-check"></i> Port Scanner</li>
+                            <li><i class="fas fa-check"></i> 10 scans por mês</li>
+                            <li><i class="fas fa-times"></i> Ferramentas avançadas</li>
+                            <li><i class="fas fa-times"></i> Relatórios PDF</li>
+                            <li><i class="fas fa-times"></i> API Access</li>
+                        </ul>
+                        <p class="plan-note">Ideal para testar a plataforma</p>
+                    </div>
+
+                    <div class="plan-card starter">
+                        <div class="plan-badge">Popular</div>
+                        <h3>Starter</h3>
+                        <div class="plan-price">R$ 49<span>/mês</span></div>
+                        <ul class="plan-features">
+                            <li><i class="fas fa-check"></i> Todas as ferramentas</li>
+                            <li><i class="fas fa-check"></i> 100 scans por mês</li>
+                            <li><i class="fas fa-check"></i> Relatórios PDF</li>
+                            <li><i class="fas fa-check"></i> Suporte por email</li>
+                            <li><i class="fas fa-times"></i> API Access</li>
+                        </ul>
+                        <p class="plan-note">Perfeito para freelancers</p>
+                    </div>
+
+                    <div class="plan-card professional">
+                        <div class="plan-badge">Recomendado</div>
+                        <h3>Professional</h3>
+                        <div class="plan-price">R$ 149<span>/mês</span></div>
+                        <ul class="plan-features">
+                            <li><i class="fas fa-check"></i> Todas as ferramentas</li>
+                            <li><i class="fas fa-check"></i> Scans ilimitados</li>
+                            <li><i class="fas fa-check"></i> Relatórios personalizados</li>
+                            <li><i class="fas fa-check"></i> Suporte prioritário</li>
+                            <li><i class="fas fa-check"></i> API Access</li>
+                        </ul>
+                        <p class="plan-note">Para profissionais e pequenas equipes</p>
+                    </div>
+
+                    <div class="plan-card enterprise">
+                        <div class="plan-badge">Premium</div>
+                        <h3>Enterprise</h3>
+                        <div class="plan-price">R$ 499<span>/mês</span></div>
+                        <ul class="plan-features">
+                            <li><i class="fas fa-check"></i> Tudo do Professional</li>
+                            <li><i class="fas fa-check"></i> Scans ilimitados</li>
+                            <li><i class="fas fa-check"></i> White-label reports</li>
+                            <li><i class="fas fa-check"></i> Suporte 24/7</li>
+                            <li><i class="fas fa-check"></i> Custom integrations</li>
+                        </ul>
+                        <p class="plan-note">Para empresas e grandes equipes</p>
+                    </div>
+                </div>
+
+                <div class="info-box info">
+                    <i class="fas fa-info-circle"></i>
+                    <div>
+                        <strong>Renovação Automática</strong>
+                        <p>Os limites de scans são renovados automaticamente no início de cada mês. Você pode fazer upgrade do seu plano a qualquer momento no dashboard.</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Responsabilidade Legal -->
+            <section id="responsibility" class="content-section">
+                <div class="section-header">
+                    <i class="fas fa-balance-scale"></i>
+                    <h2>Termos de Uso e Responsabilidade</h2>
+                </div>
+
+                <div class="content-card warning-card">
+                    <div class="warning-header">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <h3>IMPORTANTE: Leia Atentamente</h3>
+                    </div>
+
+                    <h4>Uso Ético e Legal</h4>
+                    <p>Esta plataforma foi desenvolvida exclusivamente para fins de segurança, educação e testes autorizados. O uso inadequado pode resultar em consequências legais graves.</p>
+
+                    <h4>Você é responsável por:</h4>
+                    <ul class="responsibility-list">
+                        <li>
+                            <i class="fas fa-user-shield"></i>
+                            <div>
+                                <strong>Obter Autorização Prévia</strong>
+                                <p>Você DEVE ter autorização explícita por escrito do proprietário de qualquer sistema, rede ou aplicação que pretende escanear. Testes não autorizados são ilegais.</p>
+                            </div>
+                        </li>
+                        <li>
+                            <i class="fas fa-gavel"></i>
+                            <div>
+                                <strong>Conformidade Legal</strong>
+                                <p>Garantir que suas atividades estejam em conformidade com todas as leis federais, estaduais e locais aplicáveis, incluindo mas não limitado a leis de crimes cibernéticos.</p>
+                            </div>
+                        </li>
+                        <li>
+                            <i class="fas fa-hands-helping"></i>
+                            <div>
+                                <strong>Uso Ético</strong>
+                                <p>Utilizar as ferramentas apenas para melhorar a segurança, nunca para causar danos, roubar informações ou interromper serviços.</p>
+                            </div>
+                        </li>
+                        <li>
+                            <i class="fas fa-file-contract"></i>
+                            <div>
+                                <strong>Manter Documentação</strong>
+                                <p>Manter registros de todas as autorizações obtidas e dos testes realizados.</p>
+                            </div>
+                        </li>
+                        <li>
+                            <i class="fas fa-user-lock"></i>
+                            <div>
+                                <strong>Confidencialidade</strong>
+                                <p>Manter confidenciais todas as informações sensíveis descobertas durante os testes e reportá-las apenas às partes apropriadas.</p>
+                            </div>
+                        </li>
+                    </ul>
+
+                    <div class="danger-box">
+                        <i class="fas fa-ban"></i>
+                        <div>
+                            <strong>Usos Proibidos</strong>
+                            <p>É ESTRITAMENTE PROIBIDO:</p>
+                            <ul>
+                                <li>Escanear sistemas sem autorização</li>
+                                <li>Usar as ferramentas para atividades ilegais</li>
+                                <li>Explorar vulnerabilidades descobertas sem permissão</li>
+                                <li>Compartilhar vulnerabilidades publicamente antes da correção</li>
+                                <li>Usar a plataforma para ataques ou invasões</li>
+                                <li>Revender ou redistribuir acesso à plataforma</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <h4>Isenção de Responsabilidade da Plataforma</h4>
+                    <div class="disclaimer-box">
+                        <p><strong>A Security Scanner e seus desenvolvedores NÃO são responsáveis por:</strong></p>
+                        <ul>
+                            <li>Qualquer uso indevido ou ilegal das ferramentas</li>
+                            <li>Danos causados a sistemas terceiros</li>
+                            <li>Consequências legais decorrentes do uso não autorizado</li>
+                            <li>Perdas ou danos resultantes dos scans realizados</li>
+                            <li>Precisão absoluta dos resultados fornecidos</li>
+                        </ul>
+                        <p class="mt-20"><strong>Ao usar esta plataforma, você concorda que:</strong></p>
+                        <ul>
+                            <li>É totalmente responsável por suas ações e pelo uso das ferramentas</li>
+                            <li>Possui todas as autorizações necessárias para realizar os testes</li>
+                            <li>Isentará a plataforma de qualquer responsabilidade legal</li>
+                            <li>Usará as ferramentas exclusivamente para fins éticos e legais</li>
+                        </ul>
+                    </div>
+
+                    <h4>Boas Práticas Recomendadas</h4>
+                    <ul class="best-practices">
+                        <li><i class="fas fa-clipboard-check"></i> Sempre obtenha autorização por escrito antes de iniciar qualquer teste</li>
+                        <li><i class="fas fa-clipboard-check"></i> Defina claramente o escopo do teste com o cliente</li>
+                        <li><i class="fas fa-clipboard-check"></i> Realize testes em ambientes de teste/staging quando possível</li>
+                        <li><i class="fas fa-clipboard-check"></i> Comunique imediatamente vulnerabilidades críticas encontradas</li>
+                        <li><i class="fas fa-clipboard-check"></i> Mantenha logs detalhados de todas as atividades</li>
+                        <li><i class="fas fa-clipboard-check"></i> Respeite horários de manutenção e janelas de teste acordadas</li>
+                        <li><i class="fas fa-clipboard-check"></i> Não tente explorar vulnerabilidades além da verificação</li>
+                        <li><i class="fas fa-clipboard-check"></i> Siga princípios de divulgação responsável</li>
+                    </ul>
+                </div>
+            </section>
+
+            <!-- Suporte -->
+            <section id="support" class="content-section">
+                <div class="section-header">
+                    <i class="fas fa-life-ring"></i>
+                    <h2>Suporte e Ajuda</h2>
+                </div>
+
+                <div class="support-grid">
+                    <div class="support-card">
+                        <i class="fas fa-envelope"></i>
+                        <h3>Email</h3>
+                        <p>Entre em contato conosco por email</p>
+                        <a href="mailto:mac526@hotmail.com" class="support-link">mac526@hotmail.com</a>
+                    </div>
+
+                    <div class="support-card">
+                        <i class="fas fa-book"></i>
+                        <h3>Documentação</h3>
+                        <p>Acesse nossa documentação técnica completa</p>
+                        <a href="documentation.html" class="support-link">Ver Documentação</a>
+                    </div>
+
+                    <div class="support-card">
+                        <i class="fas fa-comments"></i>
+                        <h3>Comunidade</h3>
+                        <p>Participe de nossa comunidade no Discord</p>
+                        <a href="#" class="support-link">Em Breve</a>
+                    </div>
+
+                    <div class="support-card">
+                        <i class="fas fa-question-circle"></i>
+                        <h3>FAQ</h3>
+                        <p>Perguntas frequentes e respostas</p>
+                        <a href="faq.html" class="support-link">Ver FAQ</a>
+                    </div>
+                </div>
+
+                <div class="content-card">
+                    <h3>Tempo de Resposta do Suporte</h3>
+                    <table class="support-table">
+                        <thead>
+                            <tr>
+                                <th>Plano</th>
+                                <th>Canal</th>
+                                <th>Tempo de Resposta</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><span class="badge badge-free">FREE</span></td>
+                                <td>Email</td>
+                                <td>48-72 horas</td>
+                            </tr>
+                            <tr>
+                                <td><span class="badge badge-starter">Starter</span></td>
+                                <td>Email</td>
+                                <td>24-48 horas</td>
+                            </tr>
+                            <tr>
+                                <td><span class="badge badge-professional">Professional</span></td>
+                                <td>Email + Chat</td>
+                                <td>4-12 horas</td>
+                            </tr>
+                            <tr>
+                                <td><span class="badge badge-enterprise">Enterprise</span></td>
+                                <td>Email + Chat + Telefone</td>
+                                <td>1-4 horas (24/7)</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="manual-footer">
+        <div class="container">
+            <p>&copy; 2025 Security Scanner. Todos os direitos reservados.</p>
+            <p>Use com responsabilidade e ética.</p>
+        </div>
+    </footer>
+
+    <script src="js/manual.js"></script>
+</body>
+</html>

@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel Administrativo - Security Scanner</title>
+    <link rel="stylesheet" href="css/admin.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    <!-- Header -->
+    <header class="admin-header">
+        <div class="header-left">
+            <button class="menu-toggle" onclick="toggleSidebar()">
+                <i class="fas fa-bars"></i>
+            </button>
+            <div class="logo">
+                <i class="fas fa-shield-halved"></i>
+                <h1>Admin Panel</h1>
+            </div>
+        </div>
+        <div class="header-right">
+            <div class="admin-info">
+                <i class="fas fa-user-shield"></i>
+                <span id="adminUsername">Admin</span>
+            </div>
+            <button class="btn-logout" onclick="logout()">
+                <i class="fas fa-sign-out-alt"></i>
+                Sair
+            </button>
+        </div>
+    </header>
+
+    <div class="admin-container">
+        <!-- Sidebar -->
+        <aside class="admin-sidebar" id="adminSidebar">
+            <nav class="sidebar-nav">
+                <a href="#dashboard" class="nav-item active" data-page="dashboard">
+                    <i class="fas fa-chart-line"></i>
+                    <span>Dashboard</span>
+                </a>
+                <a href="#users" class="nav-item" data-page="users">
+                    <i class="fas fa-users"></i>
+                    <span>Usuários</span>
+                </a>
+                <a href="#activity" class="nav-item" data-page="activity">
+                    <i class="fas fa-history"></i>
+                    <span>Atividades</span>
+                </a>
+                <a href="#system" class="nav-item" data-page="system">
+                    <i class="fas fa-server"></i>
+                    <span>Sistema</span>
+                </a>
+                <div class="nav-divider"></div>
+                <a href="dashboard.html" class="nav-item">
+                    <i class="fas fa-arrow-left"></i>
+                    <span>Voltar ao Site</span>
+                </a>
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="admin-content">
+            <!-- Dashboard -->
+            <div id="dashboard-page" class="admin-page active">
+                <div class="page-header">
+                    <h2>Dashboard</h2>
+                    <button class="btn-refresh" onclick="loadDashboard()">
+                        <i class="fas fa-sync-alt"></i> Atualizar
+                    </button>
+                </div>
+
+                <!-- Stats Cards -->
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon users">
+                            <i class="fas fa-users"></i>
+                        </div>
+                        <div class="stat-details">
+                            <h3 id="totalUsers">0</h3>
+                            <p>Total de Usuários</p>
+                            <span class="stat-badge" id="newUsers">+0 novos (7d)</span>
+                        </div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-icon active">
+                            <i class="fas fa-user-check"></i>
+                        </div>
+                        <div class="stat-details">
+                            <h3 id="activeUsers">0</h3>
+                            <p>Usuários Ativos</p>
+                            <span class="stat-badge">Últimos 30 dias</span>
+                        </div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-icon scans">
+                            <i class="fas fa-search"></i>
+                        </div>
+                        <div class="stat-details">
+                            <h3 id="totalScans">0</h3>
+                            <p>Total de Scans</p>
+                            <span class="stat-badge" id="scansToday">0 hoje</span>
+                        </div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-icon revenue">
+                            <i class="fas fa-dollar-sign"></i>
+                        </div>
+                        <div class="stat-details">
+                            <h3 id="monthlyRevenue">R$ 0</h3>
+                            <p>Receita Mensal</p>
+                            <span class="stat-badge">Estimada</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Charts Row -->
+                <div class="charts-row">
+                    <div class="chart-card">
+                        <h3>Usuários por Plano</h3>
+                        <div class="plan-stats">
+                            <div class="plan-stat">
+                                <div class="plan-label">
+                                    <span class="plan-badge free">FREE</span>
+                                    <span class="plan-count" id="planFree">0</span>
+                                </div>
+                                <div class="plan-bar">
+                                    <div class="plan-fill free" id="planBarFree"></div>
+                                </div>
+                            </div>
+                            <div class="plan-stat">
+                                <div class="plan-label">
+                                    <span class="plan-badge starter">STARTER</span>
+                                    <span class="plan-count" id="planStarter">0</span>
+                                </div>
+                                <div class="plan-bar">
+                                    <div class="plan-fill starter" id="planBarStarter"></div>
+                                </div>
+                            </div>
+                            <div class="plan-stat">
+                                <div class="plan-label">
+                                    <span class="plan-badge professional">PRO</span>
+                                    <span class="plan-count" id="planProfessional">0</span>
+                                </div>
+                                <div class="plan-bar">
+                                    <div class="plan-fill professional" id="planBarProfessional"></div>
+                                </div>
+                            </div>
+                            <div class="plan-stat">
+                                <div class="plan-label">
+                                    <span class="plan-badge enterprise">ENTERPRISE</span>
+                                    <span class="plan-count" id="planEnterprise">0</span>
+                                </div>
+                                <div class="plan-bar">
+                                    <div class="plan-fill enterprise" id="planBarEnterprise"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="chart-card">
+                        <h3>Atividade Recente</h3>
+                        <div class="activity-stats">
+                            <div class="activity-item">
+                                <i class="fas fa-search"></i>
+                                <div>
+                                    <strong id="scans7Days">0</strong>
+                                    <span>Scans (7 dias)</span>
+                                </div>
+                            </div>
+                            <div class="activity-item">
+                                <i class="fas fa-user-plus"></i>
+                                <div>
+                                    <strong id="newUsers7Days">0</strong>
+                                    <span>Novos usuários (7 dias)</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Users Management -->
+            <div id="users-page" class="admin-page">
+                <div class="page-header">
+                    <h2>Gerenciamento de Usuários</h2>
+                    <div class="page-actions">
+                        <input type="text" id="userSearch" class="search-input" placeholder="Buscar usuário...">
+                        <select id="planFilter" class="filter-select">
+                            <option value="">Todos os planos</option>
+                            <option value="free">FREE</option>
+                            <option value="starter">Starter</option>
+                            <option value="professional">Professional</option>
+                            <option value="enterprise">Enterprise</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="table-container">
+                    <table class="users-table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Usuário</th>
+                                <th>Email</th>
+                                <th>Plano</th>
+                                <th>Scans</th>
+                                <th>Status</th>
+                                <th>Criado em</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="usersTableBody">
+                            <tr>
+                                <td colspan="8" class="loading-cell">
+                                    <i class="fas fa-spinner fa-spin"></i> Carregando...
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="pagination" id="usersPagination">
+                    <button id="prevPage" class="btn-pagination" disabled>
+                        <i class="fas fa-chevron-left"></i> Anterior
+                    </button>
+                    <span class="pagination-info">
+                        Página <span id="currentPage">1</span> de <span id="totalPages">1</span>
+                    </span>
+                    <button id="nextPage" class="btn-pagination" disabled>
+                        Próxima <i class="fas fa-chevron-right"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Activity Log -->
+            <div id="activity-page" class="admin-page">
+                <div class="page-header">
+                    <h2>Registro de Atividades</h2>
+                    <button class="btn-refresh" onclick="loadActivity()">
+                        <i class="fas fa-sync-alt"></i> Atualizar
+                    </button>
+                </div>
+
+                <div class="activity-list" id="activityList">
+                    <div class="loading-state">
+                        <i class="fas fa-spinner fa-spin"></i> Carregando atividades...
+                    </div>
+                </div>
+            </div>
+
+            <!-- System Info -->
+            <div id="system-page" class="admin-page">
+                <div class="page-header">
+                    <h2>Informações do Sistema</h2>
+                    <button class="btn-refresh" onclick="loadSystemInfo()">
+                        <i class="fas fa-sync-alt"></i> Atualizar
+                    </button>
+                </div>
+
+                <div class="system-grid">
+                    <div class="system-card">
+                        <h3><i class="fas fa-server"></i> Sistema Operacional</h3>
+                        <div class="system-info">
+                            <div class="info-item">
+                                <span class="info-label">Plataforma:</span>
+                                <span class="info-value" id="osPlatform">N/A</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">Python:</span>
+                                <span class="info-value" id="pythonVersion">N/A</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">Hostname:</span>
+                                <span class="info-value" id="hostname">N/A</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="system-card">
+                        <h3><i class="fas fa-microchip"></i> Recursos</h3>
+                        <div class="system-info">
+                            <div class="info-item">
+                                <span class="info-label">CPU:</span>
+                                <span class="info-value" id="cpuUsage">0%</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">Memória:</span>
+                                <span class="info-value" id="memoryUsage">0%</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">Disco:</span>
+                                <span class="info-value" id="diskUsage">0%</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="system-card">
+                        <h3><i class="fas fa-database"></i> Banco de Dados</h3>
+                        <div class="system-info">
+                            <div class="info-item">
+                                <span class="info-label">Total Usuários:</span>
+                                <span class="info-value" id="dbTotalUsers">0</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">Total Scans:</span>
+                                <span class="info-value" id="dbTotalScans">0</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">Tamanho:</span>
+                                <span class="info-value" id="dbSize">N/A</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- User Edit Modal -->
+    <div id="editUserModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Editar Usuário</h3>
+                <button class="modal-close" onclick="closeEditModal()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="editUserId">
+                <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" id="editUserEmail" class="form-input">
+                </div>
+                <div class="form-group">
+                    <label>Plano de Assinatura</label>
+                    <select id="editUserPlan" class="form-input">
+                        <option value="free">FREE</option>
+                        <option value="starter">Starter</option>
+                        <option value="professional">Professional</option>
+                        <option value="enterprise">Enterprise</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Status da Assinatura</label>
+                    <select id="editUserStatus" class="form-input">
+                        <option value="active">Ativo</option>
+                        <option value="cancelled">Cancelado</option>
+                        <option value="expired">Expirado</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Limite de Scans</label>
+                    <input type="number" id="editUserScansLimit" class="form-input">
+                </div>
+                <div class="form-group checkbox-group">
+                    <label>
+                        <input type="checkbox" id="editUserIsAdmin">
+                        <span>Administrador</span>
+                    </label>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary" onclick="closeEditModal()">Cancelar</button>
+                <button class="btn-primary" onclick="saveUserChanges()">Salvar Alterações</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete Confirmation Modal -->
+    <div id="deleteUserModal" class="modal">
+        <div class="modal-content modal-sm">
+            <div class="modal-header danger">
+                <h3>Confirmar Exclusão</h3>
+                <button class="modal-close" onclick="closeDeleteModal()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <p>Tem certeza que deseja excluir o usuário <strong id="deleteUserName"></strong>?</p>
+                <p class="warning-text">Esta ação não pode ser desfeita!</p>
+                <input type="hidden" id="deleteUserId">
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary" onclick="closeDeleteModal()">Cancelar</button>
+                <button class="btn-danger" onclick="confirmDeleteUser()">Excluir Usuário</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notifications -->
+    <div id="toastContainer"></div>
+
+    <script src="js/admin.js"></script>
+</body>
+</html>

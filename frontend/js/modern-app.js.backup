@@ -1,0 +1,1534 @@
+// Modern Security Scanner Pro - JavaScript
+
+const API_URL = 'http://localhost:8000/api';
+
+// Get token function to always have fresh token
+function getToken() {
+    return localStorage.getItem('access_token');
+}
+
+// Initialize app
+document.addEventListener('DOMContentLoaded', function() {
+    // Check authentication
+    if (!getToken()) {
+        window.location.href = '/index.html';
+        return;
+    }
+
+    initializeApp();
+    setupEventListeners();
+    loadDashboardStats();
+    loadNotifications();
+    
+    // Poll notifications every 10 seconds
+    setInterval(loadNotifications, 10000);
+});
+
+function initializeApp() {
+    // Setup navigation
+    document.querySelectorAll('.nav-item').forEach(item => {
+        item.addEventListener('click', function(e) {
+            e.preventDefault();
+            const page = this.dataset.page;
+            navigateTo(page);
+        });
+    });
+
+    // Setup tabs
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const tabId = this.dataset.tab;
+            switchTab(tabId);
+        });
+    });
+
+    // Load initial data
+    loadPhishingTemplates();
+    loadPayloadCategories();
+    loadEncodingTypes();
+    
+    // Load reports when page is navigated to
+    if (window.location.hash === '#reports') {
+        loadAvailableScans();
+    }
+
+    // Setup payload encoding checkbox
+    document.getElementById('encode-payload')?.addEventListener('change', function() {
+        document.getElementById('encoding-type-group').style.display = this.checked ? 'block' : 'none';
+    });
+}
+
+function setupEventListeners() {
+    // Add any additional event listeners here
+}
+
+// Navigation
+function navigateTo(pageName) {
+    // Update navigation
+    document.querySelectorAll('.nav-item').forEach(item => {
+        item.classList.remove('active');
+        if (item.dataset.page === pageName) {
+            item.classList.add('active');
+        }
+    });
+
+    // Update pages
+    document.querySelectorAll('.page').forEach(page => {
+        page.classList.remove('active');
+    });
+    document.getElementById(pageName + '-page').classList.add('active');
+
+    // Load page-specific data
+    if (pageName === 'phishing') {
+        loadPhishingTemplates(); // Reload templates when opening page
+        loadPhishingPages();
+        loadPhishingCaptures(); // Load captures
+    } else if (pageName === 'reports') {
+        loadAvailableScans();
+    }
+}
+
+function switchTab(tabId) {
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.remove('active');
+        if (btn.dataset.tab === tabId) {
+            btn.classList.add('active');
+        }
+    });
+
+    document.querySelectorAll('.tab-content').forEach(content => {
+        content.classList.remove('active');
+    });
+    document.getElementById(tabId).classList.add('active');
+}
+
+function toggleSidebar() {
+    const sidebar = document.getElementById('sidebar');
+    sidebar.classList.toggle('active');
+    
+    // Add/remove overlay for mobile
+    let overlay = document.querySelector('.sidebar-overlay');
+    if (!overlay) {
+        overlay = document.createElement('div');
+        overlay.className = 'sidebar-overlay';
+        overlay.addEventListener('click', toggleSidebar);
+        document.body.appendChild(overlay);
+    }
+    overlay.classList.toggle('active');
+    
+    // Close sidebar when clicking nav items on mobile
+    if (window.innerWidth <= 992) {
+        document.querySelectorAll('.nav-item').forEach(item => {
+            item.addEventListener('click', () => {
+                if (sidebar.classList.contains('active')) {
+                    toggleSidebar();
+                }
+            });
+        });
+    }
+}
+
+function toggleTheme() {
+    const html = document.documentElement;
+    const currentTheme = html.getAttribute('data-theme');
+    const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+    html.setAttribute('data-theme', newTheme);
+    localStorage.setItem('theme', newTheme);
+    
+    const icon = document.querySelector('#theme-toggle i');
+    icon.className = newTheme === 'dark' ? 'fas fa-sun' : 'fas fa-moon';
+}
+
+function logout() {
+    localStorage.removeItem('access_token');
+    localStorage.removeItem('username');
+    window.location.href = '/index.html';
+}
+
+// API Helpers
+async function apiRequest(endpoint, options = {}) {
+    const currentToken = getToken();
+    
+    const headers = {
+        'Content-Type': 'application/json',
+        ...options.headers
+    };
+
+    if (currentToken) {
+        headers['Authorization'] = `Bearer ${currentToken}`;
+    }
+
+    try {
+        showLoading();
+        const response = await fetch(`${API_URL}${endpoint}`, {
+            ...options,
+            headers
+        });
+
+        const data = await response.json();
+        
+        if (!response.ok) {
+            // If unauthorized, redirect to login
+            if (response.status === 401) {
+                localStorage.removeItem('access_token');
+                localStorage.removeItem('username');
+                window.location.href = '/index.html';
+                return;
+            }
+            throw new Error(data.detail || 'Erro na requisição');
+        }
+
+        hideLoading();
+        return data;
+    } catch (error) {
+        hideLoading();
+        showToast(error.message, 'error');
+        throw error;
+    }
+}
+
+// Dashboard
+async function loadDashboardStats() {
+    try {
+        const stats = await apiRequest('/tools/stats');
+        document.getElementById('total-phishing').textContent = stats.phishing.generated_pages;
+        
+        // Load scan stats
+        const scansResponse = await apiRequest('/scans');
+        document.getElementById('total-scans').textContent = scansResponse.total || 0;
+        
+        // Calculate total vulnerabilities
+        let totalVulns = 0;
+        if (scansResponse.scans) {
+            scansResponse.scans.forEach(scan => {
+                if (scan.results && scan.results.vulnerabilities) {
+                    totalVulns += scan.results.vulnerabilities.length;
+                }
+            });
+        }
+        document.getElementById('total-vulns').textContent = totalVulns;
+    } catch (error) {
+        console.error('Error loading dashboard stats:', error);
+    }
+}
+
+// Phishing Generator
+async function loadPhishingTemplates() {
+    const select = document.getElementById('phishing-template');
+    if (!select) return; // Element doesn't exist yet
+    
+    try {
+        const response = await apiRequest('/tools/phishing/templates');
+        select.innerHTML = '<option value="">Selecione um template</option>';
+        
+        if (response && response.templates && response.templates.length > 0) {
+            response.templates.forEach(template => {
+                const option = document.createElement('option');
+                option.value = template.id;
+                option.textContent = `${template.name} - ${template.description}`;
+                select.appendChild(option);
+            });
+        } else {
+            select.innerHTML = '<option value="">Nenhum template disponível</option>';
+        }
+    } catch (error) {
+        console.error('Error loading templates:', error);
+        select.innerHTML = '<option value="">Erro ao carregar templates</option>';
+    }
+}
+
+async function generatePhishingPage() {
+    const template = document.getElementById('phishing-template').value;
+    const redirectUrl = document.getElementById('redirect-url').value;
+    const captureWebhook = document.getElementById('capture-webhook').value;
+    const customTitle = document.getElementById('custom-title').value;
+    const expirationHours = parseInt(document.getElementById('expiration-time').value);
+
+    if (!template) {
+        showToast('Selecione um template', 'error');
+        return;
+    }
+
+    try {
+        const response = await apiRequest('/tools/phishing/generate', {
+            method: 'POST',
+            body: JSON.stringify({
+                template,
+                redirect_url: redirectUrl,
+                capture_webhook: captureWebhook || null,
+                custom_title: customTitle || null,
+                expiration_hours: expirationHours
+            })
+        });
+
+        let message = 'Página gerada com sucesso!';
+        if (response.expires_at) {
+            const expiresAt = new Date(response.expires_at).toLocaleString('pt-BR');
+            message += ` Expira em: ${expiresAt}`;
+        } else {
+            message += ' (Nunca expira)';
+        }
+        
+        showToast(message, 'success');
+        
+        // Show URLs based on configuration
+        if (response.masked_url && !response.masked_url.includes('⚠️')) {
+            showToast(`🎭 URL Pública Mascarada: ${response.masked_url}`, 'success');
+        } else if (response.setup_instructions) {
+            showToast(`⚠️ URL local: ${response.local_url}\n\nPara usar externamente, configure ngrok`, 'warning');
+        }
+        
+        loadPhishingPages();
+    } catch (error) {
+        console.error('Error generating phishing page:', error);
+    }
+}
+
+async function loadPhishingPages() {
+    try {
+        const response = await apiRequest('/tools/phishing/pages');
+        const container = document.getElementById('phishing-pages-list');
+        
+        if (response.pages.length === 0) {
+            container.innerHTML = '<p class="text-muted">Nenhuma página gerada ainda</p>';
+            return;
+        }
+
+        const fullUrl = window.location.origin;
+        container.innerHTML = response.pages.map(page => {
+            const expiresAt = page.expires_at ? new Date(page.expires_at) : null;
+            const isExpired = expiresAt && new Date() > expiresAt;
+            const timeLeft = expiresAt ? Math.ceil((expiresAt - new Date()) / 1000 / 60 / 60) : null; // hours
+            
+            const realUrl = `${fullUrl}${page.url}`;
+            const shortUrl = page.short_url || realUrl;
+            
+            return `
+            <div class="payload-item ${isExpired ? 'expired' : ''}">
+                <div class="payload-item-header">
+                    <strong>${page.filename}</strong>
+                    ${isExpired ? '<span class="badge badge-danger">Expirado</span>' : ''}
+                    ${timeLeft && timeLeft <= 24 && !isExpired ? `<span class="badge badge-warning">Expira em ${timeLeft}h</span>` : ''}
+                </div>
+                
+                <div style="margin: 10px 0;">
+                    <strong style="color: #667eea;">🔗 URL Curta (compartilhar - CLICÁVEL):</strong>
+                    <div class="payload-code" style="background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1)); border-left: 3px solid #667eea;">
+                        <a href="${shortUrl}" target="_blank" style="color: #667eea; text-decoration: none;">${shortUrl}</a>
+                    </div>
+                    <button class="btn-sm" onclick="copyToClipboard('short-${page.filename}')" style="margin-top: 5px;">
+                        <i class="fas fa-copy"></i> Copiar URL Curta
+                    </button>
+                    <a href="${shortUrl}" target="_blank" class="btn-sm btn-success" style="margin-top: 5px; margin-left: 5px;">
+                        <i class="fas fa-external-link-alt"></i> Testar
+                    </a>
+                    <div id="short-${page.filename}" style="display:none;">${shortUrl}</div>
+                </div>
+                
+                <div style="margin: 10px 0;">
+                    <strong style="color: #888;">� URL Completa (debug):</strong>
+                    <div class="payload-code" id="url-${page.filename}" style="font-size: 11px; opacity: 0.7;">${realUrl}</div>
+                    <button class="btn-sm" onclick="copyToClipboard('url-${page.filename}')" style="margin-top: 5px;">
+                        <i class="fas fa-copy"></i> Copiar URL Completa
+                    </button>
+                </div>
+                
+                <small>📅 Criado: ${page.created_at ? new Date(page.created_at).toLocaleString('pt-BR') : 'N/A'}</small>
+                ${page.expires_at ? `<br><small>⏱️ Expira: ${new Date(page.expires_at).toLocaleString('pt-BR')}</small>` : '<br><small>♾️ Nunca expira</small>'}
+            </div>
+        `}).join('');
+    } catch (error) {
+        console.error('Error loading phishing pages:', error);
+    }
+}
+
+async function clearAllPhishingPages() {
+    if (!confirm('⚠️ Tem certeza que deseja APAGAR TODOS os links de phishing gerados?\n\nEsta ação não pode ser desfeita!')) {
+        return;
+    }
+    
+    try {
+        const response = await apiRequest('/tools/phishing/pages/clear-all', {
+            method: 'DELETE'
+        });
+        
+        showToast(`✅ ${response.message}`, 'success');
+        loadPhishingPages(); // Reload the list
+    } catch (error) {
+        console.error('Error clearing phishing pages:', error);
+        showToast('❌ Erro ao limpar histórico', 'error');
+    }
+}
+
+async function loadPhishingCaptures() {
+    try {
+        const response = await apiRequest('/tools/phishing/captures');
+        const container = document.getElementById('phishing-captures-list');
+        
+        if (!response.captures || response.captures.length === 0) {
+            container.innerHTML = '<p class="text-muted">Nenhuma captura ainda. Compartilhe suas páginas de phishing para capturar dados.</p>';
+            return;
+        }
+
+        container.innerHTML = '<div class="captures-grid">' + response.captures.map(capture => {
+            const hasPhoto = capture.photo_file;
+            const hasLocation = capture.location;
+            const locationDetails = capture.location_details;
+            
+            return `
+                <div class="capture-card">
+                    <div class="capture-header">
+                        <div class="capture-icon">
+                            <i class="fas fa-user-secret"></i>
+                        </div>
+                        <div class="capture-info">
+                            <strong>Page ID: ${capture.page_id}</strong>
+                            <small>${new Date(capture.timestamp).toLocaleString('pt-BR')}</small>
+                        </div>
+                        <div class="capture-actions">
+                            <button class="btn-icon" onclick="shareCapture('${capture.page_id}', ${hasPhoto}, ${hasLocation})" title="Compartilhar">
+                                <i class="fas fa-share-alt"></i>
+                            </button>
+                            <button class="btn-icon btn-danger" onclick="deleteCapture('${capture.page_id}')" title="Deletar">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="capture-body">
+                        ${hasPhoto ? `
+                            <div class="capture-photo">
+                                <img src="data:image/jpeg;base64,${capture.photo_base64 || ''}" 
+                                     alt="Captured photo" 
+                                     onerror="this.onerror=null; this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%22200%22 height=%22200%22><text x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 dy=%22.3em%22 fill=%22%23999%22>Foto não disponível</text></svg>';"
+                                     onclick="window.open(this.src, '_blank')" 
+                                     style="max-width: 100%; border-radius: 8px; cursor: pointer;">
+                                <small><i class="fas fa-camera"></i> Foto capturada</small>
+                            </div>
+                        ` : '<p class="text-muted"><i class="fas fa-camera-slash"></i> Sem foto</p>'}
+                        
+                        <div class="capture-location">
+                            ${capture.ip_address ? `
+                                <p><i class="fas fa-network-wired"></i> <strong>IP:</strong> ${capture.ip_address}</p>
+                            ` : ''}
+                            
+                            ${locationDetails ? `
+                                <div style="margin-top: 10px;">
+                                    <p><i class="fas fa-map-marker-alt"></i> <strong>Detalhes de Localização:</strong></p>
+                                    ${locationDetails.country ? `<p><i class="fas fa-flag"></i> <strong>País:</strong> ${locationDetails.country}</p>` : ''}
+                                    ${locationDetails.city ? `<p><i class="fas fa-city"></i> <strong>Cidade:</strong> ${locationDetails.city}</p>` : ''}
+                                    ${locationDetails.state ? `<p><i class="fas fa-road"></i> <strong>Região:</strong> ${locationDetails.state}</p>` : ''}
+                                    ${locationDetails.full_address ? `<p style="margin-top: 5px; color: #666;"><i class="fas fa-home"></i> <small>${locationDetails.full_address}</small></p>` : ''}
+                                </div>
+                            ` : ''}
+                            
+                            ${hasLocation ? `
+                                <div style="margin-top: 15px;">
+                                    <p><i class="fas fa-compass"></i> <strong>Coordenadas:</strong> ${capture.location.latitude.toFixed(6)}, ${capture.location.longitude.toFixed(6)}</p>
+                                    <p><i class="fas fa-crosshairs"></i> <strong>Precisão:</strong> ${Math.round(capture.location.accuracy)}m</p>
+                                    
+                                    <div class="capture-map" style="margin-top: 10px; height: 250px; border-radius: 8px; overflow: hidden;">
+                                        <iframe 
+                                            width="100%" 
+                                            height="100%" 
+                                            frameborder="0" 
+                                            style="border:0" 
+                                            src="https://www.openstreetmap.org/export/embed.html?bbox=${capture.location.longitude - 0.01},${capture.location.latitude - 0.01},${capture.location.longitude + 0.01},${capture.location.latitude + 0.01}&layer=mapnik&marker=${capture.location.latitude},${capture.location.longitude}"
+                                            allowfullscreen>
+                                        </iframe>
+                                    </div>
+                                    
+                                    <a href="https://www.google.com/maps?q=${capture.location.latitude},${capture.location.longitude}" target="_blank" class="btn-sm" style="margin-top: 10px; display: inline-block;">
+                                        <i class="fas fa-external-link-alt"></i> Abrir no Google Maps
+                                    </a>
+                                </div>
+                            ` : !locationDetails && !capture.ip_address ? '<p class="text-muted"><i class="fas fa-map-marker-slash"></i> Sem localização</p>' : ''}
+                        </div>
+                        
+                        <div class="capture-meta">
+                            <p><strong><i class="fas fa-desktop"></i> User Agent:</strong></p>
+                            <small>${capture.user_agent || 'N/A'}</small>
+                            ${capture.screen_resolution ? `<p><strong><i class="fas fa-tv"></i> Resolução:</strong> ${capture.screen_resolution}</p>` : ''}
+                        </div>
+                    </div>
+                </div>
+            `;
+        }).join('') + '</div>';
+        
+    } catch (error) {
+        console.error('Error loading captures:', error);
+        document.getElementById('phishing-captures-list').innerHTML = 
+            '<p class="text-muted">Erro ao carregar capturas</p>';
+    }
+}
+
+async function deleteCapture(captureId) {
+    if (!confirm('Tem certeza que deseja deletar esta captura? Esta ação não pode ser desfeita.')) {
+        return;
+    }
+    
+    try {
+        await apiRequest(`/tools/phishing/captures/${captureId}`, {
+            method: 'DELETE'
+        });
+        showToast('Captura deletada com sucesso!', 'success');
+        loadPhishingCaptures(); // Reload captures list
+    } catch (error) {
+        console.error('Error deleting capture:', error);
+        showToast('Erro ao deletar captura', 'error');
+    }
+}
+
+async function shareCapture(captureId, hasPhoto, hasLocation) {
+    try {
+        console.log('shareCapture called with:', { captureId, hasPhoto, hasLocation });
+        
+        const captures = (await apiRequest('/tools/phishing/captures')).captures;
+        const capture = captures.find(c => c.page_id === captureId);
+        
+        if (!capture) {
+            showToast('Captura não encontrada', 'error');
+            return;
+        }
+        
+        console.log('Capture found:', capture);
+        
+        // Build share message
+        let message = `🎣 Captura de Phishing - ${capture.page_id}\n\n`;
+        message += `📅 Data: ${new Date(capture.timestamp).toLocaleString('pt-BR')}\n`;
+        
+        if (capture.ip_address) {
+            message += `🌐 IP: ${capture.ip_address}\n`;
+        }
+        
+        if (hasLocation && capture.location) {
+            message += `\n📍 Localização:\n`;
+            if (capture.location_details) {
+                message += `País: ${capture.location_details.country || 'N/A'}\n`;
+                message += `Cidade: ${capture.location_details.city || 'N/A'}\n`;
+                message += `Região: ${capture.location_details.state || 'N/A'}\n`;
+            }
+            message += `Coordenadas: ${capture.location.latitude.toFixed(6)}, ${capture.location.longitude.toFixed(6)}\n`;
+            message += `Google Maps: https://www.google.com/maps?q=${capture.location.latitude},${capture.location.longitude}\n`;
+        }
+        
+        if (capture.user_agent) {
+            message += `\n💻 User Agent: ${capture.user_agent}\n`;
+        }
+        
+        if (capture.screen_resolution) {
+            message += `📐 Resolução: ${capture.screen_resolution}\n`;
+        }
+        
+        console.log('Share message built:', message);
+        
+        // Store message in a global variable
+        window.currentShareMessage = message;
+        
+        // Create modal using DOM (safer than innerHTML with special characters)
+        const modal = document.createElement('div');
+        modal.className = 'share-modal';
+        
+        const modalContent = document.createElement('div');
+        modalContent.className = 'share-modal-content';
+        
+        // Header
+        const header = document.createElement('div');
+        header.className = 'share-modal-header';
+        header.innerHTML = '<h3>Compartilhar Captura</h3>';
+        
+        const closeBtn = document.createElement('button');
+        closeBtn.className = 'close-btn';
+        closeBtn.innerHTML = '<i class="fas fa-times"></i>';
+        closeBtn.onclick = () => modal.remove();
+        header.appendChild(closeBtn);
+        
+        // Body
+        const body = document.createElement('div');
+        body.className = 'share-modal-body';
+        
+        const textarea = document.createElement('textarea');
+        textarea.className = 'share-text';
+        textarea.readOnly = true;
+        textarea.value = message;
+        body.appendChild(textarea);
+        
+        // Photo if available
+        if (hasPhoto && capture.photo_base64) {
+            const photoDiv = document.createElement('div');
+            photoDiv.className = 'share-photo';
+            photoDiv.innerHTML = '<p><strong>Foto capturada:</strong></p>';
+            
+            const img = document.createElement('img');
+            img.src = `data:image/jpeg;base64,${capture.photo_base64}`;
+            img.alt = 'Captura';
+            img.style.cssText = 'max-width: 100%; border-radius: 8px; margin-top: 10px;';
+            photoDiv.appendChild(img);
+            body.appendChild(photoDiv);
+        }
+        
+        // Footer with buttons
+        const footer = document.createElement('div');
+        footer.className = 'share-modal-footer';
+        
+        const copyBtn = document.createElement('button');
+        copyBtn.className = 'btn';
+        copyBtn.innerHTML = '<i class="fas fa-copy"></i> Copiar Texto';
+        copyBtn.onclick = () => copyToClipboard(window.currentShareMessage);
+        
+        const whatsappBtn = document.createElement('button');
+        whatsappBtn.className = 'btn btn-success';
+        whatsappBtn.innerHTML = '<i class="fab fa-whatsapp"></i> WhatsApp';
+        whatsappBtn.onclick = () => shareViaWhatsApp(window.currentShareMessage);
+        
+        const emailBtn = document.createElement('button');
+        emailBtn.className = 'btn btn-primary';
+        emailBtn.innerHTML = '<i class="fas fa-envelope"></i> Email';
+        emailBtn.onclick = () => shareViaEmail(window.currentShareMessage);
+        
+        footer.appendChild(copyBtn);
+        footer.appendChild(whatsappBtn);
+        footer.appendChild(emailBtn);
+        
+        // Assemble modal
+        modalContent.appendChild(header);
+        modalContent.appendChild(body);
+        modalContent.appendChild(footer);
+        modal.appendChild(modalContent);
+        document.body.appendChild(modal);
+        
+        console.log('Modal created and added to DOM');
+        
+        // Close on outside click
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                modal.remove();
+            }
+        });
+        
+    } catch (error) {
+        console.error('Error in shareCapture:', error);
+        showToast('Erro ao compartilhar captura: ' + error.message, 'error');
+    }
+}
+
+function copyToClipboard(text) {
+    navigator.clipboard.writeText(text).then(() => {
+        showToast('Texto copiado para área de transferência!', 'success');
+    }).catch(err => {
+        showToast('Erro ao copiar texto', 'error');
+    });
+}
+
+function shareViaWhatsApp(message) {
+    try {
+        const encodedMessage = encodeURIComponent(message);
+        const whatsappUrl = `https://wa.me/?text=${encodedMessage}`;
+        console.log('Opening WhatsApp with URL:', whatsappUrl);
+        window.open(whatsappUrl, '_blank');
+        showToast('Abrindo WhatsApp...', 'info');
+    } catch (error) {
+        console.error('Error sharing via WhatsApp:', error);
+        showToast('Erro ao compartilhar no WhatsApp', 'error');
+    }
+}
+
+function shareViaEmail(message) {
+    try {
+        const encodedMessage = encodeURIComponent(message);
+        const subject = encodeURIComponent('Captura de Phishing');
+        const mailtoUrl = `mailto:?subject=${subject}&body=${encodedMessage}`;
+        console.log('Opening email client with mailto URL');
+        window.location.href = mailtoUrl;
+        showToast('Abrindo cliente de email...', 'info');
+    } catch (error) {
+        console.error('Error sharing via email:', error);
+        showToast('Erro ao compartilhar por email', 'error');
+    }
+}
+
+// Payload Generator
+async function loadPayloadCategories() {
+    const select = document.getElementById('payload-category');
+    if (!select) return; // Element doesn't exist yet
+    
+    try {
+        const response = await apiRequest('/tools/payloads/categories');
+        select.innerHTML = '<option value="">Selecione uma categoria</option>';
+        
+        if (response && response.categories && response.categories.length > 0) {
+            response.categories.forEach(category => {
+                const option = document.createElement('option');
+                option.value = category.id;
+                option.textContent = `${category.name} (${category.count} payloads)`;
+                select.appendChild(option);
+            });
+        }
+    } catch (error) {
+        console.error('Error loading payload categories:', error);
+        if (select) {
+            select.innerHTML = '<option value="">Erro ao carregar categorias</option>';
+        }
+    }
+}
+
+async function generatePayloads() {
+    const category = document.getElementById('payload-category').value;
+    const encode = document.getElementById('encode-payload').checked;
+    const encodeType = document.getElementById('encoding-type').value;
+
+    if (!category) {
+        showToast('Selecione uma categoria', 'error');
+        return;
+    }
+
+    try {
+        const response = await apiRequest('/tools/payloads/generate', {
+            method: 'POST',
+            body: JSON.stringify({
+                category,
+                encode,
+                encode_type: encodeType
+            })
+        });
+
+        displayPayloads(response.payloads);
+        document.getElementById('payload-count').textContent = response.total;
+        showToast(`${response.total} payloads gerados!`, 'success');
+    } catch (error) {
+        console.error('Error generating payloads:', error);
+    }
+}
+
+function displayPayloads(payloads) {
+    const container = document.getElementById('payloads-list');
+    
+    container.innerHTML = payloads.map(payload => `
+        <div class="payload-item">
+            <div class="payload-item-header">
+                <span>${payload.description}</span>
+                <span class="severity-badge severity-${payload.severity}">${payload.severity}</span>
+            </div>
+            <div class="payload-code">${escapeHtml(payload.encoded || payload.payload)}</div>
+            ${payload.encoded ? `
+                <small style="color: #666;">Original: ${escapeHtml(payload.payload)}</small>
+            ` : ''}
+            <button class="btn-sm" style="margin-top: 8px;" onclick="copyPayload('${escapeHtml(payload.encoded || payload.payload)}')">
+                <i class="fas fa-copy"></i> Copiar
+            </button>
+        </div>
+    `).join('');
+}
+
+function copyPayload(payload) {
+    const textarea = document.createElement('textarea');
+    textarea.value = payload.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&#x27;/g, "'");
+    document.body.appendChild(textarea);
+    textarea.select();
+    document.execCommand('copy');
+    document.body.removeChild(textarea);
+    showToast('Payload copiado!', 'success');
+}
+
+// Encoder/Decoder
+async function loadEncodingTypes() {
+    const encodeSelect = document.getElementById('encode-type');
+    const decodeSelect = document.getElementById('decode-type');
+    const hashSelect = document.getElementById('hash-type');
+    
+    // Check if elements exist
+    if (!encodeSelect || !decodeSelect || !hashSelect) return;
+    
+    try {
+        const response = await apiRequest('/tools/encoder/types');
+        
+        // Load encodings
+        if (response && response.encodings) {
+            encodeSelect.innerHTML = '<option value="">Selecione o tipo</option>';
+            decodeSelect.innerHTML = '<option value="">Selecione o tipo</option>';
+            
+            response.encodings.forEach(enc => {
+                const option = document.createElement('option');
+                option.value = enc.id;
+                option.textContent = `${enc.name} - ${enc.description}`;
+                encodeSelect.appendChild(option);
+                
+                const option2 = option.cloneNode(true);
+                decodeSelect.appendChild(option2);
+            });
+        }
+        
+        // Load hash types
+        if (response && response.hashes) {
+            hashSelect.innerHTML = '<option value="">Selecione o algoritmo</option>';
+            response.hashes.forEach(hash => {
+                const option = document.createElement('option');
+                option.value = hash.id;
+                option.textContent = `${hash.name} - ${hash.description}`;
+                hashSelect.appendChild(option);
+            });
+        }
+    } catch (error) {
+        console.error('Error loading encoding types:', error);
+        encodeSelect.innerHTML = '<option value="">Erro ao carregar tipos</option>';
+        decodeSelect.innerHTML = '<option value="">Erro ao carregar tipos</option>';
+        hashSelect.innerHTML = '<option value="">Erro ao carregar algoritmos</option>';
+    }
+}
+
+async function encodeText() {
+    const text = document.getElementById('encode-input').value;
+    const encodingType = document.getElementById('encode-type').value;
+
+    if (!text || !encodingType) {
+        showToast('Preencha todos os campos', 'error');
+        return;
+    }
+
+    try {
+        const response = await apiRequest('/tools/encoder/encode', {
+            method: 'POST',
+            body: JSON.stringify({ text, encoding_type: encodingType })
+        });
+
+        document.getElementById('encode-output').value = response.result.encoded;
+        showToast('Texto codificado!', 'success');
+    } catch (error) {
+        console.error('Error encoding text:', error);
+    }
+}
+
+async function decodeText() {
+    const text = document.getElementById('decode-input').value;
+    const encodingType = document.getElementById('decode-type').value;
+
+    if (!text || !encodingType) {
+        showToast('Preencha todos os campos', 'error');
+        return;
+    }
+
+    try {
+        const response = await apiRequest('/tools/encoder/decode', {
+            method: 'POST',
+            body: JSON.stringify({ text, encoding_type: encodingType })
+        });
+
+        if (response.result.success) {
+            document.getElementById('decode-output').value = response.result.decoded;
+            showToast('Texto decodificado!', 'success');
+        } else {
+            showToast('Erro ao decodificar: ' + response.result.error, 'error');
+        }
+    } catch (error) {
+        console.error('Error decoding text:', error);
+    }
+}
+
+async function hashText() {
+    const text = document.getElementById('hash-input').value;
+    const hashType = document.getElementById('hash-type').value;
+
+    if (!text || !hashType) {
+        showToast('Preencha todos os campos', 'error');
+        return;
+    }
+
+    try {
+        const response = await apiRequest('/tools/encoder/hash', {
+            method: 'POST',
+            body: JSON.stringify({ text, hash_type: hashType })
+        });
+
+        document.getElementById('hash-output').value = response.result.hash;
+        showToast(`Hash ${hashType.toUpperCase()} gerado!`, 'success');
+    } catch (error) {
+        console.error('Error hashing text:', error);
+    }
+}
+
+// Utility Functions
+function copyToClipboard(elementId) {
+    const element = document.getElementById(elementId);
+    const text = element.value || element.textContent;
+    
+    const textarea = document.createElement('textarea');
+    textarea.value = text;
+    document.body.appendChild(textarea);
+    textarea.select();
+    document.execCommand('copy');
+    document.body.removeChild(textarea);
+    
+    showToast('Copiado para a área de transferência!', 'success');
+}
+
+function showToast(message, type = 'success') {
+    const toast = document.getElementById('toast');
+    toast.textContent = message;
+    toast.className = `toast ${type} show`;
+    
+    setTimeout(() => {
+        toast.classList.remove('show');
+    }, 3000);
+}
+
+function showLoading(message = 'Carregando...') {
+    const loadingElement = document.getElementById('loading');
+    if (loadingElement) {
+        const textElement = loadingElement.querySelector('.loading-text') || loadingElement;
+        if (textElement.classList && textElement.classList.contains('loading-text')) {
+            textElement.textContent = message;
+        }
+        loadingElement.classList.add('active');
+    }
+}
+
+function hideLoading() {
+    const loadingElement = document.getElementById('loading');
+    if (loadingElement) {
+        loadingElement.classList.remove('active');
+    }
+}
+
+function escapeHtml(text) {
+    const map = {
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#x27;'
+    };
+    return text.replace(/[&<>"']/g, m => map[m]);
+}
+
+// Initialize theme
+const savedTheme = localStorage.getItem('theme');
+if (savedTheme) {
+    document.documentElement.setAttribute('data-theme', savedTheme);
+    const icon = document.querySelector('#theme-toggle i');
+    if (icon) {
+        icon.className = savedTheme === 'dark' ? 'fas fa-sun' : 'fas fa-moon';
+    }
+}
+
+// ==================== CODE SCANNER ====================
+
+function toggleCodeSource() {
+    const sourceType = document.getElementById('code-source-type').value;
+    const fileGroup = document.getElementById('file-source-group');
+    const textGroup = document.getElementById('text-source-group');
+    const urlGroup = document.getElementById('url-source-group');
+    
+    fileGroup.style.display = sourceType === 'file' ? 'block' : 'none';
+    textGroup.style.display = sourceType === 'text' ? 'block' : 'none';
+    urlGroup.style.display = sourceType === 'url' ? 'block' : 'none';
+}
+
+async function scanCode() {
+    const sourceType = document.getElementById('code-source-type').value;
+    const fileInput = document.getElementById('code-file');
+    const codeTextarea = document.getElementById('code-content');
+    const codeUrlInput = document.getElementById('code-url');
+    const languageSelect = document.getElementById('code-language');
+    
+    let code = '';
+    let filename = 'unknown';
+    let url = '';
+    
+    // Get enabled scan options
+    const scanOptions = {
+        sql_injection: document.getElementById('scan-sql-injection')?.checked || false,
+        xss: document.getElementById('scan-xss')?.checked || false,
+        command_injection: document.getElementById('scan-command-injection')?.checked || false,
+        path_traversal: document.getElementById('scan-path-traversal')?.checked || false,
+        hardcoded_secrets: document.getElementById('scan-hardcoded-secrets')?.checked || false,
+        insecure_functions: document.getElementById('scan-insecure-functions')?.checked || false
+    };
+    
+    try {
+        if (sourceType === 'file') {
+            if (fileInput.files.length === 0) {
+                showToast('Por favor, selecione um arquivo', 'error');
+                return;
+            }
+            const file = fileInput.files[0];
+            filename = file.name;
+            code = await file.text();
+            
+        } else if (sourceType === 'text') {
+            code = codeTextarea.value;
+            filename = 'pasted_code.' + (languageSelect.value === 'auto' ? 'txt' : languageSelect.value);
+            
+        } else if (sourceType === 'url') {
+            url = codeUrlInput.value.trim();
+            if (!url) {
+                showToast('Por favor, forneça uma URL', 'error');
+                return;
+            }
+            
+            // Validate URL
+            try {
+                new URL(url);
+            } catch (e) {
+                showToast('URL inválida', 'error');
+                return;
+            }
+            
+            showLoading('Baixando código da URL...');
+            
+            // Fetch code from URL
+            try {
+                const response = await fetch(url);
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                code = await response.text();
+                
+                // Extract filename from URL
+                const urlPath = new URL(url).pathname;
+                filename = urlPath.split('/').pop() || 'downloaded_code';
+                
+                showToast('Código baixado com sucesso!', 'success');
+            } catch (fetchError) {
+                hideLoading();
+                showToast('Erro ao baixar código da URL: ' + fetchError.message, 'error');
+                return;
+            }
+        }
+        
+        if (!code.trim()) {
+            showToast('Por favor, forneça código para análise', 'error');
+            return;
+        }
+        
+        showLoading('Analisando código...');
+        
+        const response = await apiRequest('/scan/code', {
+            method: 'POST',
+            body: JSON.stringify({
+                code: code,
+                filename: filename,
+                language: languageSelect.value,
+                scan_options: scanOptions
+            })
+        });
+        
+        displayScanResults(response.results);
+        showToast('Análise concluída!', 'success');
+        
+    } catch (error) {
+        console.error('Error scanning code:', error);
+        showToast('Erro ao analisar código: ' + error.message, 'error');
+    } finally {
+        hideLoading();
+    }
+}
+
+function displayScanResults(results) {
+    const container = document.getElementById('scan-results');
+    const countBadge = document.getElementById('vuln-count');
+    
+    if (!results || !results.vulnerabilities || results.vulnerabilities.length === 0) {
+        container.innerHTML = `
+            <div class="alert alert-success">
+                <i class="fas fa-check-circle"></i>
+                <strong>Nenhuma vulnerabilidade encontrada!</strong>
+                <p>O código parece estar seguro de acordo com nossa análise.</p>
+            </div>
+        `;
+        countBadge.textContent = '0';
+        return;
+    }
+    
+    const vulns = results.vulnerabilities;
+    countBadge.textContent = vulns.length;
+    
+    // Group by severity
+    const critical = vulns.filter(v => v.severity === 'CRITICAL');
+    const high = vulns.filter(v => v.severity === 'HIGH');
+    const medium = vulns.filter(v => v.severity === 'MEDIUM');
+    const low = vulns.filter(v => v.severity === 'LOW');
+    
+    let html = `
+        <div class="scan-summary">
+            <div class="severity-stats">
+                ${critical.length > 0 ? `<span class="severity-badge critical">${critical.length} Críticas</span>` : ''}
+                ${high.length > 0 ? `<span class="severity-badge high">${high.length} Altas</span>` : ''}
+                ${medium.length > 0 ? `<span class="severity-badge medium">${medium.length} Médias</span>` : ''}
+                ${low.length > 0 ? `<span class="severity-badge low">${low.length} Baixas</span>` : ''}
+            </div>
+        </div>
+        <div class="vulnerabilities-list">
+    `;
+    
+    vulns.forEach((vuln, index) => {
+        html += `
+            <div class="vulnerability-item severity-${vuln.severity.toLowerCase()}">
+                <div class="vuln-header">
+                    <span class="vuln-severity ${vuln.severity.toLowerCase()}">${vuln.severity}</span>
+                    <h4>${vuln.type || 'Vulnerabilidade'}</h4>
+                </div>
+                <div class="vuln-body">
+                    <p><strong>Descrição:</strong> ${vuln.description || 'Vulnerabilidade detectada'}</p>
+                    <p><strong>Linha:</strong> ${vuln.line || 'N/A'}</p>
+                    ${vuln.code ? `<pre><code>${escapeHtml(vuln.code)}</code></pre>` : ''}
+                    ${vuln.recommendation ? `<p><strong>Recomendação:</strong> ${vuln.recommendation}</p>` : ''}
+                </div>
+            </div>
+        `;
+    });
+    
+    html += '</div>';
+    container.innerHTML = html;
+}
+
+// Setup file input handler
+document.addEventListener('DOMContentLoaded', function() {
+    const fileInput = document.getElementById('code-file');
+    if (fileInput) {
+        fileInput.addEventListener('change', async function() {
+            if (this.files.length > 0) {
+                const file = this.files[0];
+                const code = await file.text();
+                document.getElementById('code-content').value = code;
+            }
+        });
+    }
+    
+    // Setup port scan type selector
+    const portScanType = document.getElementById('port-scan-type');
+    if (portScanType) {
+        portScanType.addEventListener('change', function() {
+            document.getElementById('custom-ports-group').style.display = 
+                this.value === 'custom' ? 'block' : 'none';
+            document.getElementById('port-range-group').style.display = 
+                this.value === 'range' ? 'block' : 'none';
+        });
+    }
+});
+
+// ==================== PORT SCANNER ====================
+
+async function startPortScan() {
+    const target = document.getElementById('port-target').value.trim();
+    const scanType = document.getElementById('port-scan-type').value;
+    
+    if (!target) {
+        showToast('Por favor, informe um alvo (IP ou hostname)', 'error');
+        return;
+    }
+    
+    let ports = null;
+    
+    if (scanType === 'custom') {
+        const customPorts = document.getElementById('custom-ports').value.trim();
+        if (!customPorts) {
+            showToast('Por favor, informe as portas', 'error');
+            return;
+        }
+        ports = customPorts.split(',').map(p => parseInt(p.trim())).filter(p => p > 0 && p <= 65535);
+    } else if (scanType === 'range') {
+        const start = parseInt(document.getElementById('port-start').value);
+        const end = parseInt(document.getElementById('port-end').value);
+        if (start > end || start < 1 || end > 65535) {
+            showToast('Range de portas inválido', 'error');
+            return;
+        }
+        ports = [];
+        for (let i = start; i <= end; i++) {
+            ports.push(i);
+        }
+    }
+    
+    try {
+        showLoading();
+        const response = await apiRequest('/scan/ports', {
+            method: 'POST',
+            body: JSON.stringify({
+                target: target,
+                ports: ports
+            })
+        });
+        
+        displayPortScanResults(response.results);
+        showToast('Scan concluído!', 'success');
+        
+    } catch (error) {
+        showToast('Erro ao escanear portas: ' + error.message, 'error');
+    } finally {
+        hideLoading();
+    }
+}
+
+function displayPortScanResults(results) {
+    const container = document.getElementById('port-scan-results');
+    const countBadge = document.getElementById('open-ports-count');
+    
+    console.log('Port scan results:', results);
+    
+    if (!results || !results.ports || results.ports.length === 0) {
+        container.innerHTML = `
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle"></i>
+                <strong>Nenhuma porta aberta encontrada</strong>
+                <p>Todas as portas escaneadas estão fechadas ou filtradas.</p>
+            </div>
+        `;
+        countBadge.textContent = '0';
+        return;
+    }
+    
+    const openPorts = results.ports.filter(p => p.state === 'open');
+    countBadge.textContent = results.open_ports || openPorts.length;
+    
+    // Group by severity
+    const critical = openPorts.filter(p => p.severity === 'CRITICAL');
+    const high = openPorts.filter(p => p.severity === 'HIGH');
+    const medium = openPorts.filter(p => p.severity === 'MEDIUM');
+    const low = openPorts.filter(p => p.severity === 'LOW' || !p.severity);
+    
+    let html = `
+        <div class="port-scan-summary">
+            <div class="severity-stats">
+                ${critical.length > 0 ? `<span class="severity-badge critical">${critical.length} Críticas</span>` : ''}
+                ${high.length > 0 ? `<span class="severity-badge high">${high.length} Alto Risco</span>` : ''}
+                ${medium.length > 0 ? `<span class="severity-badge medium">${medium.length} Médio Risco</span>` : ''}
+                ${low.length > 0 ? `<span class="severity-badge low">${low.length} Baixo Risco</span>` : ''}
+            </div>
+        </div>
+        <div class="ports-grid">
+    `;
+    
+    openPorts.forEach(port => {
+        const severityClass = (port.severity || 'MEDIUM').toLowerCase();
+        const isVulnerable = port.is_vulnerable || false;
+        
+        html += `
+            <div class="port-item risk-${severityClass}">
+                <div class="port-header">
+                    <div class="port-number">
+                        <i class="fas fa-network-wired"></i> Porta ${port.port}
+                    </div>
+                    <span class="badge badge-${severityClass}">${port.severity || 'MEDIUM'}</span>
+                </div>
+                <div class="port-info">
+                    <p><strong>Serviço:</strong> ${port.service || 'Unknown'}</p>
+                    ${port.banner ? `<p><strong>Banner:</strong> <code>${port.banner.substring(0, 100)}...</code></p>` : ''}
+                    ${port.version_info && Object.keys(port.version_info).length > 0 ? `<p><strong>Versão:</strong> ${JSON.stringify(port.version_info)}</p>` : ''}
+                    ${isVulnerable ? `<p class="text-danger"><i class="fas fa-exclamation-triangle"></i> <strong>Vulnerável:</strong> ${port.vulnerability || 'Serviço exposto'}</p>` : ''}
+                </div>
+            </div>
+        `;
+    });
+    
+    html += '</div>';
+    
+    // Vulnerabilities section
+    if (results.vulnerabilities && results.vulnerabilities.length > 0) {
+        html += `
+            <div class="vulnerabilities-section">
+                <h3><i class="fas fa-bug"></i> Vulnerabilidades Encontradas</h3>
+                <div class="vulnerabilities-list">
+        `;
+        
+        results.vulnerabilities.forEach(vuln => {
+            html += `
+                <div class="vulnerability-item severity-${vuln.severity.toLowerCase()}">
+                    <div class="vuln-header">
+                        <span class="badge badge-${vuln.severity.toLowerCase()}">${vuln.severity}</span>
+                        <strong>${vuln.type}</strong>
+                    </div>
+                    <p><strong>Porta:</strong> ${vuln.port} (${vuln.service})</p>
+                    <p><strong>Descrição:</strong> ${vuln.description}</p>
+                    <p><strong>Recomendação:</strong> ${vuln.recommendation}</p>
+                </div>
+            `;
+        });
+        
+        html += `
+                </div>
+            </div>
+        `;
+    }
+    
+    // Summary section
+    if (results.summary) {
+        html += `
+            <div class="scan-summary">
+                <h3><i class="fas fa-chart-bar"></i> Resumo do Scan</h3>
+                <div class="summary-grid">
+                    <div class="summary-item">
+                        <div class="summary-number">${results.total_ports_scanned || 0}</div>
+                        <div class="summary-label">Portas Escaneadas</div>
+                    </div>
+                    <div class="summary-item">
+                        <div class="summary-number">${results.open_ports || 0}</div>
+                        <div class="summary-label">Portas Abertas</div>
+                    </div>
+                    <div class="summary-item">
+                        <div class="summary-number text-danger">${results.summary.total_vulnerabilities || 0}</div>
+                        <div class="summary-label">Vulnerabilidades</div>
+                    </div>
+                    <div class="summary-item">
+                        <div class="summary-number text-warning">${results.summary.services_without_encryption || 0}</div>
+                        <div class="summary-label">Sem Criptografia</div>
+                    </div>
+                </div>
+                <p style="margin-top: 15px;"><strong>Host:</strong> ${results.host || 'N/A'}</p>
+                <p><strong>Tempo do Scan:</strong> ${results.scan_time ? new Date(results.scan_time).toLocaleString('pt-BR') : 'N/A'}</p>
+            </div>
+        `;
+    }
+    
+    container.innerHTML = html;
+}
+
+// ==================== REPORTS ====================
+
+async function loadAvailableScans() {
+    const container = document.getElementById('available-scans');
+    
+    try {
+        const response = await apiRequest('/scans');
+        const scans = response.scans || [];
+        
+        if (scans.length === 0) {
+            container.innerHTML = `
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle"></i>
+                    <strong>Nenhum scan disponível</strong>
+                    <p>Execute alguns scans primeiro para gerar relatórios.</p>
+                </div>
+            `;
+            return;
+        }
+        
+        let html = '<div class="scans-list">';
+        
+        scans.forEach(scan => {
+            const date = new Date(scan.created_at || scan.completed_at).toLocaleString('pt-BR');
+            const scanType = scan.scan_type || 'code';
+            const scanTypeLabel = {
+                'code': 'Código',
+                'network': 'Rede/Portas',
+                'api': 'API',
+                'dependency': 'Dependências',
+                'docker': 'Docker',
+                'graphql': 'GraphQL'
+            }[scanType] || scanType;
+            
+            html += `
+                <div class="scan-item">
+                    <div class="scan-info">
+                        <div class="scan-icon ${scanType}">
+                            <i class="fas fa-${getScanIcon(scanType)}"></i>
+                        </div>
+                        <div class="scan-details">
+                            <h4>${scanTypeLabel} - ${scan.target || 'Sem alvo'}</h4>
+                            <p class="scan-date">${date}</p>
+                            <span class="scan-status ${scan.status}">${scan.status}</span>
+                        </div>
+                    </div>
+                    <div class="scan-actions">
+                        <button class="btn-sm" onclick="generateReport(${scan.id})">
+                            <i class="fas fa-file-pdf"></i>
+                            Gerar PDF
+                        </button>
+                    </div>
+                </div>
+            `;
+        });
+        
+        html += '</div>';
+        container.innerHTML = html;
+        
+    } catch (error) {
+        container.innerHTML = `
+            <div class="alert alert-error">
+                <i class="fas fa-exclamation-circle"></i>
+                Erro ao carregar scans: ${error.message}
+            </div>
+        `;
+    }
+}
+
+function getScanIcon(scanType) {
+    const icons = {
+        'code': 'code',
+        'network': 'network-wired',
+        'api': 'plug',
+        'dependency': 'cube',
+        'docker': 'docker',
+        'graphql': 'project-diagram'
+    };
+    return icons[scanType] || 'search';
+}
+
+async function generateReport(scanId) {
+    try {
+        showLoading();
+        showToast('Gerando relatório PDF...', 'info');
+        
+        // Download PDF
+        const response = await fetch(`${API_URL}/scans/${scanId}/report`, {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+        
+        if (!response.ok) {
+            throw new Error('Erro ao gerar relatório');
+        }
+        
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `security-report-${scanId}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+        
+        showToast('Relatório gerado com sucesso!', 'success');
+        
+    } catch (error) {
+        showToast('Erro ao gerar relatório: ' + error.message, 'error');
+    } finally {
+        hideLoading();
+    }
+}
+
+// ==================== NOTIFICATIONS ====================
+
+async function loadNotifications() {
+    try {
+        const response = await apiRequest('/tools/notifications');
+        const { notifications, unread_count } = response;
+        
+        // Update badge
+        const badge = document.querySelector('.header-actions .badge');
+        if (badge) {
+            badge.textContent = unread_count;
+            badge.style.display = unread_count > 0 ? 'block' : 'none';
+        }
+        
+        // Store notifications for dropdown (we'll add dropdown UI later)
+        window.currentNotifications = notifications;
+        
+    } catch (error) {
+        console.error('Error loading notifications:', error);
+    }
+}
+
+function setupNotificationsDropdown() {
+    const bellBtn = document.querySelector('.header-actions .btn-icon');
+    if (!bellBtn) return;
+    
+    bellBtn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        showNotificationsPanel();
+    });
+}
+
+function showNotificationsPanel() {
+    // Remove existing panel
+    const existingPanel = document.querySelector('.notifications-panel');
+    if (existingPanel) {
+        existingPanel.remove();
+        return;
+    }
+    
+    const notifications = window.currentNotifications || [];
+    
+    const panel = document.createElement('div');
+    panel.className = 'notifications-panel';
+    panel.innerHTML = `
+        <div class="notifications-header">
+            <h3>Notificações</h3>
+            <span class="badge">${notifications.filter(n => !n.read).length}</span>
+        </div>
+        <div class="notifications-list">
+            ${notifications.length > 0 ? notifications.map(n => `
+                <div class="notification-item ${n.read ? 'read' : 'unread'}" data-id="${n.id}">
+                    <div class="notification-icon ${n.type}">
+                        <i class="fas fa-${getNotificationIcon(n.type)}"></i>
+                    </div>
+                    <div class="notification-content">
+                        <div class="notification-message">${n.message}</div>
+                        <div class="notification-time">${formatTime(n.timestamp)}</div>
+                    </div>
+                    <button class="notification-close" onclick="deleteNotification('${n.id}')">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            `).join('') : '<div class="no-notifications">Nenhuma notificação</div>'}
+        </div>
+    `;
+    
+    document.body.appendChild(panel);
+    
+    // Close when clicking outside
+    setTimeout(() => {
+        document.addEventListener('click', function closePanel(e) {
+            if (!panel.contains(e.target)) {
+                panel.remove();
+                document.removeEventListener('click', closePanel);
+            }
+        });
+    }, 100);
+    
+    // Mark notifications as read when opened
+    notifications.filter(n => !n.read).forEach(n => {
+        markNotificationRead(n.id);
+    });
+}
+
+function getNotificationIcon(type) {
+    const icons = {
+        'phishing_capture': 'camera',
+        'scan_complete': 'check-circle',
+        'vulnerability_found': 'exclamation-triangle',
+        'system': 'info-circle'
+    };
+    return icons[type] || 'bell';
+}
+
+function formatTime(timestamp) {
+    const date = new Date(timestamp);
+    const now = new Date();
+    const diff = Math.floor((now - date) / 1000); // seconds
+    
+    if (diff < 60) return 'Agora';
+    if (diff < 3600) return `${Math.floor(diff / 60)}m atrás`;
+    if (diff < 86400) return `${Math.floor(diff / 3600)}h atrás`;
+    return `${Math.floor(diff / 86400)}d atrás`;
+}
+
+async function markNotificationRead(notificationId) {
+    try {
+        await apiRequest(`/tools/notifications/${notificationId}/read`, {
+            method: 'POST'
+        });
+        loadNotifications();
+    } catch (error) {
+        console.error('Error marking notification as read:', error);
+    }
+}
+
+async function deleteNotification(notificationId) {
+    try {
+        await apiRequest(`/tools/notifications/${notificationId}`, {
+            method: 'DELETE'
+        });
+        loadNotifications();
+        showNotificationsPanel(); // Refresh panel
+    } catch (error) {
+        console.error('Error deleting notification:', error);
+    }
+}
+
+// Setup notifications dropdown on init
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', setupNotificationsDropdown);
+} else {
+    setupNotificationsDropdown();
+}

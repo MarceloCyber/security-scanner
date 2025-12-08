@@ -1,0 +1,685 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FAQ - Perguntas Frequentes - Security Scanner</title>
+    <link rel="stylesheet" href="css/manual.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        .faq-item {
+            background: white;
+            border-radius: 12px;
+            padding: 0;
+            margin-bottom: 15px;
+            box-shadow: var(--shadow);
+            overflow: hidden;
+            border: 2px solid transparent;
+            transition: var(--transition);
+        }
+
+        .faq-item:hover {
+            border-color: var(--primary);
+        }
+
+        .faq-question {
+            padding: 25px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 15px;
+            transition: var(--transition);
+            user-select: none;
+        }
+
+        .faq-question:hover {
+            background: #f9fafb;
+        }
+
+        .faq-question h4 {
+            margin: 0;
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--dark);
+            flex: 1;
+        }
+
+        .faq-icon {
+            width: 35px;
+            height: 35px;
+            background: var(--primary);
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            transition: var(--transition);
+            flex-shrink: 0;
+        }
+
+        .faq-item.active .faq-icon {
+            transform: rotate(180deg);
+            background: var(--secondary);
+        }
+
+        .faq-answer {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease;
+        }
+
+        .faq-answer-content {
+            padding: 0 25px 25px 25px;
+            color: #4b5563;
+            line-height: 1.8;
+        }
+
+        .faq-answer-content p {
+            margin-bottom: 15px;
+        }
+
+        .faq-answer-content ul {
+            margin: 15px 0;
+            padding-left: 20px;
+        }
+
+        .faq-answer-content ul li {
+            margin: 8px 0;
+        }
+
+        .faq-category {
+            margin-bottom: 40px;
+        }
+
+        .faq-category-header {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 25px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid var(--primary);
+        }
+
+        .faq-category-icon {
+            width: 50px;
+            height: 50px;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: white;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+        }
+
+        .faq-category h3 {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--dark);
+            margin: 0;
+        }
+
+        .search-box {
+            margin-bottom: 40px;
+        }
+
+        .search-input-wrapper {
+            position: relative;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 18px 50px 18px 20px;
+            border: 2px solid var(--border);
+            border-radius: 12px;
+            font-size: 16px;
+            transition: var(--transition);
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+        }
+
+        .search-icon {
+            position: absolute;
+            right: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #9ca3af;
+            font-size: 20px;
+        }
+
+        .no-results {
+            text-align: center;
+            padding: 40px;
+            color: #6b7280;
+        }
+
+        .no-results i {
+            font-size: 48px;
+            color: #d1d5db;
+            margin-bottom: 15px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header class="manual-header">
+        <div class="container">
+            <div class="header-content">
+                <div class="logo-section">
+                    <i class="fas fa-shield-alt"></i>
+                    <h1>Security Scanner</h1>
+                </div>
+                <div style="display: flex; gap: 15px;">
+                    <a href="manual.html" class="btn-back">
+                        <i class="fas fa-book"></i> Manual
+                    </a>
+                    <a href="dashboard.html" class="btn-back">
+                        <i class="fas fa-arrow-left"></i> Dashboard
+                    </a>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Hero Section -->
+    <section class="hero-section">
+        <div class="container">
+            <h2>Perguntas Frequentes</h2>
+            <p>Encontre respostas rápidas para as dúvidas mais comuns</p>
+        </div>
+    </section>
+
+    <!-- Main Content -->
+    <main class="manual-content">
+        <div class="container">
+            <!-- Search Box -->
+            <div class="search-box">
+                <div class="search-input-wrapper">
+                    <input type="text" class="search-input" id="faqSearch" placeholder="Pesquise sua dúvida...">
+                    <i class="fas fa-search search-icon"></i>
+                </div>
+            </div>
+
+            <!-- Geral -->
+            <div class="faq-category">
+                <div class="faq-category-header">
+                    <div class="faq-category-icon">
+                        <i class="fas fa-info-circle"></i>
+                    </div>
+                    <h3>Geral</h3>
+                </div>
+
+                <div class="faq-item">
+                    <div class="faq-question" onclick="toggleFaq(this)">
+                        <h4>O que é o Security Scanner?</h4>
+                        <div class="faq-icon"><i class="fas fa-chevron-down"></i></div>
+                    </div>
+                    <div class="faq-answer">
+                        <div class="faq-answer-content">
+                            <p>O Security Scanner é uma plataforma completa de análise de segurança que oferece diversas ferramentas para identificar vulnerabilidades em sistemas, redes, aplicações e código-fonte.</p>
+                            <p>Nossa plataforma foi desenvolvida para profissionais de segurança, desenvolvedores e administradores de sistemas que desejam melhorar a segurança de suas aplicações e infraestrutura.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="faq-item">
+                    <div class="faq-question" onclick="toggleFaq(this)">
+                        <h4>Preciso de conhecimento técnico para usar a plataforma?</h4>
+                        <div class="faq-icon"><i class="fas fa-chevron-down"></i></div>
+                    </div>
+                    <div class="faq-answer">
+                        <div class="faq-answer-content">
+                            <p>O nível de conhecimento necessário varia de acordo com a ferramenta:</p>
+                            <ul>
+                                <li><strong>Port Scanner:</strong> Conhecimento básico de redes</li>
+                                <li><strong>Code Scanner:</strong> Conhecimento de programação</li>
+                                <li><strong>Outras ferramentas:</strong> Conhecimento intermediário a avançado em segurança</li>
+                            </ul>
+                            <p>Oferecemos documentação completa e manual de uso para ajudá-lo a começar.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="faq-item">
+                    <div class="faq-question" onclick="toggleFaq(this)">
+                        <h4>A plataforma é legal de usar?</h4>
+                        <div class="faq-icon"><i class="fas fa-chevron-down"></i></div>
+                    </div>
+                    <div class="faq-answer">
+                        <div class="faq-answer-content">
+                            <p>Sim, a plataforma é 100% legal quando usada corretamente. No entanto, você DEVE:</p>
+                            <ul>
+                                <li>Obter autorização por escrito antes de escanear qualquer sistema</li>
+                                <li>Usar apenas em sistemas que você possui ou tem permissão para testar</li>
+                                <li>Seguir todas as leis locais e internacionais sobre testes de segurança</li>
+                            </ul>
+                            <p><strong>Importante:</strong> Scans não autorizados são ilegais e podem resultar em consequências legais graves.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Planos e Pagamentos -->
+            <div class="faq-category">
+                <div class="faq-category-header">
+                    <div class="faq-category-icon">
+                        <i class="fas fa-credit-card"></i>
+                    </div>
+                    <h3>Planos e Pagamentos</h3>
+                </div>
+
+                <div class="faq-item">
+                    <div class="faq-question" onclick="toggleFaq(this)">
+                        <h4>Quais são os planos disponíveis?</h4>
+                        <div class="faq-icon"><i class="fas fa-chevron-down"></i></div>
+                    </div>
+                    <div class="faq-answer">
+                        <div class="faq-answer-content">
+                            <p>Oferecemos 4 planos:</p>
+                            <ul>
+                                <li><strong>FREE (R$ 0/mês):</strong> 10 scans/mês, apenas Port Scanner</li>
+                                <li><strong>Starter (R$ 49/mês):</strong> 100 scans/mês, todas as ferramentas</li>
+                                <li><strong>Professional (R$ 149/mês):</strong> Scans ilimitados, API access, suporte prioritário</li>
+                                <li><strong>Enterprise (R$ 499/mês):</strong> Tudo do Professional + recursos avançados</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="faq-item">
+                    <div class="faq-question" onclick="toggleFaq(this)">
+                        <h4>Como funciona o limite de scans?</h4>
+                        <div class="faq-icon"><i class="fas fa-chevron-down"></i></div>
+                    </div>
+                    <div class="faq-answer">
+                        <div class="faq-answer-content">
+                            <p>Cada scan realizado (port scan, code scan, etc.) conta para o seu limite mensal. O limite é renovado automaticamente no início de cada mês.</p>
+                            <p>Planos Professional e Enterprise têm scans ilimitados.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="faq-item">
+                    <div class="faq-question" onclick="toggleFaq(this)">
+                        <h4>Posso fazer upgrade do meu plano a qualquer momento?</h4>
+                        <div class="faq-icon"><i class="fas fa-chevron-down"></i></div>
+                    </div>
+                    <div class="faq-answer">
+                        <div class="faq-answer-content">
+                            <p>Sim! Você pode fazer upgrade do seu plano a qualquer momento através da página de Pricing no dashboard. O valor será calculado proporcionalmente ao tempo restante do mês.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="faq-item">
+                    <div class="faq-question" onclick="toggleFaq(this)">
+                        <h4>Quais formas de pagamento são aceitas?</h4>
+                        <div class="faq-icon"><i class="fas fa-chevron-down"></i></div>
+                    </div>
+                    <div class="faq-answer">
+                        <div class="faq-answer-content">
+                            <p>Aceitamos:</p>
+                            <ul>
+                                <li>Cartão de crédito (Visa, Mastercard, American Express)</li>
+                                <li>PIX (em breve)</li>
+                                <li>Boleto bancário (em breve)</li>
+                            </ul>
+                            <p>Todos os pagamentos são processados de forma segura através do Stripe.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="faq-item">
+                    <div class="faq-question" onclick="toggleFaq(this)">
+                        <h4>Posso cancelar minha assinatura?</h4>
+                        <div class="faq-icon"><i class="fas fa-chevron-down"></i></div>
+                    </div>
+                    <div class="faq-answer">
+                        <div class="faq-answer-content">
+                            <p>Sim, você pode cancelar sua assinatura a qualquer momento através do dashboard. Você continuará tendo acesso aos recursos do plano até o final do período já pago.</p>
+                            <p>Não há multas ou taxas de cancelamento.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Ferramentas -->
+            <div class="faq-category">
+                <div class="faq-category-header">
+                    <div class="faq-category-icon">
+                        <i class="fas fa-tools"></i>
+                    </div>
+                    <h3>Ferramentas e Uso</h3>
+                </div>
+
+                <div class="faq-item">
+                    <div class="faq-question" onclick="toggleFaq(this)">
+                        <h4>Quanto tempo leva um scan de portas?</h4>
+                        <div class="faq-icon"><i class="fas fa-chevron-down"></i></div>
+                    </div>
+                    <div class="faq-answer">
+                        <div class="faq-answer-content">
+                            <p>O tempo varia de acordo com o range de portas:</p>
+                            <ul>
+                                <li>Portas comuns (1-1000): 30 segundos a 2 minutos</li>
+                                <li>Range completo (1-65535): 10 a 30 minutos</li>
+                            </ul>
+                            <p>Recomendamos começar com ranges menores para testes mais rápidos.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="faq-item">
+                    <div class="faq-question" onclick="toggleFaq(this)">
+                        <h4>Quais linguagens o Code Scanner suporta?</h4>
+                        <div class="faq-icon"><i class="fas fa-chevron-down"></i></div>
+                    </div>
+                    <div class="faq-answer">
+                        <div class="faq-answer-content">
+                            <p>O Code Scanner suporta as seguintes linguagens:</p>
+                            <ul>
+                                <li>Python (.py)</li>
+                                <li>JavaScript (.js)</li>
+                                <li>PHP (.php)</li>
+                                <li>Java (.java)</li>
+                                <li>C/C++ (.c, .cpp)</li>
+                                <li>Ruby (.rb)</li>
+                                <li>Go (.go)</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="faq-item">
+                    <div class="faq-question" onclick="toggleFaq(this)">
+                        <h4>Os resultados dos scans são salvos?</h4>
+                        <div class="faq-icon"><i class="fas fa-chevron-down"></i></div>
+                    </div>
+                    <div class="faq-answer">
+                        <div class="faq-answer-content">
+                            <p>Sim! Todos os scans realizados são salvos automaticamente e podem ser acessados na seção "Reports" do dashboard.</p>
+                            <p>Planos Professional e Enterprise permitem exportar relatórios em PDF.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="faq-item">
+                    <div class="faq-question" onclick="toggleFaq(this)">
+                        <h4>Posso escanear múltiplos alvos ao mesmo tempo?</h4>
+                        <div class="faq-icon"><i class="fas fa-chevron-down"></i></div>
+                    </div>
+                    <div class="faq-answer">
+                        <div class="faq-answer-content">
+                            <p>Atualmente, você precisa realizar um scan por vez. No entanto, planos Enterprise têm suporte a scans em lote através da API.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="faq-item">
+                    <div class="faq-question" onclick="toggleFaq(this)">
+                        <h4>Como interpretar os resultados do scan?</h4>
+                        <div class="faq-icon"><i class="fas fa-chevron-down"></i></div>
+                    </div>
+                    <div class="faq-answer">
+                        <div class="faq-answer-content">
+                            <p>Os resultados incluem:</p>
+                            <ul>
+                                <li><strong>Severidade:</strong> Critical, High, Medium, Low - indica a gravidade da vulnerabilidade</li>
+                                <li><strong>Descrição:</strong> Explica o problema encontrado</li>
+                                <li><strong>Recomendação:</strong> Como corrigir a vulnerabilidade</li>
+                                <li><strong>Referências:</strong> Links para mais informações (CVEs, CWEs)</li>
+                            </ul>
+                            <p>Priorize corrigir vulnerabilidades Critical e High primeiro.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Técnico -->
+            <div class="faq-category">
+                <div class="faq-category-header">
+                    <div class="faq-category-icon">
+                        <i class="fas fa-code"></i>
+                    </div>
+                    <h3>Técnico e API</h3>
+                </div>
+
+                <div class="faq-item">
+                    <div class="faq-question" onclick="toggleFaq(this)">
+                        <h4>A plataforma possui API?</h4>
+                        <div class="faq-icon"><i class="fas fa-chevron-down"></i></div>
+                    </div>
+                    <div class="faq-answer">
+                        <div class="faq-answer-content">
+                            <p>Sim! Planos Professional e Enterprise têm acesso completo à nossa API REST.</p>
+                            <p>A API permite integrar o Security Scanner em seus sistemas, CI/CD pipelines e automações.</p>
+                            <p>Consulte a <a href="documentation.html">documentação técnica</a> para mais detalhes.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="faq-item">
+                    <div class="faq-question" onclick="toggleFaq(this)">
+                        <h4>Existe limite de requisições na API?</h4>
+                        <div class="faq-icon"><i class="fas fa-chevron-down"></i></div>
+                    </div>
+                    <div class="faq-answer">
+                        <div class="faq-answer-content">
+                            <p>Sim, temos rate limiting baseado no plano:</p>
+                            <ul>
+                                <li><strong>FREE:</strong> 10 requisições/minuto</li>
+                                <li><strong>Starter:</strong> 50 requisições/minuto</li>
+                                <li><strong>Professional:</strong> 100 requisições/minuto</li>
+                                <li><strong>Enterprise:</strong> 500 requisições/minuto</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="faq-item">
+                    <div class="faq-question" onclick="toggleFaq(this)">
+                        <h4>Como integrar com CI/CD?</h4>
+                        <div class="faq-icon"><i class="fas fa-chevron-down"></i></div>
+                    </div>
+                    <div class="faq-answer">
+                        <div class="faq-answer-content">
+                            <p>Oferecemos exemplos de integração para:</p>
+                            <ul>
+                                <li>GitHub Actions</li>
+                                <li>GitLab CI</li>
+                                <li>Jenkins</li>
+                                <li>CircleCI</li>
+                            </ul>
+                            <p>Consulte a <a href="documentation.html#integrations">seção de integrações</a> na documentação.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="faq-item">
+                    <div class="faq-question" onclick="toggleFaq(this)">
+                        <h4>Os dados são criptografados?</h4>
+                        <div class="faq-icon"><i class="fas fa-chevron-down"></i></div>
+                    </div>
+                    <div class="faq-answer">
+                        <div class="faq-answer-content">
+                            <p>Sim! Todos os dados são criptografados:</p>
+                            <ul>
+                                <li><strong>Em trânsito:</strong> TLS/SSL (HTTPS)</li>
+                                <li><strong>Em repouso:</strong> Criptografia AES-256</li>
+                                <li><strong>Senhas:</strong> Hash bcrypt com salt</li>
+                            </ul>
+                            <p>Levamos a segurança dos seus dados muito a sério.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Suporte -->
+            <div class="faq-category">
+                <div class="faq-category-header">
+                    <div class="faq-category-icon">
+                        <i class="fas fa-life-ring"></i>
+                    </div>
+                    <h3>Suporte e Conta</h3>
+                </div>
+
+                <div class="faq-item">
+                    <div class="faq-question" onclick="toggleFaq(this)">
+                        <h4>Como entrar em contato com o suporte?</h4>
+                        <div class="faq-icon"><i class="fas fa-chevron-down"></i></div>
+                    </div>
+                    <div class="faq-answer">
+                        <div class="faq-answer-content">
+                            <p>Você pode entrar em contato por:</p>
+                            <ul>
+                                <li><strong>Email:</strong> <a href="mailto:mac526@hotmail.com">mac526@hotmail.com</a></li>
+                                <li><strong>Tempo de resposta:</strong>
+                                    <ul>
+                                        <li>FREE/Starter: 24-48 horas</li>
+                                        <li>Professional: 4-12 horas</li>
+                                        <li>Enterprise: 1-4 horas (24/7)</li>
+                                    </ul>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="faq-item">
+                    <div class="faq-question" onclick="toggleFaq(this)">
+                        <h4>Esqueci minha senha, como recuperar?</h4>
+                        <div class="faq-icon"><i class="fas fa-chevron-down"></i></div>
+                    </div>
+                    <div class="faq-answer">
+                        <div class="faq-answer-content">
+                            <p>Na página de login, clique em "Esqueceu a senha?" e siga as instruções. Você receberá um email com o link para redefinir sua senha.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="faq-item">
+                    <div class="faq-question" onclick="toggleFaq(this)">
+                        <h4>Posso mudar meu email cadastrado?</h4>
+                        <div class="faq-icon"><i class="fas fa-chevron-down"></i></div>
+                    </div>
+                    <div class="faq-answer">
+                        <div class="faq-answer-content">
+                            <p>Sim, você pode alterar seu email através das configurações da conta no dashboard.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="faq-item">
+                    <div class="faq-question" onclick="toggleFaq(this)">
+                        <h4>Como excluir minha conta?</h4>
+                        <div class="faq-icon"><i class="fas fa-chevron-down"></i></div>
+                    </div>
+                    <div class="faq-answer">
+                        <div class="faq-answer-content">
+                            <p>Entre em contato com nosso suporte via email (<a href="mailto:mac526@hotmail.com">mac526@hotmail.com</a>) solicitando a exclusão da conta. Processaremos seu pedido em até 48 horas.</p>
+                            <p><strong>Atenção:</strong> A exclusão é permanente e todos os dados serão removidos.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Não encontrou? -->
+            <div class="content-card">
+                <h3><i class="fas fa-question-circle"></i> Não encontrou sua resposta?</h3>
+                <p>Se sua dúvida não foi respondida aqui, entre em contato conosco:</p>
+                <div class="info-box info">
+                    <i class="fas fa-envelope"></i>
+                    <div>
+                        <strong>Suporte</strong>
+                        <p>Email: <a href="mailto:mac526@hotmail.com">mac526@hotmail.com</a></p>
+                        <p>Ficaremos felizes em ajudar!</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="manual-footer">
+        <div class="container">
+            <p>&copy; 2025 Security Scanner. Todos os direitos reservados.</p>
+            <p>FAQ atualizado em 05/12/2025</p>
+        </div>
+    </footer>
+
+    <script src="js/manual.js"></script>
+    <script>
+        // Toggle FAQ
+        function toggleFaq(element) {
+            const faqItem = element.closest('.faq-item');
+            const answer = faqItem.querySelector('.faq-answer');
+            const isActive = faqItem.classList.contains('active');
+            
+            // Fecha todos os outros
+            document.querySelectorAll('.faq-item').forEach(item => {
+                item.classList.remove('active');
+                item.querySelector('.faq-answer').style.maxHeight = null;
+            });
+            
+            // Abre o clicado se estava fechado
+            if (!isActive) {
+                faqItem.classList.add('active');
+                answer.style.maxHeight = answer.scrollHeight + 'px';
+            }
+        }
+
+        // Search FAQ
+        const searchInput = document.getElementById('faqSearch');
+        const faqItems = document.querySelectorAll('.faq-item');
+        const faqCategories = document.querySelectorAll('.faq-category');
+
+        searchInput.addEventListener('input', function() {
+            const searchTerm = this.value.toLowerCase();
+            let hasResults = false;
+
+            faqItems.forEach(item => {
+                const question = item.querySelector('.faq-question h4').textContent.toLowerCase();
+                const answer = item.querySelector('.faq-answer-content').textContent.toLowerCase();
+                
+                if (question.includes(searchTerm) || answer.includes(searchTerm)) {
+                    item.style.display = 'block';
+                    hasResults = true;
+                } else {
+                    item.style.display = 'none';
+                }
+            });
+
+            // Mostra/esconde categorias vazias
+            faqCategories.forEach(category => {
+                const visibleItems = category.querySelectorAll('.faq-item[style="display: block;"]');
+                if (visibleItems.length > 0 || searchTerm === '') {
+                    category.style.display = 'block';
+                } else {
+                    category.style.display = 'none';
+                }
+            });
+
+            // Mostra mensagem se não houver resultados
+            let noResultsDiv = document.querySelector('.no-results');
+            if (!hasResults && searchTerm !== '') {
+                if (!noResultsDiv) {
+                    noResultsDiv = document.createElement('div');
+                    noResultsDiv.className = 'no-results';
+                    noResultsDiv.innerHTML = '<i class="fas fa-search"></i><p>Nenhum resultado encontrado para "' + searchTerm + '"</p><p>Tente outros termos ou entre em contato com o suporte.</p>';
+                    document.querySelector('.manual-content .container').appendChild(noResultsDiv);
+                }
+            } else if (noResultsDiv) {
+                noResultsDiv.remove();
+            }
+        });
+    </script>
+</body>
+</html>

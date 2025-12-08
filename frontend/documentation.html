@@ -1,0 +1,638 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Documentação Técnica - Security Scanner</title>
+    <link rel="stylesheet" href="css/manual.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css">
+</head>
+<body>
+    <!-- Header -->
+    <header class="manual-header">
+        <div class="container">
+            <div class="header-content">
+                <div class="logo-section">
+                    <i class="fas fa-shield-alt"></i>
+                    <h1>Security Scanner</h1>
+                </div>
+                <div style="display: flex; gap: 15px;">
+                    <a href="manual.html" class="btn-back">
+                        <i class="fas fa-book"></i> Manual
+                    </a>
+                    <a href="dashboard.html" class="btn-back">
+                        <i class="fas fa-arrow-left"></i> Dashboard
+                    </a>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Hero Section -->
+    <section class="hero-section">
+        <div class="container">
+            <h2>Documentação Técnica</h2>
+            <p>Guia completo de APIs, integrações e desenvolvimento</p>
+        </div>
+    </section>
+
+    <!-- Navigation -->
+    <nav class="manual-nav sticky">
+        <div class="container">
+            <ul class="nav-list">
+                <li><a href="#getting-started" class="nav-link active">Começando</a></li>
+                <li><a href="#authentication" class="nav-link">Autenticação</a></li>
+                <li><a href="#api-reference" class="nav-link">API Reference</a></li>
+                <li><a href="#integrations" class="nav-link">Integrações</a></li>
+                <li><a href="#examples" class="nav-link">Exemplos</a></li>
+                <li><a href="#errors" class="nav-link">Erros</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="manual-content">
+        <div class="container">
+            <!-- Getting Started -->
+            <section id="getting-started" class="content-section">
+                <div class="section-header">
+                    <i class="fas fa-rocket"></i>
+                    <h2>Começando</h2>
+                </div>
+                
+                <div class="content-card">
+                    <h3>Bem-vindo à Documentação da API</h3>
+                    <p>A Security Scanner API permite que você integre nossas ferramentas de segurança em suas aplicações, automatize testes e crie workflows personalizados.</p>
+                    
+                    <h4>Requisitos</h4>
+                    <ul class="feature-list">
+                        <li><i class="fas fa-check"></i> Conta ativa na plataforma</li>
+                        <li><i class="fas fa-check"></i> Plano Professional ou Enterprise</li>
+                        <li><i class="fas fa-check"></i> Conhecimento básico de APIs REST</li>
+                        <li><i class="fas fa-check"></i> Ferramenta para fazer requisições HTTP (curl, Postman, etc.)</li>
+                    </ul>
+
+                    <h4>URL Base da API</h4>
+                    <pre><code class="language-bash">https://api.securityscanner.com/v1</code></pre>
+                    <p class="text-muted">Para testes locais: <code>http://localhost:8000/api</code></p>
+
+                    <h4>Formatos Suportados</h4>
+                    <ul class="feature-list">
+                        <li><i class="fas fa-check"></i> <strong>Request:</strong> JSON, multipart/form-data</li>
+                        <li><i class="fas fa-check"></i> <strong>Response:</strong> JSON</li>
+                        <li><i class="fas fa-check"></i> <strong>Encoding:</strong> UTF-8</li>
+                    </ul>
+                </div>
+            </section>
+
+            <!-- Authentication -->
+            <section id="authentication" class="content-section">
+                <div class="section-header">
+                    <i class="fas fa-key"></i>
+                    <h2>Autenticação</h2>
+                </div>
+
+                <div class="content-card">
+                    <h3>JWT Authentication</h3>
+                    <p>A API utiliza JSON Web Tokens (JWT) para autenticação. Você precisa obter um token de acesso fazendo login.</p>
+
+                    <h4>1. Fazer Login</h4>
+                    <pre><code class="language-bash">POST /api/login
+Content-Type: application/json
+
+{
+  "username": "seu_usuario",
+  "password": "sua_senha"
+}</code></pre>
+
+                    <h4>Resposta de Sucesso</h4>
+                    <pre><code class="language-json">{
+  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "token_type": "bearer",
+  "user": {
+    "id": 1,
+    "username": "seu_usuario",
+    "email": "seu@email.com",
+    "subscription_plan": "professional"
+  }
+}</code></pre>
+
+                    <h4>2. Usar o Token</h4>
+                    <p>Inclua o token no header Authorization de todas as requisições:</p>
+                    <pre><code class="language-bash">Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...</code></pre>
+
+                    <div class="info-box warning">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <div>
+                            <strong>Segurança</strong>
+                            <p>Nunca compartilhe seu token de acesso. Armazene-o de forma segura e renove-o regularmente.</p>
+                        </div>
+                    </div>
+
+                    <h4>Exemplo Completo</h4>
+                    <pre><code class="language-bash">curl -X GET "http://localhost:8000/api/user/profile" \
+  -H "Authorization: Bearer SEU_TOKEN_AQUI" \
+  -H "Content-Type: application/json"</code></pre>
+                </div>
+            </section>
+
+            <!-- API Reference -->
+            <section id="api-reference" class="content-section">
+                <div class="section-header">
+                    <i class="fas fa-code"></i>
+                    <h2>API Reference</h2>
+                </div>
+
+                <!-- User Endpoints -->
+                <div class="content-card">
+                    <h3><i class="fas fa-user"></i> User Endpoints</h3>
+                    
+                    <div class="api-endpoint">
+                        <div class="endpoint-header">
+                            <span class="http-method get">GET</span>
+                            <code>/api/user/profile</code>
+                        </div>
+                        <p>Retorna informações do perfil do usuário autenticado.</p>
+                        <h5>Headers</h5>
+                        <pre><code>Authorization: Bearer {token}</code></pre>
+                        <h5>Resposta (200 OK)</h5>
+                        <pre><code class="language-json">{
+  "id": 1,
+  "username": "usuario",
+  "email": "usuario@email.com",
+  "created_at": "2025-01-01T00:00:00",
+  "subscription_plan": "professional",
+  "subscription_status": "active"
+}</code></pre>
+                    </div>
+
+                    <div class="api-endpoint">
+                        <div class="endpoint-header">
+                            <span class="http-method get">GET</span>
+                            <code>/api/user/subscription-info</code>
+                        </div>
+                        <p>Retorna detalhes da assinatura do usuário.</p>
+                        <h5>Resposta (200 OK)</h5>
+                        <pre><code class="language-json">{
+  "subscription_plan": "professional",
+  "subscription_status": "active",
+  "scans_this_month": 45,
+  "scans_limit": -1,
+  "subscription_start": "2025-01-01T00:00:00",
+  "subscription_end": "2025-02-01T00:00:00"
+}</code></pre>
+                    </div>
+                </div>
+
+                <!-- Scan Endpoints -->
+                <div class="content-card">
+                    <h3><i class="fas fa-search"></i> Scan Endpoints</h3>
+                    
+                    <div class="api-endpoint">
+                        <div class="endpoint-header">
+                            <span class="http-method post">POST</span>
+                            <code>/api/scan/ports</code>
+                        </div>
+                        <p>Realiza scan de portas em um alvo especificado.</p>
+                        <h5>Body (JSON)</h5>
+                        <pre><code class="language-json">{
+  "target": "192.168.1.1",
+  "ports": "1-1000"
+}</code></pre>
+                        <h5>Resposta (200 OK)</h5>
+                        <pre><code class="language-json">{
+  "target": "192.168.1.1",
+  "scan_date": "2025-12-05T10:30:00",
+  "total_ports_scanned": 1000,
+  "open_ports": [
+    {
+      "port": 22,
+      "service": "ssh",
+      "version": "OpenSSH 8.2",
+      "state": "open",
+      "risk_level": "medium"
+    },
+    {
+      "port": 80,
+      "service": "http",
+      "version": "nginx 1.18.0",
+      "state": "open",
+      "risk_level": "low"
+    }
+  ]
+}</code></pre>
+                    </div>
+
+                    <div class="api-endpoint">
+                        <div class="endpoint-header">
+                            <span class="http-method post">POST</span>
+                            <code>/api/scan/code</code>
+                        </div>
+                        <p>Analisa código-fonte em busca de vulnerabilidades.</p>
+                        <h5>Body (multipart/form-data)</h5>
+                        <pre><code>file: arquivo.py (binary)</code></pre>
+                        <h5>Resposta (200 OK)</h5>
+                        <pre><code class="language-json">{
+  "filename": "arquivo.py",
+  "scan_date": "2025-12-05T10:30:00",
+  "vulnerabilities_found": 3,
+  "vulnerabilities": [
+    {
+      "severity": "high",
+      "type": "SQL Injection",
+      "line": 45,
+      "description": "Possível SQL Injection detectado",
+      "recommendation": "Use prepared statements"
+    }
+  ]
+}</code></pre>
+                    </div>
+                </div>
+
+                <!-- Reports Endpoints -->
+                <div class="content-card">
+                    <h3><i class="fas fa-file-alt"></i> Reports Endpoints</h3>
+                    
+                    <div class="api-endpoint">
+                        <div class="endpoint-header">
+                            <span class="http-method get">GET</span>
+                            <code>/api/reports</code>
+                        </div>
+                        <p>Lista todos os relatórios de scans do usuário.</p>
+                        <h5>Query Parameters</h5>
+                        <pre><code>?page=1&limit=10&type=port_scan</code></pre>
+                        <h5>Resposta (200 OK)</h5>
+                        <pre><code class="language-json">{
+  "total": 150,
+  "page": 1,
+  "limit": 10,
+  "reports": [
+    {
+      "id": 1,
+      "type": "port_scan",
+      "target": "192.168.1.1",
+      "created_at": "2025-12-05T10:30:00",
+      "status": "completed"
+    }
+  ]
+}</code></pre>
+                    </div>
+
+                    <div class="api-endpoint">
+                        <div class="endpoint-header">
+                            <span class="http-method get">GET</span>
+                            <code>/api/reports/{id}</code>
+                        </div>
+                        <p>Retorna detalhes de um relatório específico.</p>
+                        <h5>Resposta (200 OK)</h5>
+                        <pre><code class="language-json">{
+  "id": 1,
+  "type": "port_scan",
+  "target": "192.168.1.1",
+  "created_at": "2025-12-05T10:30:00",
+  "results": { /* dados do scan */ }
+}</code></pre>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Integrations -->
+            <section id="integrations" class="content-section">
+                <div class="section-header">
+                    <i class="fas fa-plug"></i>
+                    <h2>Integrações</h2>
+                </div>
+
+                <div class="content-card">
+                    <h3>Integração com CI/CD</h3>
+                    <p>Integre o Security Scanner em seu pipeline de CI/CD para testes automatizados de segurança.</p>
+
+                    <h4>GitHub Actions</h4>
+                    <pre><code class="language-yaml">name: Security Scan
+on: [push]
+
+jobs:
+  security-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      
+      - name: Run Security Scan
+        run: |
+          curl -X POST "https://api.securityscanner.com/v1/scan/code" \
+            -H "Authorization: Bearer ${{ secrets.SECURITY_SCANNER_TOKEN }}" \
+            -F "file=@./src/main.py"</code></pre>
+
+                    <h4>GitLab CI</h4>
+                    <pre><code class="language-yaml">security-scan:
+  stage: test
+  script:
+    - |
+      curl -X POST "https://api.securityscanner.com/v1/scan/code" \
+        -H "Authorization: Bearer $SECURITY_SCANNER_TOKEN" \
+        -F "file=@./src/main.py"
+  only:
+    - main</code></pre>
+
+                    <h4>Jenkins Pipeline</h4>
+                    <pre><code class="language-groovy">pipeline {
+    agent any
+    stages {
+        stage('Security Scan') {
+            steps {
+                sh '''
+                    curl -X POST "https://api.securityscanner.com/v1/scan/code" \
+                      -H "Authorization: Bearer ${SECURITY_SCANNER_TOKEN}" \
+                      -F "file=@./src/main.py"
+                '''
+            }
+        }
+    }
+}</code></pre>
+                </div>
+
+                <div class="content-card">
+                    <h3>Webhooks</h3>
+                    <p>Configure webhooks para receber notificações em tempo real sobre scans concluídos.</p>
+
+                    <h4>Configurar Webhook</h4>
+                    <pre><code class="language-bash">POST /api/webhooks
+Content-Type: application/json
+
+{
+  "url": "https://sua-api.com/webhook",
+  "events": ["scan.completed", "scan.failed"],
+  "secret": "seu_secret_para_validacao"
+}</code></pre>
+
+                    <h4>Payload do Webhook</h4>
+                    <pre><code class="language-json">{
+  "event": "scan.completed",
+  "timestamp": "2025-12-05T10:30:00",
+  "scan": {
+    "id": 123,
+    "type": "port_scan",
+    "target": "192.168.1.1",
+    "results": { /* resultados */ }
+  }
+}</code></pre>
+                </div>
+            </section>
+
+            <!-- Examples -->
+            <section id="examples" class="content-section">
+                <div class="section-header">
+                    <i class="fas fa-code-branch"></i>
+                    <h2>Exemplos de Código</h2>
+                </div>
+
+                <div class="content-card">
+                    <h3>Python</h3>
+                    <pre><code class="language-python">import requests
+
+# Login e obter token
+response = requests.post(
+    "http://localhost:8000/api/login",
+    json={"username": "usuario", "password": "senha"}
+)
+token = response.json()["access_token"]
+
+# Fazer scan de portas
+headers = {"Authorization": f"Bearer {token}"}
+scan_response = requests.post(
+    "http://localhost:8000/api/scan/ports",
+    headers=headers,
+    json={"target": "192.168.1.1", "ports": "1-1000"}
+)
+
+print(scan_response.json())</code></pre>
+                </div>
+
+                <div class="content-card">
+                    <h3>JavaScript (Node.js)</h3>
+                    <pre><code class="language-javascript">const axios = require('axios');
+
+async function securityScan() {
+  // Login
+  const loginResponse = await axios.post(
+    'http://localhost:8000/api/login',
+    { username: 'usuario', password: 'senha' }
+  );
+  
+  const token = loginResponse.data.access_token;
+  
+  // Scan de portas
+  const scanResponse = await axios.post(
+    'http://localhost:8000/api/scan/ports',
+    { target: '192.168.1.1', ports: '1-1000' },
+    { headers: { Authorization: `Bearer ${token}` } }
+  );
+  
+  console.log(scanResponse.data);
+}
+
+securityScan();</code></pre>
+                </div>
+
+                <div class="content-card">
+                    <h3>cURL</h3>
+                    <pre><code class="language-bash"># 1. Login e salvar token
+TOKEN=$(curl -X POST "http://localhost:8000/api/login" \
+  -H "Content-Type: application/json" \
+  -d '{"username":"usuario","password":"senha"}' \
+  | jq -r '.access_token')
+
+# 2. Fazer scan
+curl -X POST "http://localhost:8000/api/scan/ports" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"target":"192.168.1.1","ports":"1-1000"}'</code></pre>
+                </div>
+
+                <div class="content-card">
+                    <h3>PHP</h3>
+                    <pre><code class="language-php">&lt;?php
+
+// Login
+$ch = curl_init('http://localhost:8000/api/login');
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+curl_setopt($ch, CURLOPT_POST, true);
+curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode([
+    'username' => 'usuario',
+    'password' => 'senha'
+]));
+curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
+
+$response = curl_exec($ch);
+$token = json_decode($response)->access_token;
+
+// Scan de portas
+$ch = curl_init('http://localhost:8000/api/scan/ports');
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+curl_setopt($ch, CURLOPT_POST, true);
+curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode([
+    'target' => '192.168.1.1',
+    'ports' => '1-1000'
+]));
+curl_setopt($ch, CURLOPT_HTTPHEADER, [
+    'Content-Type: application/json',
+    "Authorization: Bearer $token"
+]);
+
+$result = curl_exec($ch);
+echo $result;
+
+?&gt;</code></pre>
+                </div>
+            </section>
+
+            <!-- Errors -->
+            <section id="errors" class="content-section">
+                <div class="section-header">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <h2>Códigos de Erro</h2>
+                </div>
+
+                <div class="content-card">
+                    <h3>HTTP Status Codes</h3>
+                    
+                    <table class="support-table">
+                        <thead>
+                            <tr>
+                                <th>Código</th>
+                                <th>Significado</th>
+                                <th>Descrição</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><span class="badge badge-starter">200</span></td>
+                                <td>OK</td>
+                                <td>Requisição bem-sucedida</td>
+                            </tr>
+                            <tr>
+                                <td><span class="badge badge-professional">201</span></td>
+                                <td>Created</td>
+                                <td>Recurso criado com sucesso</td>
+                            </tr>
+                            <tr>
+                                <td><span class="badge badge-free">400</span></td>
+                                <td>Bad Request</td>
+                                <td>Dados inválidos na requisição</td>
+                            </tr>
+                            <tr>
+                                <td><span class="badge badge-free">401</span></td>
+                                <td>Unauthorized</td>
+                                <td>Token inválido ou ausente</td>
+                            </tr>
+                            <tr>
+                                <td><span class="badge badge-free">403</span></td>
+                                <td>Forbidden</td>
+                                <td>Sem permissão para acessar recurso</td>
+                            </tr>
+                            <tr>
+                                <td><span class="badge badge-free">404</span></td>
+                                <td>Not Found</td>
+                                <td>Recurso não encontrado</td>
+                            </tr>
+                            <tr>
+                                <td><span class="badge badge-premium">429</span></td>
+                                <td>Too Many Requests</td>
+                                <td>Limite de requisições excedido</td>
+                            </tr>
+                            <tr>
+                                <td><span class="badge badge-free">500</span></td>
+                                <td>Internal Server Error</td>
+                                <td>Erro interno do servidor</td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <h4>Formato de Erro</h4>
+                    <pre><code class="language-json">{
+  "error": "unauthorized",
+  "message": "Token inválido ou expirado",
+  "status_code": 401,
+  "timestamp": "2025-12-05T10:30:00"
+}</code></pre>
+
+                    <h4>Erros Comuns</h4>
+                    
+                    <div class="info-box warning">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <div>
+                            <strong>401 Unauthorized</strong>
+                            <p>Verifique se o token está correto e não expirou. Faça login novamente se necessário.</p>
+                        </div>
+                    </div>
+
+                    <div class="info-box warning">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <div>
+                            <strong>403 Forbidden - Limite Excedido</strong>
+                            <p>Você atingiu o limite de scans do seu plano. Faça upgrade ou aguarde a renovação mensal.</p>
+                        </div>
+                    </div>
+
+                    <div class="info-box warning">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <div>
+                            <strong>429 Too Many Requests</strong>
+                            <p>Aguarde alguns segundos antes de fazer nova requisição. Rate limit: 100 requisições/minuto.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="content-card">
+                    <h3>Rate Limiting</h3>
+                    <p>A API possui limites de taxa para garantir a qualidade do serviço:</p>
+                    
+                    <ul class="feature-list">
+                        <li><i class="fas fa-info-circle"></i> <strong>FREE:</strong> 10 requisições/minuto</li>
+                        <li><i class="fas fa-info-circle"></i> <strong>Starter:</strong> 50 requisições/minuto</li>
+                        <li><i class="fas fa-info-circle"></i> <strong>Professional:</strong> 100 requisições/minuto</li>
+                        <li><i class="fas fa-info-circle"></i> <strong>Enterprise:</strong> 500 requisições/minuto</li>
+                    </ul>
+
+                    <h4>Headers de Rate Limit</h4>
+                    <pre><code>X-RateLimit-Limit: 100
+X-RateLimit-Remaining: 95
+X-RateLimit-Reset: 1638705600</code></pre>
+                </div>
+            </section>
+
+            <!-- Support -->
+            <div class="content-card">
+                <h3>Precisa de Ajuda?</h3>
+                <p>Se você tiver dúvidas sobre a API ou encontrar problemas, entre em contato:</p>
+                <div class="info-box info">
+                    <i class="fas fa-envelope"></i>
+                    <div>
+                        <strong>Suporte Técnico</strong>
+                        <p>Email: <a href="mailto:mac526@hotmail.com">mac526@hotmail.com</a></p>
+                        <p>Tempo de resposta: 24-48 horas (Professional/Enterprise: 4-12 horas)</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="manual-footer">
+        <div class="container">
+            <p>&copy; 2025 Security Scanner. Todos os direitos reservados.</p>
+            <p>API v1.0.0 | Documentação atualizada em 05/12/2025</p>
+        </div>
+    </footer>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-bash.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-javascript.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-php.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-yaml.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-json.min.js"></script>
+    <script src="js/manual.js"></script>
+</body>
+</html>

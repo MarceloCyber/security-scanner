@@ -1,0 +1,425 @@
+const API_URL = 'http://localhost:8000/api';
+let currentToken = localStorage.getItem('access_token');
+let currentUsername = localStorage.getItem('username');
+
+// Check authentication
+if (!currentToken) {
+    window.location.href = 'index.html';
+}
+
+// Set username in header
+document.getElementById('username').textContent = currentUsername || 'Usuário';
+
+// Logout
+document.getElementById('logoutBtn').addEventListener('click', (e) => {
+    e.preventDefault();
+    localStorage.removeItem('access_token');
+    localStorage.removeItem('username');
+    window.location.href = 'index.html';
+});
+
+// Navigation
+document.querySelectorAll('.nav-item[data-page]').forEach(item => {
+    item.addEventListener('click', (e) => {
+        e.preventDefault();
+        const page = item.getAttribute('data-page');
+        
+        // Update active nav item
+        document.querySelectorAll('.nav-item').forEach(nav => nav.classList.remove('active'));
+        item.classList.add('active');
+        
+        // Update page title
+        const titles = {
+            'dashboard': 'Dashboard',
+            'code-scan': 'Análise de Código',
+            'api-scan': 'Teste de API',
+            'history': 'Histórico de Scans'
+        };
+        document.getElementById('pageTitle').textContent = titles[page];
+        
+        // Show page
+        document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+        document.getElementById(`${page}-page`).classList.add('active');
+        
+        // Load data if needed
+        if (page === 'dashboard') {
+            loadDashboardStats();
+        } else if (page === 'history') {
+            loadScanHistory();
+        }
+    });
+});
+
+// Tab switching
+document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        const tab = btn.getAttribute('data-tab');
+        const parent = btn.closest('.card');
+        
+        // Update active tab button
+        parent.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        
+        // Show tab content
+        parent.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+        parent.querySelector(`#${tab}-tab`).classList.add('active');
+    });
+});
+
+// Helper function to make authenticated requests
+async function apiRequest(endpoint, options = {}) {
+    const defaultOptions = {
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${currentToken}`
+        }
+    };
+    
+    const response = await fetch(`${API_URL}${endpoint}`, {
+        ...defaultOptions,
+        ...options,
+        headers: {
+            ...defaultOptions.headers,
+            ...options.headers
+        }
+    });
+    
+    if (response.status === 401) {
+        // Token expired
+        localStorage.removeItem('access_token');
+        window.location.href = 'index.html';
+        throw new Error('Authentication required');
+    }
+    
+    return response;
+}
+
+// Load dashboard statistics
+async function loadDashboardStats() {
+    try {
+        const response = await apiRequest('/dashboard/stats');
+        const data = await response.json();
+        
+        // Update stats
+        document.getElementById('totalScans').textContent = data.total_scans;
+        document.getElementById('totalVulns').textContent = data.total_vulnerabilities;
+        document.getElementById('criticalCount').textContent = data.severity_count.CRITICAL;
+        document.getElementById('highCount').textContent = data.severity_count.HIGH;
+        
+        // Update severity chart
+        const total = data.total_vulnerabilities || 1;
+        const severityBars = document.querySelectorAll('.severity-bar');
+        
+        ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW'].forEach((severity, index) => {
+            const count = data.severity_count[severity];
+            const percentage = (count / total) * 100;
+            
+            const bar = severityBars[index];
+            bar.querySelector('.fill').style.width = `${percentage}%`;
+            bar.querySelector('.count').textContent = count;
+        });
+        
+        // Update recent scans
+        const recentScansEl = document.getElementById('recentScans');
+        if (data.recent_scans.length === 0) {
+            recentScansEl.innerHTML = '<p class="empty-state">Nenhum scan realizado ainda</p>';
+        } else {
+            recentScansEl.innerHTML = data.recent_scans.map(scan => `
+                <div class="recent-item" onclick="viewScan(${scan.id})">
+                    <h4>${scan.scan_type === 'code' ? '📄' : '🌐'} ${scan.target}</h4>
+                    <p>${new Date(scan.created_at).toLocaleString('pt-BR')}</p>
+                </div>
+            `).join('');
+        }
+    } catch (error) {
+        console.error('Error loading dashboard stats:', error);
+    }
+}
+
+// Code scan form submission
+document.getElementById('codeScanForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const code = document.getElementById('codeInput').value;
+    const filename = document.getElementById('filename').value || 'unknown';
+    
+    if (!code.trim()) {
+        alert('Por favor, insira o código para análise');
+        return;
+    }
+    
+    showLoading();
+    
+    try {
+        const response = await apiRequest('/scan/code', {
+            method: 'POST',
+            body: JSON.stringify({ code, filename })
+        });
+        
+        const data = await response.json();
+        displayCodeScanResults(data.results);
+    } catch (error) {
+        console.error('Error scanning code:', error);
+        alert('Erro ao analisar código');
+    } finally {
+        hideLoading();
+    }
+});
+
+// File upload
+document.getElementById('fileInput').addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    
+    showLoading();
+    
+    try {
+        const formData = new FormData();
+        formData.append('file', file);
+        
+        const response = await apiRequest('/scan/upload', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${currentToken}`
+            },
+            body: formData
+        });
+        
+        const data = await response.json();
+        displayCodeScanResults(data.results);
+    } catch (error) {
+        console.error('Error uploading file:', error);
+        alert('Erro ao fazer upload do arquivo');
+    } finally {
+        hideLoading();
+        e.target.value = '';
+    }
+});
+
+// Display code scan results
+function displayCodeScanResults(results) {
+    const resultsEl = document.getElementById('codeScanResults');
+    
+    if (results.total_vulnerabilities === 0) {
+        resultsEl.innerHTML = `
+            <div class="card" style="margin-top: 20px; text-align: center; padding: 40px;">
+                <i class="fas fa-check-circle" style="font-size: 64px; color: var(--success-color); margin-bottom: 20px;"></i>
+                <h2 style="color: var(--success-color);">Nenhuma vulnerabilidade encontrada!</h2>
+                <p style="color: var(--text-secondary); margin-top: 10px;">O código analisado não apresentou vulnerabilidades conhecidas do OWASP Top 10.</p>
+            </div>
+        `;
+        return;
+    }
+    
+    const vulnsHtml = results.vulnerabilities.map(vuln => `
+        <div class="vuln-item ${vuln.severity}">
+            <div class="vuln-header">
+                <span class="vuln-title">${vuln.type}</span>
+                <span class="vuln-severity ${vuln.severity}">${vuln.severity}</span>
+            </div>
+            <p class="vuln-description">${vuln.description}</p>
+            <div class="vuln-code">Linha ${vuln.line}: ${vuln.code}</div>
+            <p class="vuln-recommendation">💡 ${vuln.recommendation}</p>
+        </div>
+    `).join('');
+    
+    resultsEl.innerHTML = `
+        <div class="card" style="margin-top: 20px;">
+            <h2><i class="fas fa-bug"></i> Vulnerabilidades Encontradas (${results.total_vulnerabilities})</h2>
+            <div class="severity-bars" style="margin: 20px 0;">
+                <div class="severity-bar">
+                    <span class="label">CRÍTICA</span>
+                    <div class="bar critical">
+                        <div class="fill" style="width: ${(results.severity_count.CRITICAL / results.total_vulnerabilities) * 100}%"></div>
+                    </div>
+                    <span class="count">${results.severity_count.CRITICAL}</span>
+                </div>
+                <div class="severity-bar">
+                    <span class="label">ALTA</span>
+                    <div class="bar high">
+                        <div class="fill" style="width: ${(results.severity_count.HIGH / results.total_vulnerabilities) * 100}%"></div>
+                    </div>
+                    <span class="count">${results.severity_count.HIGH}</span>
+                </div>
+                <div class="severity-bar">
+                    <span class="label">MÉDIA</span>
+                    <div class="bar medium">
+                        <div class="fill" style="width: ${(results.severity_count.MEDIUM / results.total_vulnerabilities) * 100}%"></div>
+                    </div>
+                    <span class="count">${results.severity_count.MEDIUM}</span>
+                </div>
+            </div>
+            <div class="vulnerability-list">
+                ${vulnsHtml}
+            </div>
+        </div>
+    `;
+}
+
+// API scan form submission
+document.getElementById('apiScanForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const baseUrl = document.getElementById('baseUrl').value;
+    const endpointsText = document.getElementById('endpoints').value;
+    const authHeader = document.getElementById('authHeader').value;
+    
+    const endpoints = endpointsText.split('\n').map(e => e.trim()).filter(e => e);
+    
+    if (endpoints.length === 0) {
+        alert('Por favor, insira pelo menos um endpoint');
+        return;
+    }
+    
+    showLoading();
+    
+    try {
+        const headers = authHeader ? { 'Authorization': authHeader } : null;
+        
+        const response = await apiRequest('/scan/api', {
+            method: 'POST',
+            body: JSON.stringify({ base_url: baseUrl, endpoints, headers })
+        });
+        
+        const data = await response.json();
+        displayAPIScanResults(data.results);
+    } catch (error) {
+        console.error('Error scanning API:', error);
+        alert('Erro ao analisar API');
+    } finally {
+        hideLoading();
+    }
+});
+
+// Display API scan results
+function displayAPIScanResults(results) {
+    const resultsEl = document.getElementById('apiScanResults');
+    
+    if (results.total_vulnerabilities === 0) {
+        resultsEl.innerHTML = `
+            <div class="card" style="margin-top: 20px; text-align: center; padding: 40px;">
+                <i class="fas fa-check-circle" style="font-size: 64px; color: var(--success-color); margin-bottom: 20px;"></i>
+                <h2 style="color: var(--success-color);">API segura!</h2>
+                <p style="color: var(--text-secondary); margin-top: 10px;">Nenhuma vulnerabilidade encontrada nos endpoints testados.</p>
+            </div>
+        `;
+        return;
+    }
+    
+    const endpointsHtml = results.endpoint_results.map(endpoint => {
+        if (endpoint.vulnerabilities.length === 0) return '';
+        
+        const vulnsHtml = endpoint.vulnerabilities.map(vuln => `
+            <div class="vuln-item ${vuln.severity}">
+                <div class="vuln-header">
+                    <span class="vuln-title">${vuln.type}</span>
+                    <span class="vuln-severity ${vuln.severity}">${vuln.severity}</span>
+                </div>
+                <p class="vuln-description">${vuln.description}</p>
+                ${vuln.parameter ? `<p style="color: var(--text-secondary); font-size: 13px;">Parâmetro: <code>${vuln.parameter}</code></p>` : ''}
+                ${vuln.payload ? `<div class="vuln-code">Payload: ${vuln.payload}</div>` : ''}
+                ${vuln.recommendation ? `<p class="vuln-recommendation">💡 ${vuln.recommendation}</p>` : ''}
+            </div>
+        `).join('');
+        
+        return `
+            <div class="card" style="margin-top: 20px;">
+                <h3><i class="fas fa-link"></i> ${endpoint.endpoint}</h3>
+                <p style="color: var(--text-secondary); margin: 10px 0;">Vulnerabilidades: ${endpoint.total_vulnerabilities}</p>
+                <div class="vulnerability-list">
+                    ${vulnsHtml}
+                </div>
+            </div>
+        `;
+    }).join('');
+    
+    resultsEl.innerHTML = `
+        <div class="card" style="margin-top: 20px;">
+            <h2><i class="fas fa-shield-alt"></i> Resultados da Análise</h2>
+            <div class="stats-grid" style="margin: 20px 0;">
+                <div class="stat-card">
+                    <div class="stat-icon critical">
+                        <i class="fas fa-server"></i>
+                    </div>
+                    <div class="stat-content">
+                        <h3>${results.total_endpoints}</h3>
+                        <p>Endpoints</p>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon high">
+                        <i class="fas fa-bug"></i>
+                    </div>
+                    <div class="stat-content">
+                        <h3>${results.total_vulnerabilities}</h3>
+                        <p>Vulnerabilidades</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        ${endpointsHtml}
+    `;
+}
+
+// Load scan history
+async function loadScanHistory() {
+    try {
+        const response = await apiRequest('/scans');
+        const scans = await response.json();
+        
+        const historyEl = document.getElementById('scanHistory');
+        
+        if (scans.length === 0) {
+            historyEl.innerHTML = '<p class="empty-state">Nenhum scan realizado ainda</p>';
+            return;
+        }
+        
+        historyEl.innerHTML = scans.map(scan => `
+            <div class="history-item" onclick="viewScan(${scan.id})">
+                <h4>
+                    ${scan.scan_type === 'code' ? '📄' : '🌐'} 
+                    ${scan.target}
+                </h4>
+                <p>
+                    <strong>Tipo:</strong> ${scan.scan_type === 'code' ? 'Código' : 'API'} | 
+                    <strong>Status:</strong> ${scan.status} | 
+                    <strong>Data:</strong> ${new Date(scan.created_at).toLocaleString('pt-BR')}
+                </p>
+            </div>
+        `).join('');
+    } catch (error) {
+        console.error('Error loading scan history:', error);
+    }
+}
+
+// View specific scan
+async function viewScan(scanId) {
+    try {
+        const response = await apiRequest(`/scans/${scanId}`);
+        const scan = await response.json();
+        
+        if (scan.scan_type === 'code') {
+            // Switch to code scan page and display results
+            document.querySelector('[data-page="code-scan"]').click();
+            displayCodeScanResults(scan.results);
+        } else {
+            // Switch to API scan page and display results
+            document.querySelector('[data-page="api-scan"]').click();
+            displayAPIScanResults(scan.results);
+        }
+    } catch (error) {
+        console.error('Error loading scan details:', error);
+    }
+}
+
+// Loading overlay
+function showLoading() {
+    document.getElementById('loadingOverlay').classList.add('active');
+}
+
+function hideLoading() {
+    document.getElementById('loadingOverlay').classList.remove('active');
+}
+
+// Load dashboard on page load
+loadDashboardStats();

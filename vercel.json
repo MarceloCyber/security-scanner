@@ -1,0 +1,50 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "backend/main.py",
+      "use": "@vercel/python"
+    },
+    {
+      "src": "frontend/**",
+      "use": "@vercel/static"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/api/(.*)",
+      "dest": "backend/main.py"
+    },
+    {
+      "src": "/admin-login.html",
+      "dest": "/frontend/admin-login.html"
+    },
+    {
+      "src": "/admin.html",
+      "dest": "/frontend/admin.html"
+    },
+    {
+      "src": "/admin",
+      "dest": "/frontend/admin-login.html"
+    },
+    {
+      "src": "/admin/panel",
+      "dest": "/frontend/admin.html"
+    },
+    {
+      "src": "/dashboard.html",
+      "dest": "/frontend/dashboard.html"
+    },
+    {
+      "src": "/manual.html",
+      "dest": "/frontend/manual.html"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/frontend/$1"
+    }
+  ],
+  "env": {
+    "PYTHONUNBUFFERED": "1"
+  }
+}

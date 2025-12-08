@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Security Scanner - Login</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="login-page">
+    <div class="login-container">
+        <div class="login-box">
+            <div class="logo-section">
+                <i class="fas fa-shield-halved"></i>
+                <h1>Security Scanner</h1>
+                <p>Análise de Segurança OWASP Top 10</p>
+            </div>
+            
+            <form id="loginForm" class="auth-form">
+                <div class="form-group">
+                    <label for="username">
+                        <i class="fas fa-user"></i> Usuário
+                    </label>
+                    <input type="text" id="username" name="username" required placeholder="Digite seu usuário">
+                </div>
+                
+                <div class="form-group">
+                    <label for="password">
+                        <i class="fas fa-lock"></i> Senha
+                    </label>
+                    <input type="password" id="password" name="password" required placeholder="Digite sua senha">
+                </div>
+                
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-sign-in-alt"></i> Entrar
+                </button>
+            </form>
+            
+            <div class="form-footer">
+                <p>Não tem uma conta? <a href="#" id="showRegister">Registrar-se</a></p>
+            </div>
+            
+            <div id="message" class="message"></div>
+        </div>
+        
+        <!-- Register Form (Hidden by default) -->
+        <div class="login-box register-box" style="display: none;">
+            <div class="logo-section">
+                <i class="fas fa-user-plus"></i>
+                <h1>Criar Conta</h1>
+                <p>Registre-se para começar a usar</p>
+            </div>
+            
+            <form id="registerForm" class="auth-form">
+                <div class="form-group">
+                    <label for="reg_username">
+                        <i class="fas fa-user"></i> Usuário
+                    </label>
+                    <input type="text" id="reg_username" name="username" required placeholder="Escolha um usuário">
+                </div>
+                
+                <div class="form-group">
+                    <label for="reg_email">
+                        <i class="fas fa-envelope"></i> Email
+                    </label>
+                    <input type="email" id="reg_email" name="email" required placeholder="seu@email.com">
+                </div>
+                
+                <div class="form-group">
+                    <label for="reg_password">
+                        <i class="fas fa-lock"></i> Senha
+                    </label>
+                    <input type="password" id="reg_password" name="password" required placeholder="Crie uma senha forte">
+                </div>
+                
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-user-plus"></i> Registrar
+                </button>
+            </form>
+            
+            <div class="form-footer">
+                <p>Já tem uma conta? <a href="#" id="showLogin">Fazer login</a></p>
+            </div>
+            
+            <div id="registerMessage" class="message"></div>
+        </div>
+    </div>
+    
+    <script src="js/auth.js?v=2.0"></script>
+</body>
+</html>

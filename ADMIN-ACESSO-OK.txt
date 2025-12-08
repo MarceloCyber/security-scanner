@@ -1,0 +1,112 @@
+╔════════════════════════════════════════════════════════════╗
+║       ✅ PAINEL ADMINISTRATIVO - ACESSO CORRIGIDO         ║
+╚════════════════════════════════════════════════════════════╝
+
+🔧 PROBLEMA RESOLVIDO:
+──────────────────────────────────────────────────────────────
+O admin.js estava redirecionando para "login.html" que não existe.
+A página de login correta é "index.html".
+
+✅ CORREÇÃO APLICADA:
+──────────────────────────────────────────────────────────────
+Arquivo: /frontend/js/admin.js
+
+Alterações (3 ocorrências):
+  • Linha 36:  login.html → index.html
+  • Linha 63:  login.html → index.html  
+  • Linha 71:  login.html → index.html
+
+📍 COMO ACESSAR O PAINEL ADMIN:
+──────────────────────────────────────────────────────────────
+
+PASSO 1: Faça Login
+────────────────────
+URL: http://localhost:8000/index.html
+ou: http://localhost:8000/
+
+Credenciais Admin:
+  Username: admin
+  Password: [sua senha]
+  Email: admin@security.com
+
+PASSO 2: Acesse o Dashboard
+────────────────────────────
+Após login, você será redirecionado para:
+  http://localhost:8000/dashboard.html
+
+PASSO 3: Clique em "Painel Admin"
+──────────────────────────────────
+Na sidebar do dashboard, procure por:
+  🛡️ Painel Admin (com ícone de escudo)
+
+Ou acesse diretamente:
+  http://localhost:8000/admin.html
+
+🔐 FLUXO DE AUTENTICAÇÃO:
+──────────────────────────────────────────────────────────────
+
+1. Sem token → Redireciona para index.html (login)
+2. Com token, mas não admin → Redireciona para dashboard.html
+3. Com token e é admin → Acessa admin.html normalmente
+
+✅ STATUS DOS ARQUIVOS:
+──────────────────────────────────────────────────────────────
+✓ admin.html         → 200 OK (acessível)
+✓ css/admin.css      → 200 OK (carregando)
+✓ js/admin.js        → 200 OK (corrigido)
+✓ index.html         → 200 OK (página de login)
+
+🎯 TESTANDO O ACESSO:
+──────────────────────────────────────────────────────────────
+
+1. Abra o navegador
+2. Acesse: http://localhost:8000/admin.html
+3. Se não estiver logado → Redireciona para login
+4. Faça login com a conta admin
+5. Será redirecionado de volta para o painel admin
+
+📊 FUNCIONALIDADES DISPONÍVEIS:
+──────────────────────────────────────────────────────────────
+✓ Dashboard com estatísticas
+✓ Gerenciamento de usuários
+✓ Log de atividades
+✓ Informações do sistema
+✓ Edição de usuários
+✓ Exclusão de usuários
+✓ Reset de scans
+
+🚨 IMPORTANTE:
+──────────────────────────────────────────────────────────────
+• O link "Painel Admin" SÓ APARECE para usuários admin
+• Usuários normais não veem este link no dashboard
+• A API valida is_admin=true em todas as rotas /api/admin/*
+
+🔗 URLS IMPORTANTES:
+──────────────────────────────────────────────────────────────
+Login:         http://localhost:8000/index.html
+Dashboard:     http://localhost:8000/dashboard.html
+Admin:         http://localhost:8000/admin.html
+API Docs:      http://localhost:8000/docs
+Swagger UI:    http://localhost:8000/redoc
+
+╔════════════════════════════════════════════════════════════╗
+║           🎉 PAINEL ADMIN TOTALMENTE FUNCIONAL! 🎉        ║
+╚════════════════════════════════════════════════════════════╝
+
+📝 PRÓXIMOS PASSOS:
+──────────────────────────────────────────────────────────────
+1. Faça login com a conta admin
+2. Acesse o dashboard
+3. Clique em "Painel Admin" na sidebar
+4. Explore as funcionalidades administrativas
+
+💡 DICA:
+Se aparecer "Acesso negado", verifique se o usuário tem
+is_admin=1 no banco de dados:
+
+  cd backend
+  sqlite3 security_scanner.db
+  SELECT id, username, is_admin FROM users WHERE username='admin';
+
+Se is_admin for 0, execute:
+  UPDATE users SET is_admin = 1 WHERE username='admin';

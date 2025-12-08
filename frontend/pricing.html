@@ -1,0 +1,656 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Preços - Security Scanner Pro</title>
+    <link rel="stylesheet" href="css/modern-style.css?v=6.2">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        .pricing-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+
+        .pricing-header {
+            text-align: center;
+            margin-bottom: 60px;
+        }
+
+        .pricing-header h1 {
+            font-size: 3em;
+            margin-bottom: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .pricing-header p {
+            font-size: 1.2em;
+            color: #a0aec0;
+        }
+
+        .pricing-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 30px;
+            margin-bottom: 60px;
+        }
+
+        .pricing-card {
+            background: linear-gradient(135deg, #1a1d29 0%, #2d3748 100%);
+            border-radius: 20px;
+            padding: 40px 30px;
+            text-align: center;
+            position: relative;
+            border: 2px solid rgba(102, 126, 234, 0.1);
+            transition: all 0.3s ease;
+        }
+
+        .pricing-card:hover {
+            transform: translateY(-10px);
+            border-color: rgba(102, 126, 234, 0.5);
+            box-shadow: 0 20px 60px rgba(102, 126, 234, 0.3);
+        }
+
+        .pricing-card.popular {
+            border-color: #667eea;
+            transform: scale(1.05);
+        }
+
+        .pricing-card.popular::before {
+            content: "MAIS POPULAR";
+            position: absolute;
+            top: -15px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 5px 20px;
+            border-radius: 20px;
+            font-size: 0.8em;
+            font-weight: bold;
+        }
+
+        .plan-icon {
+            font-size: 3em;
+            margin-bottom: 20px;
+        }
+
+        .plan-icon.free { color: #718096; }
+        .plan-icon.starter { color: #4299e1; }
+        .plan-icon.professional { color: #667eea; }
+        .plan-icon.enterprise { color: #f6ad55; }
+
+        .plan-name {
+            font-size: 1.8em;
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #fff;
+        }
+
+        .plan-price {
+            font-size: 3em;
+            font-weight: bold;
+            margin: 20px 0;
+            color: #667eea;
+        }
+
+        .plan-price span {
+            font-size: 0.4em;
+            color: #a0aec0;
+        }
+
+        .plan-description {
+            color: #a0aec0;
+            margin-bottom: 30px;
+            font-size: 0.95em;
+        }
+
+        .plan-features {
+            list-style: none;
+            padding: 0;
+            margin: 30px 0;
+            text-align: left;
+        }
+
+        .plan-features li {
+            padding: 12px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            color: #e2e8f0;
+            display: flex;
+            align-items: center;
+        }
+
+        .plan-features li i {
+            color: #48bb78;
+            margin-right: 10px;
+            font-size: 1.1em;
+        }
+
+        .plan-features li.disabled {
+            color: #4a5568;
+            text-decoration: line-through;
+        }
+
+        .plan-features li.disabled i {
+            color: #4a5568;
+        }
+
+        .subscribe-btn {
+            width: 100%;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 10px;
+            font-size: 1.1em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 20px;
+        }
+
+        .subscribe-btn.free {
+            background: #718096;
+            color: white;
+        }
+
+        .subscribe-btn.starter {
+            background: linear-gradient(135deg, #4299e1 0%, #3182ce 100%);
+            color: white;
+        }
+
+        .subscribe-btn.professional {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .subscribe-btn.enterprise {
+            background: linear-gradient(135deg, #f6ad55 0%, #ed8936 100%);
+            color: white;
+        }
+
+        .subscribe-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+        }
+
+        .subscribe-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .current-plan-badge {
+            background: #48bb78;
+            color: white;
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            margin-top: 10px;
+            display: inline-block;
+        }
+
+        .faq-section {
+            margin-top: 80px;
+            max-width: 800px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .faq-section h2 {
+            text-align: center;
+            font-size: 2.5em;
+            margin-bottom: 40px;
+            color: #fff;
+        }
+
+        .faq-item {
+            background: #1a1d29;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 15px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .faq-item:hover {
+            background: #2d3748;
+        }
+
+        .faq-question {
+            font-weight: bold;
+            color: #fff;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .faq-answer {
+            margin-top: 15px;
+            color: #a0aec0;
+            display: none;
+            line-height: 1.6;
+        }
+
+        .faq-item.active .faq-answer {
+            display: block;
+        }
+
+        .payment-methods {
+            text-align: center;
+            margin-top: 60px;
+            padding: 40px;
+            background: #1a1d29;
+            border-radius: 20px;
+        }
+
+        .payment-methods h3 {
+            margin-bottom: 20px;
+            color: #fff;
+        }
+
+        .payment-icons {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            flex-wrap: wrap;
+        }
+
+        .payment-icons i {
+            font-size: 3em;
+            color: #667eea;
+        }
+
+        .back-to-dashboard {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            padding: 12px 24px;
+            background: rgba(102, 126, 234, 0.1);
+            border: 2px solid #667eea;
+            border-radius: 10px;
+            color: #667eea;
+            text-decoration: none;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            z-index: 1000;
+        }
+
+        .back-to-dashboard:hover {
+            background: #667eea;
+            color: white;
+        }
+
+        @media (max-width: 768px) {
+            .pricing-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .pricing-card.popular {
+                transform: scale(1);
+            }
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <a href="landing.html" class="back-to-dashboard">
+        <i class="fas fa-arrow-left"></i> Voltar ao Início
+    </a>
+
+    <div class="pricing-container">
+        <div class="pricing-header">
+            <h1><i class="fas fa-shield-alt"></i> Escolha seu Plano</h1>
+            <p>Selecione o plano perfeito para suas necessidades de segurança</p>
+        </div>
+
+        <div class="pricing-grid" id="pricing-grid">
+            <!-- Os planos serão carregados dinamicamente aqui -->
+        </div>
+
+        <div class="payment-methods">
+            <h3><i class="fas fa-credit-card"></i> Métodos de Pagamento Aceitos</h3>
+            <div class="payment-icons">
+                <i class="fab fa-cc-visa" title="Visa"></i>
+                <i class="fab fa-cc-mastercard" title="Mastercard"></i>
+                <i class="fab fa-cc-amex" title="American Express"></i>
+                <i class="fab fa-pix" title="PIX"></i>
+                <i class="fas fa-barcode" title="Boleto"></i>
+            </div>
+            <p style="color: #a0aec0; margin-top: 20px;">
+                <i class="fas fa-lock"></i> Pagamento 100% seguro via Stripe e Mercado Pago
+            </p>
+        </div>
+
+        <div class="faq-section">
+            <h2>Perguntas Frequentes</h2>
+            
+            <div class="faq-item" onclick="toggleFaq(this)">
+                <div class="faq-question">
+                    Posso cancelar a qualquer momento?
+                    <i class="fas fa-chevron-down"></i>
+                </div>
+                <div class="faq-answer">
+                    Sim! Você pode cancelar sua assinatura a qualquer momento. Você continuará tendo acesso até o final do período pago.
+                </div>
+            </div>
+
+            <div class="faq-item" onclick="toggleFaq(this)">
+                <div class="faq-question">
+                    Como funciona o período de teste?
+                    <i class="fas fa-chevron-down"></i>
+                </div>
+                <div class="faq-answer">
+                    Todos os planos pagos incluem 7 dias de teste gratuito. Você pode cancelar antes do término sem ser cobrado.
+                </div>
+            </div>
+
+            <div class="faq-item" onclick="toggleFaq(this)">
+                <div class="faq-question">
+                    Posso fazer upgrade do meu plano?
+                    <i class="fas fa-chevron-down"></i>
+                </div>
+                <div class="faq-answer">
+                    Claro! Você pode fazer upgrade a qualquer momento e pagará apenas a diferença proporcional.
+                </div>
+            </div>
+
+            <div class="faq-item" onclick="toggleFaq(this)">
+                <div class="faq-question">
+                    Os scans não utilizados são acumulados?
+                    <i class="fas fa-chevron-down"></i>
+                </div>
+                <div class="faq-answer">
+                    Não, o limite de scans é resetado mensalmente. Nos planos Professional e Enterprise você tem scans ilimitados.
+                </div>
+            </div>
+
+            <div class="faq-item" onclick="toggleFaq(this)">
+                <div class="faq-question">
+                    Qual forma de pagamento é aceita?
+                    <i class="fas fa-chevron-down"></i>
+                </div>
+                <div class="faq-answer">
+                    Aceitamos cartões de crédito (via Stripe), PIX e boleto bancário (via Mercado Pago). Pagamento 100% seguro.
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Funções locais (sem depender de modern-app.js que verifica autenticação)
+        function getToken() {
+            return localStorage.getItem('token');
+        }
+
+        function showToast(message, type = 'info') {
+            // Toast simples sem dependências
+            const toast = document.createElement('div');
+            toast.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                padding: 15px 20px;
+                background: ${type === 'error' ? '#f56565' : type === 'success' ? '#48bb78' : '#4299e1'};
+                color: white;
+                border-radius: 8px;
+                z-index: 10000;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            `;
+            toast.textContent = message;
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 3000);
+        }
+
+        function showLoading() {
+            const loader = document.createElement('div');
+            loader.id = 'loader';
+            loader.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0,0,0,0.7);
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                z-index: 9999;
+            `;
+            loader.innerHTML = '<div style="width: 50px; height: 50px; border: 5px solid #f3f3f3; border-top: 5px solid #667eea; border-radius: 50%; animation: spin 1s linear infinite;"></div>';
+            document.body.appendChild(loader);
+        }
+
+        function hideLoading() {
+            const loader = document.getElementById('loader');
+            if (loader) loader.remove();
+        }
+
+        async function apiRequest(endpoint, options = {}) {
+            const token = getToken();
+            const headers = {
+                'Content-Type': 'application/json',
+                ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+            };
+
+            const response = await fetch(`/api${endpoint}`, {
+                ...options,
+                headers: { ...headers, ...options.headers }
+            });
+
+            if (!response.ok) {
+                if (response.status === 401) {
+                    // Sem autenticação, mas não redireciona
+                    throw new Error('Não autenticado');
+                }
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            return await response.json();
+        }
+
+        // Configuração dos planos
+        const plans = [
+            {
+                id: 'free',
+                name: 'Free',
+                icon: 'fas fa-user',
+                iconClass: 'free',
+                price: 0,
+                description: '10 scans/mês',
+                features: [
+                    { text: '10 scans por mês', enabled: true },
+                    { text: 'Port Scanner', enabled: true },
+                    { text: 'SSL Checker', enabled: true },
+                    { text: 'DNS Lookup', enabled: true },
+                    { text: 'WHOIS Lookup', enabled: true },
+                    { text: 'Header Analyzer', enabled: true },
+                    { text: 'Ferramentas Red/Blue Team', enabled: false },
+                    { text: 'Relatórios PDF', enabled: false },
+                    { text: 'API Access', enabled: false }
+                ],
+                buttonText: 'Plano Atual',
+                buttonClass: 'free'
+            },
+            {
+                id: 'starter',
+                name: 'Starter',
+                icon: 'fas fa-rocket',
+                iconClass: 'starter',
+                price: 49.90,
+                description: '100 scans/mês',
+                features: [
+                    { text: '100 scans por mês', enabled: true },
+                    { text: 'Todas as ferramentas básicas', enabled: true },
+                    { text: 'Code Scanner', enabled: true },
+                    { text: 'SQL Injection Tester', enabled: true },
+                    { text: 'XSS Tester', enabled: true },
+                    { text: 'Phishing Simulator', enabled: true },
+                    { text: 'Subdomain Finder', enabled: true },
+                    { text: 'Relatórios em PDF', enabled: true },
+                    { text: 'Suporte prioritário', enabled: true },
+                    { text: 'API Access', enabled: false }
+                ],
+                buttonText: 'Começar Teste Grátis',
+                buttonClass: 'starter'
+            },
+            {
+                id: 'professional',
+                name: 'Professional',
+                icon: 'fas fa-crown',
+                iconClass: 'professional',
+                price: 149.90,
+                description: 'Scans ilimitados',
+                popular: true,
+                features: [
+                    { text: 'Scans ilimitados', enabled: true },
+                    { text: 'Todas as ferramentas', enabled: true },
+                    { text: 'Vulnerability Scanner', enabled: true },
+                    { text: 'Exploit Finder', enabled: true },
+                    { text: 'Network Mapper', enabled: true },
+                    { text: 'Password Auditor', enabled: true },
+                    { text: 'API Security Tester', enabled: true },
+                    { text: 'Relatórios avançados', enabled: true },
+                    { text: 'API Access completo', enabled: true },
+                    { text: 'Suporte 24/7', enabled: true }
+                ],
+                buttonText: 'Começar Teste Grátis',
+                buttonClass: 'professional'
+            },
+            {
+                id: 'enterprise',
+                name: 'Enterprise',
+                icon: 'fas fa-building',
+                iconClass: 'enterprise',
+                price: 499.90,
+                description: 'Solução completa',
+                features: [
+                    { text: 'Tudo do Professional', enabled: true },
+                    { text: 'Multi-usuário (até 10)', enabled: true },
+                    { text: 'White label', enabled: true },
+                    { text: 'Integrações personalizadas', enabled: true },
+                    { text: 'SLA garantido', enabled: true },
+                    { text: 'Treinamento incluído', enabled: true },
+                    { text: 'Gerente de conta dedicado', enabled: true },
+                    { text: 'Custom deployment', enabled: true },
+                    { text: 'Auditoria de segurança', enabled: true },
+                    { text: 'Consultoria mensal', enabled: true }
+                ],
+                buttonText: 'Falar com Vendas',
+                buttonClass: 'enterprise'
+            }
+        ];
+
+        // Carregar planos na página
+        async function loadPricing() {
+            const grid = document.getElementById('pricing-grid');
+            
+            let currentPlan = 'free';
+            
+            try {
+                // Tentar buscar informações do usuário (se estiver logado)
+                if (getToken()) {
+                    const response = await apiRequest('/user/subscription-info');
+                    currentPlan = response.subscription_plan || 'free';
+                }
+            } catch (error) {
+                // Se não estiver logado ou erro, usa free como padrão
+                console.log('Usuário não autenticado, usando plano Free como padrão');
+            }
+            
+            // Renderizar planos
+            grid.innerHTML = plans.map(plan => {
+                    const isCurrentPlan = plan.id === currentPlan;
+                    const featuresHTML = plan.features.map(feature => `
+                        <li class="${feature.enabled ? '' : 'disabled'}">
+                            <i class="fas ${feature.enabled ? 'fa-check-circle' : 'fa-times-circle'}"></i>
+                            ${feature.text}
+                        </li>
+                    `).join('');
+                    
+                    return `
+                        <div class="pricing-card ${plan.popular ? 'popular' : ''}">
+                            <div class="plan-icon ${plan.iconClass}">
+                                <i class="${plan.icon}"></i>
+                            </div>
+                            <div class="plan-name">${plan.name}</div>
+                            <div class="plan-price">
+                                R$ ${plan.price.toFixed(2)}
+                                <span>/mês</span>
+                            </div>
+                            <div class="plan-description">${plan.description}</div>
+                            <ul class="plan-features">
+                                ${featuresHTML}
+                            </ul>
+                            ${isCurrentPlan ? 
+                                '<div class="current-plan-badge"><i class="fas fa-check"></i> Plano Atual</div>' :
+                                `<button class="subscribe-btn ${plan.buttonClass}" onclick="subscribeToPlan('${plan.id}')" ${isCurrentPlan ? 'disabled' : ''}>
+                                    <i class="fas ${plan.id === 'enterprise' ? 'fa-phone' : 'fa-shopping-cart'}"></i>
+                                    ${plan.buttonText}
+                                </button>`
+                            }
+                        </div>
+                    `;
+                }).join('');
+        }
+
+        // Subscrever a um plano
+        async function subscribeToPlan(planId) {
+            // Verificar se está logado
+            if (!getToken()) {
+                // Redirecionar para registro com o plano selecionado
+                window.location.href = `register.html?plan=${planId}`;
+                return;
+            }
+
+            if (planId === 'enterprise') {
+                window.location.href = 'mailto:contato@securityscanner.pro?subject=Interesse no Plano Enterprise';
+                return;
+            }
+            
+            if (planId === 'free') {
+                showToast('Você já está no plano Free', 'info');
+                return;
+            }
+            
+            try {
+                showLoading();
+                
+                // Criar sessão de checkout
+                const response = await apiRequest('/payments/create-checkout', {
+                    method: 'POST',
+                    body: JSON.stringify({ plan: planId })
+                });
+                
+                if (response.checkout_url) {
+                    // Redirecionar para página de pagamento
+                    window.location.href = response.checkout_url;
+                } else {
+                    throw new Error('URL de checkout não recebida');
+                }
+            } catch (error) {
+                console.error('Erro ao criar checkout:', error);
+                showToast('Erro ao processar pagamento. Tente novamente.', 'error');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        // Toggle FAQ
+        function toggleFaq(element) {
+            element.classList.toggle('active');
+            const icon = element.querySelector('.faq-question i');
+            icon.classList.toggle('fa-chevron-down');
+            icon.classList.toggle('fa-chevron-up');
+        }
+
+        // Carregar ao iniciar
+        document.addEventListener('DOMContentLoaded', loadPricing);
+    </script>
+</body>
+</html>

@@ -1,0 +1,1317 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <title>Security Scanner Pro - Ferramentas de Segurança</title>
+    <link rel="stylesheet" href="/css/modern-style.css?v=6.2">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* Subscription Card Styles */
+        .subscription-card {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            padding: 15px;
+            margin: 15px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .subscription-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .plan-badge {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 0.8em;
+            font-weight: bold;
+            color: white;
+        }
+
+        .upgrade-link {
+            color: #667eea;
+            font-size: 0.8em;
+            text-decoration: none;
+            font-weight: bold;
+        }
+
+        .upgrade-link:hover {
+            text-decoration: underline;
+        }
+
+        .usage-label {
+            font-size: 0.8em;
+            color: #a0aec0;
+            margin-bottom: 5px;
+        }
+
+        .usage-bar {
+            height: 6px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 3px;
+            overflow: hidden;
+            margin-bottom: 5px;
+        }
+
+        .usage-fill {
+            height: 100%;
+            background: #48bb78;
+            transition: width 0.3s ease;
+        }
+
+        .usage-text {
+            font-size: 0.75em;
+            color: #a0aec0;
+            text-align: right;
+        }
+
+        /* Locked Tool Styles */
+        .nav-item.locked {
+            opacity: 0.6;
+            position: relative;
+            cursor: not-allowed;
+        }
+
+        .nav-item.locked::after {
+            content: '\f023'; /* FontAwesome lock icon */
+            font-family: 'Font Awesome 6 Free';
+            font-weight: 900;
+            position: absolute;
+            right: 15px;
+            font-size: 0.9em;
+            color: #f56565;
+        }
+
+        .nav-item.locked:hover {
+            background: transparent;
+            color: inherit;
+        }
+    </style>
+</head>
+<body>
+    <!-- Sidebar Overlay para mobile -->
+    <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
+    
+    <!-- Menu Toggle Button (mobile) -->
+    <button class="menu-toggle" onclick="toggleSidebarMobile()" aria-label="Menu">
+        <i class="fas fa-bars"></i>
+    </button>
+    
+    <!-- Sidebar -->
+    <div class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <i class="fas fa-shield-halved"></i>
+            <h2>Security Scanner Pro</h2>
+        </div>
+        <nav class="sidebar-nav">
+            <a href="#dashboard" class="nav-item active" data-page="dashboard">
+                <i class="fas fa-home"></i>
+                <span>Dashboard</span>
+            </a>
+            <a href="#phishing" class="nav-item" data-page="phishing">
+                <i class="fas fa-fish"></i>
+                <span>Phishing Generator</span>
+            </a>
+            <a href="#payloads" class="nav-item" data-page="payloads">
+                <i class="fas fa-bomb"></i>
+                <span>Payload Generator</span>
+            </a>
+            <a href="#encoder" class="nav-item" data-page="encoder">
+                <i class="fas fa-code"></i>
+                <span>Encoder/Decoder</span>
+            </a>
+            <a href="#scanner" class="nav-item" data-page="scanner">
+                <i class="fas fa-bug"></i>
+                <span>Code Scanner</span>
+            </a>
+            <a href="#port-scan" class="nav-item" data-page="port-scan">
+                <i class="fas fa-network-wired"></i>
+                <span>Port Scanner</span>
+            </a>
+            
+            <!-- Manual de Uso -->
+            <a href="/manual.html" class="nav-item nav-item-manual nav-external" target="_blank" rel="noopener">
+                <i class="fas fa-book"></i>
+                <span>Manual de Uso</span>
+                <i class="fas fa-external-link-alt" style="font-size: 12px; margin-left: auto;"></i>
+            </a>
+            
+            <!-- Painel Admin (apenas para administradores) -->
+            <a href="/admin.html" class="nav-item nav-item-admin nav-external" id="adminLink" style="display: none;" target="_blank" rel="noopener">
+                <i class="fas fa-user-shield"></i>
+                <span>Painel Admin</span>
+                <i class="fas fa-external-link-alt" style="font-size: 12px; margin-left: auto;"></i>
+            </a>
+            
+            <!-- Red Team Tools -->
+            <div class="nav-section">
+                <span class="nav-section-title">Red Team</span>
+            </div>
+            <a href="#sql-injection" class="nav-item" data-page="sql-injection">
+                <i class="fas fa-database"></i>
+                <span>SQL Injection Tester</span>
+            </a>
+            <a href="#xss-tester" class="nav-item" data-page="xss-tester">
+                <i class="fas fa-code-branch"></i>
+                <span>XSS Vulnerability Tester</span>
+            </a>
+            <a href="#brute-force" class="nav-item" data-page="brute-force">
+                <i class="fas fa-key"></i>
+                <span>Brute Force Tool</span>
+            </a>
+            <a href="#subdomain" class="nav-item" data-page="subdomain">
+                <i class="fas fa-sitemap"></i>
+                <span>Subdomain Enumeration</span>
+            </a>
+            
+            <!-- Blue Team Tools -->
+            <div class="nav-section">
+                <span class="nav-section-title">Blue Team</span>
+            </div>
+            <a href="#log-analyzer" class="nav-item" data-page="log-analyzer">
+                <i class="fas fa-file-alt"></i>
+                <span>Log Analyzer</span>
+            </a>
+            <a href="#threat-intel" class="nav-item" data-page="threat-intel">
+                <i class="fas fa-shield-virus"></i>
+                <span>Threat Intelligence</span>
+            </a>
+            <a href="#hash-analyzer" class="nav-item" data-page="hash-analyzer">
+                <i class="fas fa-fingerprint"></i>
+                <span>Hash Analyzer</span>
+            </a>
+            <a href="#password-strength" class="nav-item" data-page="password-strength">
+                <i class="fas fa-lock"></i>
+                <span>Password Strength Checker</span>
+            </a>
+            
+            <a href="#reports" class="nav-item" data-page="reports">
+                <i class="fas fa-file-pdf"></i>
+                <span>Reports</span>
+            </a>
+        </nav>
+
+        <!-- Subscription Info -->
+        <div class="subscription-card" id="subscriptionCard" style="display: none;">
+            <div class="subscription-header">
+                <span class="plan-badge" id="planBadge">FREE</span>
+                <a href="pricing.html" class="upgrade-link">Upgrade</a>
+            </div>
+            <div class="subscription-usage">
+                <div class="usage-label">Scans este mês</div>
+                <div class="usage-bar">
+                    <div class="usage-fill" id="usageFill" style="width: 0%"></div>
+                </div>
+                <div class="usage-text" id="usageText">0 / 10</div>
+            </div>
+        </div>
+
+        <div class="sidebar-footer">
+            <div class="user-info">
+                <i class="fas fa-user-circle"></i>
+                <span id="username">Admin</span>
+            </div>
+            <button class="btn-logout" onclick="logout()">
+                <i class="fas fa-sign-out-alt"></i>
+                Sair
+            </button>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <!-- Header -->
+        <header class="header">
+            <button class="btn-toggle-sidebar" onclick="toggleSidebar()">
+                <i class="fas fa-bars"></i>
+            </button>
+            <div class="header-search">
+                <i class="fas fa-search"></i>
+                <input type="text" id="global-search" placeholder="Pesquisar ferramentas..." onkeyup="performSearch(this.value)">
+            </div>
+            <div id="search-results" class="search-results-dropdown" style="display: none;"></div>
+            <div class="header-actions">
+                <button class="btn-icon" id="notification-icon" onclick="showNotificationsPanel()" title="Notificações">
+                    <i class="fas fa-bell"></i>
+                    <span class="badge badge-danger">3</span>
+                </button>
+            </div>
+        </header>
+
+        <!-- Dashboard Page -->
+        <div class="page active" id="dashboard-page">
+            <div class="page-header">
+                <h1>Dashboard</h1>
+                <p>Bem-vindo ao Security Scanner Professional</p>
+            </div>
+
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-icon" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                        <i class="fas fa-shield-halved"></i>
+                    </div>
+                    <div class="stat-content">
+                        <h3 id="total-scans">0</h3>
+                        <p>Total de Scans</p>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+                        <i class="fas fa-exclamation-triangle"></i>
+                    </div>
+                    <div class="stat-content">
+                        <h3 id="total-vulns">0</h3>
+                        <p>Vulnerabilidades</p>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
+                        <i class="fas fa-fish"></i>
+                    </div>
+                    <div class="stat-content">
+                        <h3 id="total-phishing">0</h3>
+                        <p>Páginas Phishing</p>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon" style="background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);">
+                        <i class="fas fa-file-pdf"></i>
+                    </div>
+                    <div class="stat-content">
+                        <h3 id="total-reports">0</h3>
+                        <p>Relatórios</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="tools-grid">
+                <div class="tool-card">
+                    <div class="tool-icon">
+                        <i class="fas fa-fish"></i>
+                    </div>
+                    <h3>Phishing Generator</h3>
+                    <p>Crie páginas de phishing realistas para testes de segurança</p>
+                    <button class="btn-primary" onclick="navigateTo('phishing')">
+                        <span>Abrir</span>
+                        <i class="fas fa-arrow-right"></i>
+                    </button>
+                </div>
+                <div class="tool-card">
+                    <div class="tool-icon">
+                        <i class="fas fa-bomb"></i>
+                    </div>
+                    <h3>Payload Generator</h3>
+                    <p>Gere payloads para XSS, SQL Injection e mais</p>
+                    <button class="btn-primary" onclick="navigateTo('payloads')">
+                        <span>Abrir</span>
+                        <i class="fas fa-arrow-right"></i>
+                    </button>
+                </div>
+                <div class="tool-card">
+                    <div class="tool-icon">
+                        <i class="fas fa-code"></i>
+                    </div>
+                    <h3>Encoder/Decoder</h3>
+                    <p>Codifique e decodifique textos em diversos formatos</p>
+                    <button class="btn-primary" onclick="navigateTo('encoder')">
+                        <span>Abrir</span>
+                        <i class="fas fa-arrow-right"></i>
+                    </button>
+                </div>
+                <div class="tool-card">
+                    <div class="tool-icon">
+                        <i class="fas fa-bug"></i>
+                    </div>
+                    <h3>Code Scanner</h3>
+                    <p>Analise código em 7+ linguagens para vulnerabilidades</p>
+                    <button class="btn-primary" onclick="navigateTo('scanner')">
+                        <span>Abrir</span>
+                        <i class="fas fa-arrow-right"></i>
+                    </button>
+                </div>
+                <div class="tool-card">
+                    <div class="tool-icon">
+                        <i class="fas fa-network-wired"></i>
+                    </div>
+                    <h3>Port Scanner</h3>
+                    <p>Escaneie portas e serviços de rede</p>
+                    <button class="btn-primary" onclick="navigateTo('port-scan')">
+                        <span>Abrir</span>
+                        <i class="fas fa-arrow-right"></i>
+                    </button>
+                </div>
+                <div class="tool-card">
+                    <div class="tool-icon">
+                        <i class="fas fa-file-pdf"></i>
+                    </div>
+                    <h3>PDF Reports</h3>
+                    <p>Gere relatórios profissionais em PDF</p>
+                    <button class="btn-primary" onclick="navigateTo('reports')">
+                        <span>Abrir</span>
+                        <i class="fas fa-arrow-right"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Phishing Generator Page -->
+        <div class="page" id="phishing-page">
+            <div class="page-header">
+                <h1><i class="fas fa-fish"></i> Phishing Page Generator</h1>
+                <p>Crie páginas de phishing para testes de conscientização de segurança</p>
+            </div>
+
+            <div class="content-grid">
+                <div class="card">
+                    <div class="card-header">
+                        <h2>Configuração</h2>
+                    </div>
+                    <div class="card-body">
+                        <div class="form-group">
+                            <label>Template</label>
+                            <select id="phishing-template" class="form-control">
+                                <option value="">Carregando...</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>URL de Redirecionamento</label>
+                            <input type="url" id="redirect-url" class="form-control" value="https://google.com" placeholder="https://exemplo.com">
+                        </div>
+                        <div class="form-group">
+                            <label>Webhook de Captura (opcional)</label>
+                            <input type="url" id="capture-webhook" class="form-control" placeholder="https://webhook.site/...">
+                        </div>
+                        <div class="form-group">
+                            <label>Título Personalizado (opcional)</label>
+                            <input type="text" id="custom-title" class="form-control" placeholder="Deixe vazio para usar padrão">
+                        </div>
+                        <div class="form-group">
+                            <label>Tempo de Expiração</label>
+                            <select id="expiration-time" class="form-control">
+                                <option value="1">1 hora</option>
+                                <option value="6">6 horas</option>
+                                <option value="12">12 horas</option>
+                                <option value="24" selected>24 horas (1 dia)</option>
+                                <option value="72">72 horas (3 dias)</option>
+                                <option value="168">168 horas (7 dias)</option>
+                                <option value="720">720 horas (30 dias)</option>
+                                <option value="0">Nunca expira</option>
+                            </select>
+                            <small class="form-text">O link expirará após o tempo selecionado e será removido do histórico</small>
+                        </div>
+                        <button class="btn-primary btn-block" onclick="generatePhishingPage()">
+                            <i class="fas fa-plus"></i>
+                            Gerar Página
+                        </button>
+                    </div>
+                </div>
+
+                <div class="card card-full">
+                    <div class="card-header">
+                        <h2><i class="fas fa-link"></i> Links Gerados</h2>
+                        <div>
+                            <button class="btn-sm" onclick="clearAllPhishingPages()" style="background: #dc3545; margin-right: 5px;" title="Apagar todos os links">
+                                <i class="fas fa-trash-alt"></i> Limpar Tudo
+                            </button>
+                            <button class="btn-sm" onclick="loadPhishingPages()" title="Atualizar lista">
+                                <i class="fas fa-sync"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div id="phishing-pages-list">
+                            <p class="text-muted">Nenhuma página gerada ainda</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card card-full">
+                    <div class="card-header">
+                        <h2><i class="fas fa-camera"></i> Capturas (Fotos & Localizações)</h2>
+                        <div>
+                            <button class="btn-sm" onclick="loadPhishingCaptures()">
+                                <i class="fas fa-sync"></i>
+                            </button>
+                            <button class="btn-sm" onclick="clearPhishingCaptures()" style="background: #dc3545; margin-left: 5px;">
+                                <i class="fas fa-trash"></i> Limpar
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div id="phishing-captures-list">
+                            <p class="text-muted">Nenhuma captura ainda. Compartilhe suas páginas de phishing para capturar dados.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="alert alert-warning">
+                <i class="fas fa-exclamation-triangle"></i>
+                <strong>Aviso Legal:</strong> Use apenas para testes autorizados e treinamentos de segurança. O uso não autorizado pode ser ilegal.
+            </div>
+        </div>
+
+        <!-- Payload Generator Page -->
+        <div class="page" id="payloads-page">
+            <div class="page-header">
+                <h1><i class="fas fa-bomb"></i> Payload Generator</h1>
+                <p>Gere payloads para testes de penetração</p>
+            </div>
+
+            <div class="content-grid">
+                <div class="card">
+                    <div class="card-header">
+                        <h2>Configuração</h2>
+                    </div>
+                    <div class="card-body">
+                        <div class="form-group">
+                            <label>Categoria</label>
+                            <select id="payload-category" class="form-control">
+                                <option value="">Carregando...</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>
+                                <input type="checkbox" id="encode-payload">
+                                Codificar Payloads
+                            </label>
+                        </div>
+                        <div class="form-group" id="encoding-type-group" style="display: none;">
+                            <label>Tipo de Codificação</label>
+                            <select id="encoding-type" class="form-control">
+                                <option value="url">URL Encoding</option>
+                                <option value="base64">Base64</option>
+                                <option value="html">HTML Entities</option>
+                                <option value="double_url">Double URL</option>
+                            </select>
+                        </div>
+                        <button class="btn-primary btn-block" onclick="generatePayloads()">
+                            <i class="fas fa-bomb"></i>
+                            Gerar Payloads
+                        </button>
+                    </div>
+                </div>
+
+                <div class="card card-full">
+                    <div class="card-header">
+                        <h2>Payloads Gerados</h2>
+                        <span id="payload-count" class="badge">0</span>
+                    </div>
+                    <div class="card-body">
+                        <div id="payloads-list">
+                            <p class="text-muted">Selecione uma categoria e clique em "Gerar Payloads"</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Encoder/Decoder Page -->
+        <div class="page" id="encoder-page">
+            <div class="page-header">
+                <h1><i class="fas fa-code"></i> Encoder / Decoder / Hash</h1>
+                <p>Codifique, decodifique e gere hashes</p>
+            </div>
+
+            <div class="tabs">
+                <button class="tab-btn active" data-tab="encode-tab">Codificar</button>
+                <button class="tab-btn" data-tab="decode-tab">Decodificar</button>
+                <button class="tab-btn" data-tab="hash-tab">Hash</button>
+            </div>
+
+            <div class="tab-content active" id="encode-tab">
+                <div class="card">
+                    <div class="card-body">
+                        <div class="form-group">
+                            <label>Texto para Codificar</label>
+                            <textarea id="encode-input" class="form-control" rows="5" placeholder="Digite o texto aqui..."></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label>Tipo de Codificação</label>
+                            <select id="encode-type" class="form-control">
+                                <option value="">Carregando...</option>
+                            </select>
+                        </div>
+                        <button class="btn-primary" onclick="encodeText()">
+                            <i class="fas fa-lock"></i>
+                            Codificar
+                        </button>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-header">
+                        <h2>Resultado</h2>
+                        <button class="btn-sm" onclick="copyToClipboard('encode-output')">
+                            <i class="fas fa-copy"></i>
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <textarea id="encode-output" class="form-control" rows="5" readonly></textarea>
+                    </div>
+                </div>
+            </div>
+
+            <div class="tab-content" id="decode-tab">
+                <div class="card">
+                    <div class="card-body">
+                        <div class="form-group">
+                            <label>Texto para Decodificar</label>
+                            <textarea id="decode-input" class="form-control" rows="5" placeholder="Cole o texto codificado aqui..."></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label>Tipo de Decodificação</label>
+                            <select id="decode-type" class="form-control">
+                                <option value="">Carregando...</option>
+                            </select>
+                        </div>
+                        <button class="btn-primary" onclick="decodeText()">
+                            <i class="fas fa-unlock"></i>
+                            Decodificar
+                        </button>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-header">
+                        <h2>Resultado</h2>
+                        <button class="btn-sm" onclick="copyToClipboard('decode-output')">
+                            <i class="fas fa-copy"></i>
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <textarea id="decode-output" class="form-control" rows="5" readonly></textarea>
+                    </div>
+                </div>
+            </div>
+
+            <div class="tab-content" id="hash-tab">
+                <div class="card">
+                    <div class="card-body">
+                        <div class="form-group">
+                            <label>Texto para Hash</label>
+                            <textarea id="hash-input" class="form-control" rows="5" placeholder="Digite o texto para gerar hash..."></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label>Algoritmo de Hash</label>
+                            <select id="hash-type" class="form-control">
+                                <option value="">Carregando...</option>
+                            </select>
+                        </div>
+                        <button class="btn-primary" onclick="hashText()">
+                            <i class="fas fa-hashtag"></i>
+                            Gerar Hash
+                        </button>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-header">
+                        <h2>Resultado</h2>
+                        <button class="btn-sm" onclick="copyToClipboard('hash-output')">
+                            <i class="fas fa-copy"></i>
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <textarea id="hash-output" class="form-control" rows="3" readonly></textarea>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Code Scanner Page -->
+        <div class="page" id="scanner-page">
+            <div class="page-header">
+                <h1><i class="fas fa-bug"></i> Code Scanner</h1>
+                <p>Análise de vulnerabilidades em 7+ linguagens</p>
+            </div>
+
+            <div class="content-grid">
+                <div class="card">
+                    <div class="card-header">
+                        <h2>Configuração do Scanner</h2>
+                    </div>
+                    <div class="card-body">
+                        <div class="form-group">
+                            <label>Fonte do Código</label>
+                            <select id="code-source-type" class="form-control" onchange="toggleCodeSource()">
+                                <option value="file">Upload de Arquivo</option>
+                                <option value="text">Cole o Código</option>
+                                <option value="url">URL do Repositório/Arquivo</option>
+                            </select>
+                        </div>
+                        
+                        <div id="file-source-group" class="form-group">
+                            <label>Selecione o arquivo para análise</label>
+                            <input type="file" id="code-file" class="form-control" accept=".py,.js,.jsx,.ts,.tsx,.php,.java,.rb,.go,.rs,.cpp,.c,.html,.css">
+                        </div>
+                        
+                        <div id="text-source-group" class="form-group" style="display: none;">
+                            <label>Cole o código aqui</label>
+                            <textarea id="code-content" class="form-control" rows="10" placeholder="Cole seu código aqui..."></textarea>
+                        </div>
+                        
+                        <div id="url-source-group" class="form-group" style="display: none;">
+                            <label>URL do arquivo ou repositório</label>
+                            <input type="url" id="code-url" class="form-control" placeholder="https://github.com/user/repo ou https://raw.githubusercontent.com/...">
+                            <small class="form-text">Suporta arquivos raw do GitHub, GitLab, Pastebin, etc.</small>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>Linguagem</label>
+                            <select id="code-language" class="form-control">
+                                <option value="auto">Auto-detectar</option>
+                                <option value="python">Python</option>
+                                <option value="javascript">JavaScript/TypeScript</option>
+                                <option value="php">PHP</option>
+                                <option value="java">Java</option>
+                                <option value="ruby">Ruby</option>
+                                <option value="go">Go</option>
+                                <option value="rust">Rust</option>
+                                <option value="cpp">C/C++</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label><i class="fas fa-cog"></i> Opções de Scan</label>
+                            <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 10px;">
+                                <label style="display: flex; align-items: center; gap: 8px; font-weight: normal;">
+                                    <input type="checkbox" id="scan-sql-injection" checked>
+                                    <span>SQL Injection</span>
+                                </label>
+                                <label style="display: flex; align-items: center; gap: 8px; font-weight: normal;">
+                                    <input type="checkbox" id="scan-xss" checked>
+                                    <span>Cross-Site Scripting (XSS)</span>
+                                </label>
+                                <label style="display: flex; align-items: center; gap: 8px; font-weight: normal;">
+                                    <input type="checkbox" id="scan-command-injection" checked>
+                                    <span>Command Injection</span>
+                                </label>
+                                <label style="display: flex; align-items: center; gap: 8px; font-weight: normal;">
+                                    <input type="checkbox" id="scan-path-traversal" checked>
+                                    <span>Path Traversal</span>
+                                </label>
+                                <label style="display: flex; align-items: center; gap: 8px; font-weight: normal;">
+                                    <input type="checkbox" id="scan-hardcoded-secrets" checked>
+                                    <span>Hardcoded Secrets/Credentials</span>
+                                </label>
+                                <label style="display: flex; align-items: center; gap: 8px; font-weight: normal;">
+                                    <input type="checkbox" id="scan-insecure-functions" checked>
+                                    <span>Funções Inseguras</span>
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <button class="btn-primary btn-block" onclick="scanCode()">
+                            <i class="fas fa-search"></i>
+                            Analisar Código
+                        </button>
+                    </div>
+                </div>
+
+                <div class="card card-full">
+                    <div class="card-header">
+                        <h2>Resultados da Análise</h2>
+                        <span id="vuln-count" class="badge">0</span>
+                    </div>
+                    <div class="card-body">
+                        <div id="scan-results">
+                            <p class="text-muted">Faça upload de um arquivo ou cole código para iniciar a análise</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="alert alert-warning">
+                <i class="fas fa-exclamation-triangle"></i>
+                <strong>Nota:</strong> Esta ferramenta realiza análise estática básica. Para resultados mais precisos, considere usar ferramentas especializadas adicionais.
+            </div>
+        </div>
+
+        <!-- Port Scanner Page -->
+        <div class="page" id="port-scan-page">
+            <div class="page-header">
+                <h1><i class="fas fa-network-wired"></i> Port Scanner</h1>
+                <p>Escaneie portas e serviços de rede</p>
+            </div>
+
+            <div class="content-grid">
+                <div class="card">
+                    <div class="card-header">
+                        <h2>Configuração do Scan</h2>
+                    </div>
+                    <div class="card-body">
+                        <div class="form-group">
+                            <label>Alvo (IP ou Hostname)</label>
+                            <input type="text" id="port-target" class="form-control" placeholder="192.168.1.1 ou example.com">
+                        </div>
+                        <div class="form-group">
+                            <label>Tipo de Scan</label>
+                            <select id="port-scan-type" class="form-control">
+                                <option value="common">Portas Comuns (rápido)</option>
+                                <option value="custom">Portas Customizadas</option>
+                                <option value="range">Range de Portas</option>
+                            </select>
+                        </div>
+                        <div class="form-group" id="custom-ports-group" style="display: none;">
+                            <label>Portas (separadas por vírgula)</label>
+                            <input type="text" id="custom-ports" class="form-control" placeholder="80,443,8080,3306">
+                        </div>
+                        <div class="form-group" id="port-range-group" style="display: none;">
+                            <label>Range de Portas</label>
+                            <div style="display: flex; gap: 10px;">
+                                <input type="number" id="port-start" class="form-control" placeholder="Início" value="1">
+                                <input type="number" id="port-end" class="form-control" placeholder="Fim" value="1000">
+                            </div>
+                        </div>
+                        <button class="btn-primary btn-block" onclick="startPortScan()">
+                            <i class="fas fa-search"></i>
+                            Iniciar Scan
+                        </button>
+                    </div>
+                </div>
+
+                <div class="card card-full">
+                    <div class="card-header">
+                        <h2>Portas Abertas</h2>
+                        <span id="open-ports-count" class="badge">0</span>
+                    </div>
+                    <div class="card-body">
+                        <div id="port-scan-results">
+                            <p class="text-muted">Configure um scan e clique em "Iniciar Scan"</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="alert alert-warning">
+                <i class="fas fa-exclamation-triangle"></i>
+                <strong>Aviso Legal:</strong> Escaneie apenas sistemas que você tem autorização para testar. Scans não autorizados podem ser ilegais.
+            </div>
+        </div>
+
+        <!-- Reports Page -->
+        <div class="page" id="reports-page">
+            <div class="page-header">
+                <h1><i class="fas fa-file-pdf"></i> Relatórios</h1>
+                <p>Gere relatórios profissionais em PDF dos seus scans</p>
+            </div>
+
+            <div class="content-grid">
+                <div class="card card-full">
+                    <div class="card-header">
+                        <h2>Scans Disponíveis</h2>
+                        <button class="btn-sm" onclick="loadAvailableScans()">
+                            <i class="fas fa-sync"></i>
+                            Atualizar
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <div id="available-scans">
+                            <p class="text-muted">Carregando scans...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle"></i>
+                <strong>Dica:</strong> Os relatórios incluem análise detalhada, gráficos e recomendações de segurança.
+            </div>
+        </div>
+
+        <!-- SQL Injection Tester Page -->
+        <div class="page" id="sql-injection-page">
+            <div class="page-header">
+                <h1><i class="fas fa-database"></i> SQL Injection Tester</h1>
+                <p>Teste vulnerabilidades SQL Injection em aplicações web</p>
+            </div>
+
+            <div class="content-grid">
+                <div class="card">
+                    <div class="card-header">
+                        <h2>Configuração do Teste</h2>
+                    </div>
+                    <div class="card-body">
+                        <div class="form-group">
+                            <label><i class="fas fa-link"></i> URL Alvo</label>
+                            <input type="url" id="sqli-url" class="form-control" placeholder="https://example.com/login.php?id=1">
+                        </div>
+                        <div class="form-group">
+                            <label><i class="fas fa-cog"></i> Método HTTP</label>
+                            <select id="sqli-method" class="form-control">
+                                <option value="GET">GET</option>
+                                <option value="POST">POST</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label><i class="fas fa-list"></i> Parâmetros a Testar</label>
+                            <input type="text" id="sqli-params" class="form-control" placeholder="id, user, search">
+                        </div>
+                        <div class="form-group">
+                            <label><i class="fas fa-vial"></i> Tipo de Payload</label>
+                            <select id="sqli-payload-type" class="form-control">
+                                <option value="basic">Básico (OR 1=1)</option>
+                                <option value="union">UNION Based</option>
+                                <option value="blind">Blind SQL</option>
+                                <option value="time">Time Based</option>
+                                <option value="all">Todos os Tipos</option>
+                            </select>
+                        </div>
+                        <button class="btn-danger btn-block" onclick="startSQLiTest()">
+                            <i class="fas fa-flask"></i>
+                            Iniciar Teste
+                        </button>
+                    </div>
+                </div>
+
+                <div class="card card-full">
+                    <div class="card-header">
+                        <h2>Resultados do Teste</h2>
+                        <span id="sqli-vuln-count" class="badge badge-danger">0</span>
+                    </div>
+                    <div class="card-body">
+                        <div id="sqli-results">
+                            <p class="text-muted">Configure o teste e clique em "Iniciar Teste"</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="alert alert-danger">
+                <i class="fas fa-exclamation-triangle"></i>
+                <strong>Aviso:</strong> Use apenas em sistemas que você tem autorização. Testes não autorizados são ilegais.
+            </div>
+        </div>
+
+        <!-- XSS Tester Page -->
+        <div class="page" id="xss-tester-page">
+            <div class="page-header">
+                <h1><i class="fas fa-code-branch"></i> XSS Vulnerability Tester</h1>
+                <p>Detecte vulnerabilidades Cross-Site Scripting</p>
+            </div>
+
+            <div class="content-grid">
+                <div class="card">
+                    <div class="card-header">
+                        <h2>Configuração</h2>
+                    </div>
+                    <div class="card-body">
+                        <div class="form-group">
+                            <label><i class="fas fa-link"></i> URL Alvo</label>
+                            <input type="url" id="xss-url" class="form-control" placeholder="https://example.com/search?q=test">
+                        </div>
+                        <div class="form-group">
+                            <label><i class="fas fa-list"></i> Parâmetros a Testar</label>
+                            <input type="text" id="xss-params" class="form-control" placeholder="q, search, name">
+                        </div>
+                        <div class="form-group">
+                            <label><i class="fas fa-code"></i> Tipo de Payload</label>
+                            <select id="xss-payload-type" class="form-control">
+                                <option value="reflected">Reflected XSS</option>
+                                <option value="stored">Stored XSS</option>
+                                <option value="dom">DOM Based XSS</option>
+                                <option value="all">Todos os Tipos</option>
+                            </select>
+                        </div>
+                        <button class="btn-warning btn-block" onclick="startXSSTest()">
+                            <i class="fas fa-bug"></i>
+                            Testar XSS
+                        </button>
+                    </div>
+                </div>
+
+                <div class="card card-full">
+                    <div class="card-header">
+                        <h2>Vulnerabilidades Detectadas</h2>
+                        <span id="xss-vuln-count" class="badge badge-warning">0</span>
+                    </div>
+                    <div class="card-body">
+                        <div id="xss-results">
+                            <p class="text-muted">Configure e inicie o teste</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Brute Force Tool Page -->
+        <div class="page" id="brute-force-page">
+            <div class="page-header">
+                <h1><i class="fas fa-key"></i> Brute Force Tool</h1>
+                <p>Ferramenta de autenticação brute force</p>
+            </div>
+
+            <div class="content-grid">
+                <div class="card">
+                    <div class="card-header">
+                        <h2>Configuração</h2>
+                    </div>
+                    <div class="card-body">
+                        <div class="form-group">
+                            <label><i class="fas fa-link"></i> URL de Login</label>
+                            <input type="url" id="bf-url" class="form-control" placeholder="https://example.com/login">
+                        </div>
+                        <div class="form-group">
+                            <label><i class="fas fa-user"></i> Campo de Usuário</label>
+                            <input type="text" id="bf-user-field" class="form-control" placeholder="username" value="username">
+                        </div>
+                        <div class="form-group">
+                            <label><i class="fas fa-lock"></i> Campo de Senha</label>
+                            <input type="text" id="bf-pass-field" class="form-control" placeholder="password" value="password">
+                        </div>
+                        <div class="form-group">
+                            <label><i class="fas fa-users"></i> Lista de Usuários</label>
+                            <textarea id="bf-userlist" class="form-control" rows="3" placeholder="admin&#10;root&#10;user"></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label><i class="fas fa-key"></i> Wordlist de Senhas</label>
+                            <select id="bf-wordlist" class="form-control">
+                                <option value="common">Senhas Comuns (Top 100)</option>
+                                <option value="medium">Wordlist Média (Top 1000)</option>
+                                <option value="custom">Custom (upload)</option>
+                            </select>
+                        </div>
+                        <button class="btn-danger btn-block" onclick="startBruteForce()">
+                            <i class="fas fa-bolt"></i>
+                            Iniciar Brute Force
+                        </button>
+                    </div>
+                </div>
+
+                <div class="card card-full">
+                    <div class="card-header">
+                        <h2>Status da Operação</h2>
+                        <span id="bf-progress" class="badge">0%</span>
+                    </div>
+                    <div class="card-body">
+                        <div id="bf-results">
+                            <p class="text-muted">Configure e inicie o ataque</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="alert alert-danger">
+                <i class="fas fa-skull-crossbones"></i>
+                <strong>Aviso Crítico:</strong> Use apenas em ambientes autorizados. Brute force não autorizado é crime.
+            </div>
+        </div>
+
+        <!-- Subdomain Enumeration Page -->
+        <div class="page" id="subdomain-page">
+            <div class="page-header">
+                <h1><i class="fas fa-sitemap"></i> Subdomain Enumeration</h1>
+                <p>Descubra subdomínios de um domínio alvo</p>
+            </div>
+
+            <div class="content-grid">
+                <div class="card">
+                    <div class="card-header">
+                        <h2>Configuração</h2>
+                    </div>
+                    <div class="card-body">
+                        <div class="form-group">
+                            <label><i class="fas fa-globe"></i> Domínio Alvo</label>
+                            <input type="text" id="subdomain-target" class="form-control" placeholder="example.com">
+                        </div>
+                        <div class="form-group">
+                            <label><i class="fas fa-list"></i> Método de Enumeração</label>
+                            <select id="subdomain-method" class="form-control">
+                                <option value="dns">DNS Bruteforce</option>
+                                <option value="certificate">Certificate Transparency</option>
+                                <option value="api">APIs Públicas</option>
+                                <option value="all">Todos os Métodos</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label><i class="fas fa-book"></i> Wordlist</label>
+                            <select id="subdomain-wordlist" class="form-control">
+                                <option value="small">Pequena (100 termos)</option>
+                                <option value="medium">Média (1000 termos)</option>
+                                <option value="large">Grande (5000 termos)</option>
+                            </select>
+                        </div>
+                        <button class="btn-primary btn-block" onclick="startSubdomainEnum()">
+                            <i class="fas fa-search"></i>
+                            Iniciar Enumeração
+                        </button>
+                    </div>
+                </div>
+
+                <div class="card card-full">
+                    <div class="card-header">
+                        <h2>Subdomínios Encontrados</h2>
+                        <span id="subdomain-count" class="badge badge-success">0</span>
+                    </div>
+                    <div class="card-body">
+                        <div id="subdomain-results">
+                            <p class="text-muted">Inicie a enumeração</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Log Analyzer Page -->
+        <div class="page" id="log-analyzer-page">
+            <div class="page-header">
+                <h1><i class="fas fa-file-alt"></i> Log Analyzer</h1>
+                <p>Analise logs de sistema em busca de atividades suspeitas</p>
+            </div>
+
+            <div class="content-grid">
+                <div class="card">
+                    <div class="card-header">
+                        <h2>Upload de Log</h2>
+                    </div>
+                    <div class="card-body">
+                        <div class="form-group">
+                            <label><i class="fas fa-file"></i> Tipo de Log</label>
+                            <select id="log-type" class="form-control">
+                                <option value="apache">Apache Access Log</option>
+                                <option value="nginx">Nginx Access Log</option>
+                                <option value="auth">Auth Log (SSH/Login)</option>
+                                <option value="firewall">Firewall Log</option>
+                                <option value="custom">Custom</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label><i class="fas fa-upload"></i> Arquivo de Log</label>
+                            <input type="file" id="log-file" class="form-control" accept=".log,.txt">
+                        </div>
+                        <div class="form-group">
+                            <label><i class="fas fa-filter"></i> Filtros de Análise</label>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                                <label style="display: flex; align-items: center; gap: 8px;">
+                                    <input type="checkbox" id="filter-failed-login" checked> Failed Logins
+                                </label>
+                                <label style="display: flex; align-items: center; gap: 8px;">
+                                    <input type="checkbox" id="filter-sql-injection" checked> SQL Injection
+                                </label>
+                                <label style="display: flex; align-items: center; gap: 8px;">
+                                    <input type="checkbox" id="filter-xss" checked> XSS Attempts
+                                </label>
+                                <label style="display: flex; align-items: center; gap: 8px;">
+                                    <input type="checkbox" id="filter-suspicious-ip" checked> Suspicious IPs
+                                </label>
+                            </div>
+                        </div>
+                        <button class="btn-success btn-block" onclick="analyzeLog()">
+                            <i class="fas fa-chart-line"></i>
+                            Analisar Log
+                        </button>
+                    </div>
+                </div>
+
+                <div class="card card-full">
+                    <div class="card-header">
+                        <h2>Resultados da Análise</h2>
+                        <span id="log-threats" class="badge badge-danger">0</span>
+                    </div>
+                    <div class="card-body">
+                        <div id="log-results">
+                            <p class="text-muted">Faça upload de um log para análise</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Threat Intelligence Page -->
+        <div class="page" id="threat-intel-page">
+            <div class="page-header">
+                <h1><i class="fas fa-shield-virus"></i> Threat Intelligence</h1>
+                <p>Consulte threat intelligence de IPs, domains e hashes</p>
+            </div>
+
+            <div class="content-grid">
+                <div class="card">
+                    <div class="card-header">
+                        <h2>Consulta</h2>
+                    </div>
+                    <div class="card-body">
+                        <div class="form-group">
+                            <label><i class="fas fa-search"></i> Tipo de Consulta</label>
+                            <select id="threat-type" class="form-control">
+                                <option value="ip">IP Address</option>
+                                <option value="domain">Domain</option>
+                                <option value="hash">File Hash</option>
+                                <option value="url">URL</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label><i class="fas fa-crosshairs"></i> Alvo da Consulta</label>
+                            <input type="text" id="threat-target" class="form-control" placeholder="8.8.8.8 ou malware.com">
+                        </div>
+                        <div class="form-group">
+                            <label><i class="fas fa-database"></i> Fontes de Threat Intel</label>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                                <label style="display: flex; align-items: center; gap: 8px;">
+                                    <input type="checkbox" id="source-virustotal" checked> VirusTotal
+                                </label>
+                                <label style="display: flex; align-items: center; gap: 8px;">
+                                    <input type="checkbox" id="source-abuseipdb" checked> AbuseIPDB
+                                </label>
+                                <label style="display: flex; align-items: center; gap: 8px;">
+                                    <input type="checkbox" id="source-shodan" checked> Shodan
+                                </label>
+                                <label style="display: flex; align-items: center; gap: 8px;">
+                                    <input type="checkbox" id="source-alienvault" checked> AlienVault OTX
+                                </label>
+                            </div>
+                        </div>
+                        <button class="btn-info btn-block" onclick="queryThreatIntel()">
+                            <i class="fas fa-search"></i>
+                            Consultar
+                        </button>
+                    </div>
+                </div>
+
+                <div class="card card-full">
+                    <div class="card-header">
+                        <h2>Informações de Threat Intelligence</h2>
+                        <span id="threat-score" class="badge">N/A</span>
+                    </div>
+                    <div class="card-body">
+                        <div id="threat-results">
+                            <p class="text-muted">Configure e faça uma consulta</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Hash Analyzer Page -->
+        <div class="page" id="hash-analyzer-page">
+            <div class="page-header">
+                <h1><i class="fas fa-fingerprint"></i> Hash Analyzer</h1>
+                <p>Analise e identifique hashes desconhecidos</p>
+            </div>
+
+            <div class="content-grid">
+                <div class="card">
+                    <div class="card-header">
+                        <h2>Análise de Hash</h2>
+                    </div>
+                    <div class="card-body">
+                        <div class="form-group">
+                            <label><i class="fas fa-hashtag"></i> Hash</label>
+                            <textarea id="hash-input" class="form-control" rows="4" placeholder="Insira um ou mais hashes (um por linha)"></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label><i class="fas fa-cog"></i> Tipo de Hash</label>
+                            <select id="hash-type" class="form-control">
+                                <option value="auto">Auto-detectar</option>
+                                <option value="md5">MD5</option>
+                                <option value="sha1">SHA-1</option>
+                                <option value="sha256">SHA-256</option>
+                                <option value="sha512">SHA-512</option>
+                            </select>
+                        </div>
+                        <button class="btn-primary btn-block" onclick="analyzeHash()">
+                            <i class="fas fa-search"></i>
+                            Analisar Hash
+                        </button>
+                    </div>
+                </div>
+
+                <div class="card card-full">
+                    <div class="card-header">
+                        <h2>Resultados</h2>
+                    </div>
+                    <div class="card-body">
+                        <div id="hash-results">
+                            <p class="text-muted">Insira hashes para análise</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Password Strength Checker Page -->
+        <div class="page" id="password-strength-page">
+            <div class="page-header">
+                <h1><i class="fas fa-lock"></i> Password Strength Checker</h1>
+                <p>Avalie a força de senhas e gere senhas seguras</p>
+            </div>
+
+            <div class="content-grid">
+                <div class="card">
+                    <div class="card-header">
+                        <h2>Verificação de Senha</h2>
+                    </div>
+                    <div class="card-body">
+                        <div class="form-group">
+                            <label><i class="fas fa-key"></i> Senha para Análise</label>
+                            <input type="password" id="password-input" class="form-control" placeholder="Digite uma senha">
+                            <small class="text-muted">A senha não é enviada para nenhum servidor</small>
+                        </div>
+                        <button class="btn-primary btn-block" onclick="checkPasswordStrength()">
+                            <i class="fas fa-shield-alt"></i>
+                            Verificar Força
+                        </button>
+                    </div>
+                    
+                    <div class="card-header" style="margin-top: 20px;">
+                        <h2>Gerador de Senhas</h2>
+                    </div>
+                    <div class="card-body">
+                        <div class="form-group">
+                            <label><i class="fas fa-sliders-h"></i> Comprimento</label>
+                            <input type="range" id="pwd-length" min="8" max="32" value="16" class="form-control">
+                            <span id="pwd-length-display">16</span>
+                        </div>
+                        <div class="form-group">
+                            <label>Opções</label>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                                <label style="display: flex; align-items: center; gap: 8px;">
+                                    <input type="checkbox" id="pwd-uppercase" checked> Maiúsculas
+                                </label>
+                                <label style="display: flex; align-items: center; gap: 8px;">
+                                    <input type="checkbox" id="pwd-lowercase" checked> Minúsculas
+                                </label>
+                                <label style="display: flex; align-items: center; gap: 8px;">
+                                    <input type="checkbox" id="pwd-numbers" checked> Números
+                                </label>
+                                <label style="display: flex; align-items: center; gap: 8px;">
+                                    <input type="checkbox" id="pwd-symbols" checked> Símbolos
+                                </label>
+                            </div>
+                        </div>
+                        <button class="btn-success btn-block" onclick="generatePassword()">
+                            <i class="fas fa-magic"></i>
+                            Gerar Senha Forte
+                        </button>
+                    </div>
+                </div>
+
+                <div class="card card-full">
+                    <div class="card-header">
+                        <h2>Análise de Força</h2>
+                    </div>
+                    <div class="card-body">
+                        <div id="password-results">
+                            <p class="text-muted">Digite uma senha para análise</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div class="toast" id="toast"></div>
+
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loading">
+        <div class="spinner"></div>
+    </div>
+
+    <script src="js/modern-app.js?v=7.3"></script>
+</body>
+</html>

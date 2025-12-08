@@ -1,0 +1,196 @@
+╔════════════════════════════════════════════════════════════╗
+║         🔐 CREDENCIAIS DE ACESSO ADMINISTRATIVO           ║
+╚════════════════════════════════════════════════════════════╝
+
+📋 INFORMAÇÕES DO ADMINISTRADOR:
+──────────────────────────────────────────────────────────────
+
+👤 USUÁRIO ADMIN:
+  • ID no banco: 1
+  • Username: admin
+  • Email: mac526@hotmail.com
+  • Privilégio: ✅ Administrador (is_admin = 1)
+
+🔑 CREDENCIAIS DE LOGIN:
+──────────────────────────────────────────────────────────────
+
+  Username: admin
+  Email: mac526@hotmail.com
+  Senha: admin123
+
+  ✅ SENHA DEFINIDA E PRONTA PARA USO!
+  
+  ⚠️ IMPORTANTE: Recomendamos trocar esta senha após o primeiro login
+                 Use o script: python3 reset_admin_password.py
+
+🌐 URLS DE ACESSO:
+──────────────────────────────────────────────────────────────
+
+LOGIN ADMINISTRATIVO:
+  → http://localhost:8000/admin-login.html
+
+PAINEL ADMINISTRATIVO:
+  → http://localhost:8000/admin.html
+  
+  (Se não estiver logado, redireciona automaticamente 
+   para admin-login.html)
+
+DASHBOARD PRINCIPAL:
+  → http://localhost:8000/dashboard.html
+  
+  (Após login, clique em "🛡️ Painel Admin" na sidebar)
+
+🚀 PASSO A PASSO PARA ACESSAR:
+──────────────────────────────────────────────────────────────
+
+MÉTODO 1: Login Direto Admin
+────────────────────────────
+1. Abra: http://localhost:8000/admin-login.html
+2. Digite:
+   • Username: admin
+   • Senha: [sua senha]
+3. Clique em "ACESSAR PAINEL ADMIN"
+4. ✅ Você será redirecionado para o painel administrativo
+
+MÉTODO 2: Via Dashboard
+────────────────────────
+1. Faça login normal: http://localhost:8000/
+2. Use as mesmas credenciais (admin + senha)
+3. No dashboard, procure na sidebar: "🛡️ Painel Admin"
+4. Clique no link
+5. ✅ Você entrará direto no painel (já está autenticado)
+
+❓ SE VOCÊ NÃO LEMBRA A SENHA:
+──────────────────────────────────────────────────────────────
+
+OPÇÃO 1: Resetar a senha do usuário admin
+──────────────────────────────────────────
+
+Execute no terminal:
+
+cd /Users/marcelorodrigues/Desktop/Hacking-Tools/security-scanner/backend
+python3 -c "
+from passlib.context import CryptContext
+import sqlite3
+
+# Defina a nova senha aqui
+nova_senha = 'SuaNovaSenha123!'
+
+# Criptografa a senha
+pwd_context = CryptContext(schemes=['bcrypt'], deprecated='auto')
+senha_hash = pwd_context.hash(nova_senha)
+
+# Atualiza no banco
+conn = sqlite3.connect('security_scanner.db')
+cursor = conn.cursor()
+cursor.execute('UPDATE users SET hashed_password = ? WHERE username = ?', (senha_hash, 'admin'))
+conn.commit()
+conn.close()
+
+print(f'✅ Senha do admin atualizada para: {nova_senha}')
+"
+
+OPÇÃO 2: Criar novo usuário admin
+──────────────────────────────────
+
+cd /Users/marcelorodrigues/Desktop/Hacking-Tools/security-scanner/backend
+python3 create_test_user.py
+
+# Depois, torne-o admin:
+sqlite3 security_scanner.db "UPDATE users SET is_admin = 1 WHERE username='[novo_usuario]';"
+
+📊 OUTROS USUÁRIOS NO SISTEMA:
+──────────────────────────────────────────────────────────────
+
+ID | Username      | Email                    | Admin
+───┼───────────────┼──────────────────────────┼──────
+ 1 | admin         | admin@security.com       | ✅ SIM
+ 2 | MarceloCyber  | thomaz2523@gmail.com     | ❌ NÃO
+ 3 | teste         | teste@teste.com          | ❌ NÃO
+
+💡 DICA: Para usar MarceloCyber como admin:
+──────────────────────────────────────────
+
+sqlite3 security_scanner.db "UPDATE users SET is_admin = 1 WHERE username='MarceloCyber';"
+
+Depois faça login com:
+  • Username: MarceloCyber
+  • Senha: [senha do MarceloCyber]
+
+🔍 VERIFICAR SE VOCÊ ESTÁ LOGADO COMO ADMIN:
+──────────────────────────────────────────────────────────────
+
+1. Faça login no dashboard: http://localhost:8000/
+2. Abra o Console do navegador (F12)
+3. Digite: localStorage.getItem('token')
+4. Copie o token
+5. Acesse: http://localhost:8000/docs
+6. Clique em "Authorize"
+7. Cole o token
+8. Teste o endpoint: GET /api/user/subscription-info
+9. Verifique se "is_admin": true
+
+🛠️ COMANDOS ÚTEIS:
+──────────────────────────────────────────────────────────────
+
+Ver todos os admins:
+  sqlite3 security_scanner.db "SELECT username, email FROM users WHERE is_admin = 1;"
+
+Tornar usuário admin:
+  sqlite3 security_scanner.db "UPDATE users SET is_admin = 1 WHERE username='[usuario]';"
+
+Remover privilégio admin:
+  sqlite3 security_scanner.db "UPDATE users SET is_admin = 0 WHERE username='[usuario]';"
+
+Ver informações de um usuário:
+  sqlite3 security_scanner.db "SELECT * FROM users WHERE username='admin';"
+
+🚨 SOLUÇÃO DE PROBLEMAS:
+──────────────────────────────────────────────────────────────
+
+PROBLEMA: "Acesso negado. Apenas administradores."
+SOLUÇÃO: Verifique se is_admin = 1:
+  sqlite3 security_scanner.db "SELECT username, is_admin FROM users WHERE username='admin';"
+
+PROBLEMA: "Credenciais inválidas"
+SOLUÇÃO 1: Verifique se está digitando corretamente
+SOLUÇÃO 2: Resete a senha (comando acima)
+
+PROBLEMA: Não consigo acessar admin-login.html
+SOLUÇÃO: Verifique se o servidor está rodando:
+  ps aux | grep uvicorn
+  curl http://localhost:8000/admin-login.html
+
+PROBLEMA: Link "Painel Admin" não aparece no dashboard
+SOLUÇÃO: O usuário logado não tem is_admin = 1
+  Torne-o admin com o comando acima
+
+📞 SUPORTE:
+──────────────────────────────────────────────────────────────
+
+Email: mac526@hotmail.com
+Documentação: http://localhost:8000/documentation.html
+FAQ: http://localhost:8000/faq.html
+
+╔════════════════════════════════════════════════════════════╗
+║              🎯 RESUMO RÁPIDO DE ACESSO                   ║
+╚════════════════════════════════════════════════════════════╝
+
+URL: http://localhost:8000/admin-login.html
+
+Username: admin
+Senha: [Sua senha cadastrada]
+
+Se não souber a senha → Use o comando de reset acima
+
+✅ Após login → Painel administrativo completo!
+
+╔════════════════════════════════════════════════════════════╗
+║                  🔐 IMPORTANTE                            ║
+║                                                            ║
+║  Por questões de segurança, a senha NÃO é armazenada     ║
+║  em texto simples no banco de dados.                      ║
+║                                                            ║
+║  Se você esqueceu a senha, use o comando de reset         ║
+║  fornecido acima para criar uma nova senha.              ║
+╚════════════════════════════════════════════════════════════╝

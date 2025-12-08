@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pagamento Confirmado - Security Scanner Pro</title>
+    <link rel="stylesheet" href="css/modern-style.css?v=6.2">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        .success-container {
+            background: white;
+            border-radius: 20px;
+            padding: 60px 40px;
+            text-align: center;
+            max-width: 600px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        .success-icon {
+            font-size: 6em;
+            color: #48bb78;
+            margin-bottom: 20px;
+            animation: scaleIn 0.5s ease;
+        }
+
+        @keyframes scaleIn {
+            from {
+                transform: scale(0);
+                opacity: 0;
+            }
+            to {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+
+        .success-container h1 {
+            color: #2d3748;
+            font-size: 2.5em;
+            margin-bottom: 20px;
+        }
+
+        .success-container p {
+            color: #4a5568;
+            font-size: 1.2em;
+            margin-bottom: 30px;
+            line-height: 1.6;
+        }
+
+        .plan-info {
+            background: #f7fafc;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 30px 0;
+            text-align: left;
+        }
+
+        .plan-info h3 {
+            color: #667eea;
+            margin-bottom: 15px;
+        }
+
+        .plan-info ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        .plan-info li {
+            padding: 8px 0;
+            color: #2d3748;
+            display: flex;
+            align-items: center;
+        }
+
+        .plan-info li i {
+            color: #48bb78;
+            margin-right: 10px;
+        }
+
+        .btn-dashboard {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            border-radius: 10px;
+            font-size: 1.2em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+            margin-top: 20px;
+        }
+
+        .btn-dashboard:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+        }
+
+        .loading {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="success-container">
+        <div id="loading-state" class="loading">
+            <div class="spinner"></div>
+            <h2 style="color: #2d3748;">Processando seu pagamento...</h2>
+            <p style="color: #718096;">Aguarde enquanto confirmamos sua assinatura</p>
+        </div>
+
+        <div id="success-state" class="hidden">
+            <div class="success-icon">
+                <i class="fas fa-check-circle"></i>
+            </div>
+            <h1>🎉 Pagamento Confirmado!</h1>
+            <p>
+                Parabéns! Sua assinatura foi ativada com sucesso.<br>
+                Você agora tem acesso completo a todas as funcionalidades do seu plano.
+            </p>
+
+            <div class="plan-info" id="plan-details">
+                <!-- Será preenchido dinamicamente -->
+            </div>
+
+            <p style="font-size: 0.9em; color: #718096;">
+                Um email de confirmação foi enviado para <strong id="user-email"></strong>
+            </p>
+
+            <a href="dashboard.html" class="btn-dashboard">
+                <i class="fas fa-tachometer-alt"></i> Ir para o Dashboard
+            </a>
+        </div>
+
+        <div id="error-state" class="hidden">
+            <div class="success-icon" style="color: #f56565;">
+                <i class="fas fa-exclamation-circle"></i>
+            </div>
+            <h1 style="color: #f56565;">Erro ao Processar</h1>
+            <p id="error-message">
+                Ocorreu um erro ao processar seu pagamento.
+            </p>
+            <a href="pricing.html" class="btn-dashboard">
+                <i class="fas fa-redo"></i> Tentar Novamente
+            </a>
+        </div>
+    </div>
+
+    <script src="js/modern-app.js?v=7.3"></script>
+    <script>
+        const planInfo = {
+            starter: {
+                name: "Starter",
+                features: [
+                    "100 scans por mês",
+                    "Ferramentas Red/Blue Team básicas",
+                    "Relatórios em PDF",
+                    "Suporte prioritário"
+                ]
+            },
+            professional: {
+                name: "Professional",
+                features: [
+                    "Scans ilimitados",
+                    "Todas as ferramentas disponíveis",
+                    "API Access completo",
+                    "Relatórios avançados",
+                    "Suporte 24/7"
+                ]
+            },
+            enterprise: {
+                name: "Enterprise",
+                features: [
+                    "Tudo do Professional",
+                    "Multi-usuário (até 10)",
+                    "White label",
+                    "Integrações personalizadas",
+                    "Gerente de conta dedicado"
+                ]
+            }
+        };
+
+        async function verifyPayment() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const sessionId = urlParams.get('session_id');
+
+            if (!sessionId) {
+                showError('Sessão de pagamento não encontrada');
+                return;
+            }
+
+            try {
+                // Aguardar alguns segundos para o webhook processar
+                await new Promise(resolve => setTimeout(resolve, 3000));
+
+                // Buscar informações da assinatura
+                const response = await apiRequest('/user/subscription-info');
+                
+                if (response.subscription_plan !== 'free') {
+                    showSuccess(response);
+                } else {
+                    // Tentar novamente após mais alguns segundos
+                    await new Promise(resolve => setTimeout(resolve, 2000));
+                    const retryResponse = await apiRequest('/user/subscription-info');
+                    
+                    if (retryResponse.subscription_plan !== 'free') {
+                        showSuccess(retryResponse);
+                    } else {
+                        showError('Ainda processando... Verifique o dashboard em alguns minutos.');
+                    }
+                }
+            } catch (error) {
+                console.error('Erro ao verificar pagamento:', error);
+                showError('Erro ao verificar status do pagamento. Por favor, entre em contato com o suporte.');
+            }
+        }
+
+        function showSuccess(subscriptionData) {
+            document.getElementById('loading-state').classList.add('hidden');
+            document.getElementById('success-state').classList.remove('hidden');
+
+            const plan = subscriptionData.subscription_plan;
+            const info = planInfo[plan] || planInfo.starter;
+
+            document.getElementById('plan-details').innerHTML = `
+                <h3><i class="fas fa-crown"></i> Plano ${info.name} Ativado</h3>
+                <ul>
+                    ${info.features.map(feature => `
+                        <li><i class="fas fa-check"></i> ${feature}</li>
+                    `).join('')}
+                </ul>
+            `;
+
+            // Email do usuário (se disponível)
+            const email = localStorage.getItem('userEmail') || 'seu email';
+            document.getElementById('user-email').textContent = email;
+        }
+
+        function showError(message) {
+            document.getElementById('loading-state').classList.add('hidden');
+            document.getElementById('error-state').classList.remove('hidden');
+            document.getElementById('error-message').textContent = message;
+        }
+
+        // Verificar pagamento ao carregar
+        document.addEventListener('DOMContentLoaded', verifyPayment);
+    </script>
+</body>
+</html>

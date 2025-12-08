@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Security Scanner - Dashboard</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="dashboard">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <i class="fas fa-shield-halved"></i>
+                <h2>Security Scanner</h2>
+            </div>
+            
+            <nav class="sidebar-nav">
+                <a href="#dashboard" class="nav-item active" data-page="dashboard">
+                    <i class="fas fa-chart-line"></i>
+                    <span>Dashboard</span>
+                </a>
+                <a href="#code-scan" class="nav-item" data-page="code-scan">
+                    <i class="fas fa-code"></i>
+                    <span>Scan de Código</span>
+                </a>
+                <a href="#api-scan" class="nav-item" data-page="api-scan">
+                    <i class="fas fa-network-wired"></i>
+                    <span>Scan de API</span>
+                </a>
+                <a href="#history" class="nav-item" data-page="history">
+                    <i class="fas fa-history"></i>
+                    <span>Histórico</span>
+                </a>
+            </nav>
+            
+            <div class="sidebar-footer">
+                <a href="#" id="logoutBtn" class="nav-item">
+                    <i class="fas fa-sign-out-alt"></i>
+                    <span>Sair</span>
+                </a>
+            </div>
+        </aside>
+        
+        <!-- Main Content -->
+        <main class="main-content">
+            <header class="top-bar">
+                <h1 id="pageTitle">Dashboard</h1>
+                <div class="user-info">
+                    <i class="fas fa-user-circle"></i>
+                    <span id="username">Usuário</span>
+                </div>
+            </header>
+            
+            <div class="content-area">
+                <!-- Dashboard Page -->
+                <div id="dashboard-page" class="page active">
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-icon critical">
+                                <i class="fas fa-exclamation-triangle"></i>
+                            </div>
+                            <div class="stat-content">
+                                <h3 id="totalScans">0</h3>
+                                <p>Total de Scans</p>
+                            </div>
+                        </div>
+                        
+                        <div class="stat-card">
+                            <div class="stat-icon high">
+                                <i class="fas fa-bug"></i>
+                            </div>
+                            <div class="stat-content">
+                                <h3 id="totalVulns">0</h3>
+                                <p>Vulnerabilidades</p>
+                            </div>
+                        </div>
+                        
+                        <div class="stat-card">
+                            <div class="stat-icon critical">
+                                <i class="fas fa-skull-crossbones"></i>
+                            </div>
+                            <div class="stat-content">
+                                <h3 id="criticalCount">0</h3>
+                                <p>Críticas</p>
+                            </div>
+                        </div>
+                        
+                        <div class="stat-card">
+                            <div class="stat-icon high">
+                                <i class="fas fa-fire"></i>
+                            </div>
+                            <div class="stat-content">
+                                <h3 id="highCount">0</h3>
+                                <p>Altas</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="chart-section">
+                        <div class="card">
+                            <h2><i class="fas fa-chart-pie"></i> Distribuição de Severidade</h2>
+                            <div id="severityChart" class="severity-bars">
+                                <div class="severity-bar">
+                                    <span class="label">CRÍTICA</span>
+                                    <div class="bar critical">
+                                        <div class="fill" style="width: 0%"></div>
+                                    </div>
+                                    <span class="count">0</span>
+                                </div>
+                                <div class="severity-bar">
+                                    <span class="label">ALTA</span>
+                                    <div class="bar high">
+                                        <div class="fill" style="width: 0%"></div>
+                                    </div>
+                                    <span class="count">0</span>
+                                </div>
+                                <div class="severity-bar">
+                                    <span class="label">MÉDIA</span>
+                                    <div class="bar medium">
+                                        <div class="fill" style="width: 0%"></div>
+                                    </div>
+                                    <span class="count">0</span>
+                                </div>
+                                <div class="severity-bar">
+                                    <span class="label">BAIXA</span>
+                                    <div class="bar low">
+                                        <div class="fill" style="width: 0%"></div>
+                                    </div>
+                                    <span class="count">0</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="card">
+                            <h2><i class="fas fa-clock"></i> Scans Recentes</h2>
+                            <div id="recentScans" class="recent-list">
+                                <p class="empty-state">Nenhum scan realizado ainda</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Code Scan Page -->
+                <div id="code-scan-page" class="page">
+                    <div class="card">
+                        <h2><i class="fas fa-code"></i> Análise de Código Fonte</h2>
+                        <p class="card-description">Cole seu código ou faça upload de um arquivo para análise de segurança</p>
+                        
+                        <div class="tabs">
+                            <button class="tab-btn active" data-tab="paste">
+                                <i class="fas fa-paste"></i> Colar Código
+                            </button>
+                            <button class="tab-btn" data-tab="upload">
+                                <i class="fas fa-upload"></i> Upload de Arquivo
+                            </button>
+                        </div>
+                        
+                        <div id="paste-tab" class="tab-content active">
+                            <form id="codeScanForm">
+                                <div class="form-group">
+                                    <label for="codeInput">Código Fonte:</label>
+                                    <textarea id="codeInput" rows="15" placeholder="Cole seu código aqui..."></textarea>
+                                </div>
+                                <div class="form-group">
+                                    <label for="filename">Nome do Arquivo (opcional):</label>
+                                    <input type="text" id="filename" placeholder="exemplo.py">
+                                </div>
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-search"></i> Analisar Código
+                                </button>
+                            </form>
+                        </div>
+                        
+                        <div id="upload-tab" class="tab-content">
+                            <form id="fileUploadForm">
+                                <div class="upload-area" id="uploadArea">
+                                    <i class="fas fa-cloud-upload-alt"></i>
+                                    <p>Arraste um arquivo ou clique para selecionar</p>
+                                    <input type="file" id="fileInput" accept=".py,.js,.php,.java,.go,.rb,.cs">
+                                </div>
+                                <button type="submit" class="btn btn-primary" style="display: none;">
+                                    <i class="fas fa-search"></i> Analisar Arquivo
+                                </button>
+                            </form>
+                        </div>
+                        
+                        <div id="codeScanResults" class="scan-results"></div>
+                    </div>
+                </div>
+                
+                <!-- API Scan Page -->
+                <div id="api-scan-page" class="page">
+                    <div class="card">
+                        <h2><i class="fas fa-network-wired"></i> Teste de Segurança em API</h2>
+                        <p class="card-description">Configure os endpoints da API para análise de vulnerabilidades</p>
+                        
+                        <form id="apiScanForm">
+                            <div class="form-group">
+                                <label for="baseUrl">URL Base da API:</label>
+                                <input type="url" id="baseUrl" placeholder="https://api.exemplo.com" required>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="endpoints">Endpoints (um por linha):</label>
+                                <textarea id="endpoints" rows="8" placeholder="/api/users&#10;/api/products&#10;/api/auth/login" required></textarea>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="authHeader">Header de Autenticação (opcional):</label>
+                                <input type="text" id="authHeader" placeholder="Bearer token123...">
+                            </div>
+                            
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-search"></i> Iniciar Scan de API
+                            </button>
+                        </form>
+                        
+                        <div id="apiScanResults" class="scan-results"></div>
+                    </div>
+                </div>
+                
+                <!-- History Page -->
+                <div id="history-page" class="page">
+                    <div class="card">
+                        <h2><i class="fas fa-history"></i> Histórico de Scans</h2>
+                        <div id="scanHistory" class="history-list">
+                            <p class="empty-state">Carregando...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+    
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="loading-overlay">
+        <div class="spinner"></div>
+        <p>Analisando...</p>
+    </div>
+    
+    <script src="js/dashboard.js"></script>
+</body>
+</html>

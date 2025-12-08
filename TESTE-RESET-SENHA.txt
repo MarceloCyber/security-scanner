@@ -1,0 +1,288 @@
+╔══════════════════════════════════════════════════════════════════════╗
+║                                                                      ║
+║     🔑 GUIA: TESTAR FLUXO "ESQUECI MINHA SENHA" DO ADMIN 🔑         ║
+║                                                                      ║
+╚══════════════════════════════════════════════════════════════════════╝
+
+
+✅ EMAIL DO ADMIN ATUALIZADO!
+═══════════════════════════════════════════════════════════════════════
+
+👤 Usuário: admin
+📧 Email: mac526@hotmail.com
+🔑 Senha atual: admin123
+
+
+📧 CONFIGURAR EMAIL SMTP (OBRIGATÓRIO)
+═══════════════════════════════════════════════════════════════════════
+
+Para testar o fluxo completo, você precisa configurar o SMTP no arquivo .env:
+
+1. **Edite o arquivo .env** (na raiz do projeto):
+
+```env
+# Email Configuration
+SMTP_HOST=smtp-mail.outlook.com
+SMTP_PORT=587
+SMTP_USER=mac526@hotmail.com
+SMTP_PASSWORD=sua_senha_aqui
+FROM_EMAIL=mac526@hotmail.com
+FROM_NAME=Security Scanner Pro
+```
+
+⚠️ **IMPORTANTE - HOTMAIL/OUTLOOK**:
+   - Use a senha do aplicativo, não a senha normal
+   - Gere uma senha de aplicativo em:
+     https://account.live.com/proofs/manage/additional
+   - Ou ative "Segurança menos rigorosa" temporariamente
+
+
+🧪 PASSO A PASSO PARA TESTAR
+═══════════════════════════════════════════════════════════════════════
+
+OPÇÃO 1: FLUXO COMPLETO COM EMAIL
+──────────────────────────────────────────────────────────────────────
+
+1. **Configure o SMTP** (veja acima)
+
+2. **Reinicie o servidor** para carregar as novas configurações:
+   ```bash
+   cd /Users/marcelorodrigues/Desktop/Hacking-Tools/security-scanner/backend
+   pkill -f uvicorn
+   python -m uvicorn main:app --reload --host 0.0.0.0 --port 8000
+   ```
+
+3. **Acesse a página de login admin**:
+   http://localhost:8000/admin-login.html
+
+4. **Clique em "Esqueceu a senha?"**
+
+5. **Digite seu email**: mac526@hotmail.com
+
+6. **Clique em "Enviar Link de Reset"**
+
+7. **Verifique sua caixa de entrada** (mac526@hotmail.com)
+   - Assunto: "Reset de Senha - Security Scanner Pro Admin"
+   - Pode demorar alguns segundos
+
+8. **Abra o email e clique no link** ou copie a URL
+
+9. **Digite sua nova senha** (2 vezes)
+10. **Clique em "Alterar Senha"**
+
+11. **Faça login com a nova senha**
+
+
+OPÇÃO 2: TESTE RÁPIDO SEM EMAIL (MANUAL)
+──────────────────────────────────────────────────────────────────────
+
+Se não quiser configurar SMTP agora:
+
+1. **Solicite o reset via terminal**:
+   ```bash
+   curl -X POST http://localhost:8000/api/auth/forgot-password \
+     -H "Content-Type: application/json" \
+     -d '{"email":"mac526@hotmail.com"}'
+   ```
+
+2. **Pegue o token do banco de dados**:
+   ```bash
+   cd /Users/marcelorodrigues/Desktop/Hacking-Tools/security-scanner/backend
+   sqlite3 security_scanner.db "SELECT reset_token FROM users WHERE email='mac526@hotmail.com';"
+   ```
+
+3. **Copie o token retornado**
+
+4. **Acesse a página de reset com o token**:
+   ```
+   http://localhost:8000/admin-reset-password.html?token=SEU_TOKEN_AQUI
+   ```
+
+5. **Digite nova senha** (2 vezes)
+
+6. **Clique em "Alterar Senha"**
+
+7. **Faça login com a nova senha**
+
+
+OPÇÃO 3: USAR SCRIPT DE RESET (MAIS FÁCIL)
+──────────────────────────────────────────────────────────────────────
+
+1. **Execute o script**:
+   ```bash
+   cd /Users/marcelorodrigues/Desktop/Hacking-Tools/security-scanner/backend
+   python3 reset_admin_password.py
+   ```
+
+2. **Siga as instruções na tela**:
+   - Selecione o usuário admin (ID 1)
+   - Digite a nova senha
+   - Confirme a senha
+
+3. **Faça login com a nova senha**
+
+
+🔍 VERIFICAR SE O EMAIL FOI ENVIADO
+═══════════════════════════════════════════════════════════════════════
+
+**No Console do Servidor** (onde uvicorn está rodando):
+
+✅ SUCESSO - Você verá algo como:
+```
+INFO:     127.0.0.1:54321 - "POST /api/auth/forgot-password HTTP/1.1" 200 OK
+```
+
+❌ ERRO - Você verá algo como:
+```
+ERROR: Error sending email: [Errno 61] Connection refused
+```
+
+Se der erro:
+1. Verifique as configurações SMTP no .env
+2. Verifique se a senha está correta
+3. Tente usar senha de aplicativo
+4. Use OPÇÃO 2 ou 3 como alternativa
+
+
+📧 EXEMPLO DE EMAIL QUE VOCÊ RECEBERÁ
+═══════════════════════════════════════════════════════════════════════
+
+Assunto: Reset de Senha - Security Scanner Pro Admin
+
+Conteúdo:
+┌────────────────────────────────────────────────────────────────┐
+│ 🔒 Reset de Senha                                              │
+│                                                                 │
+│ Olá, admin!                                                     │
+│                                                                 │
+│ Você solicitou o reset de senha para sua conta de             │
+│ administrador no Security Scanner Pro.                          │
+│                                                                 │
+│ Clique no botão abaixo para criar uma nova senha:              │
+│                                                                 │
+│         [ Resetar Senha ]                                       │
+│                                                                 │
+│ ⚠️ IMPORTANTE:                                                  │
+│ • Este link é válido por apenas 1 hora                         │
+│ • Se você não solicitou este reset, ignore este email          │
+│ • Nunca compartilhe este link com ninguém                      │
+│                                                                 │
+│ Link alternativo:                                               │
+│ http://localhost:8000/admin-reset-password.html?token=abc123   │
+└────────────────────────────────────────────────────────────────┘
+
+
+🎯 CHECKLIST DE TESTE
+═══════════════════════════════════════════════════════════════════════
+
+Antes de testar:
+[ ] Servidor rodando (http://localhost:8000)
+[ ] Email atualizado no banco (mac526@hotmail.com)
+[ ] SMTP configurado no .env (se testar com email)
+
+Durante o teste:
+[ ] Modal "Esqueci senha" abre corretamente
+[ ] Email é aceito no formulário
+[ ] Mensagem de sucesso aparece
+[ ] Email chega na caixa de entrada (se SMTP configurado)
+[ ] Link do email funciona
+[ ] Página de reset carrega
+[ ] Nova senha é aceita (mínimo 8 caracteres)
+[ ] Confirmação de senha valida corretamente
+[ ] Mensagem de sucesso ao alterar senha
+[ ] Redirecionamento para login funciona
+[ ] Login com nova senha funciona
+[ ] Painel admin carrega corretamente
+
+Após o teste:
+[ ] Token foi removido do banco
+[ ] Não é possível reusar o mesmo token
+[ ] Token expira após 1 hora
+
+
+🔧 CONFIGURAÇÃO SMTP PARA DIFERENTES PROVEDORES
+═══════════════════════════════════════════════════════════════════════
+
+**HOTMAIL/OUTLOOK** (seu caso):
+```env
+SMTP_HOST=smtp-mail.outlook.com
+SMTP_PORT=587
+SMTP_USER=mac526@hotmail.com
+SMTP_PASSWORD=senha_de_aplicativo_aqui
+```
+
+**GMAIL**:
+```env
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=seu-email@gmail.com
+SMTP_PASSWORD=senha_de_aplicativo_aqui
+```
+Gere senha de app: https://myaccount.google.com/apppasswords
+
+**YAHOO**:
+```env
+SMTP_HOST=smtp.mail.yahoo.com
+SMTP_PORT=587
+SMTP_USER=seu-email@yahoo.com
+SMTP_PASSWORD=senha_de_aplicativo_aqui
+```
+
+**OUTROS**:
+```env
+SMTP_HOST=smtp.provedor.com
+SMTP_PORT=587  # ou 465 para SSL
+SMTP_USER=seu-email@provedor.com
+SMTP_PASSWORD=sua_senha
+```
+
+
+⚠️ TROUBLESHOOTING
+═══════════════════════════════════════════════════════════════════════
+
+**Problema**: Email não chega
+**Solução**: 
+- Verifique spam/lixo eletrônico
+- Confirme SMTP configurado corretamente
+- Verifique logs do servidor
+- Use OPÇÃO 2 ou 3 como alternativa
+
+**Problema**: "Token inválido ou expirado"
+**Solução**:
+- Token dura 1 hora, solicite novo reset
+- Verifique se copiou o token completo
+- Não use o mesmo token 2 vezes
+
+**Problema**: "Senha deve ter no mínimo 8 caracteres"
+**Solução**:
+- Use senha com pelo menos 8 caracteres
+- Confirme que as duas senhas são iguais
+
+**Problema**: Não recebo email do Hotmail
+**Solução**:
+1. Gere senha de aplicativo:
+   - Acesse: https://account.live.com/proofs/manage/additional
+   - Clique "Criar uma nova senha de aplicativo"
+   - Copie a senha gerada
+   - Use no .env
+2. Ou use OPÇÃO 2 (manual) ou OPÇÃO 3 (script)
+
+
+═══════════════════════════════════════════════════════════════════════
+
+            ✨ TUDO PRONTO PARA TESTAR! ✨
+
+     Email atualizado: mac526@hotmail.com
+       Escolha uma das 3 opções acima!
+
+═══════════════════════════════════════════════════════════════════════
+
+
+📝 CREDENCIAIS ATUAIS:
+   URL: http://localhost:8000/admin-login.html
+   Username: admin
+   Email: mac526@hotmail.com
+   Senha: admin123 (antes de resetar)
+
+Data: 5 de dezembro de 2025
+Status: ✅ EMAIL ATUALIZADO E PRONTO PARA TESTE

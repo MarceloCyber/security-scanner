@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Logout - Security Scanner</title>
+</head>
+<body>
+    <h1>Fazendo logout...</h1>
+    <script>
+        // Clear all localStorage
+        localStorage.clear();
+        
+        // Clear sessionStorage
+        sessionStorage.clear();
+        
+        // Redirect to login
+        setTimeout(() => {
+            window.location.href = '/index.html';
+        }, 500);
+    </script>
+</body>
+</html>

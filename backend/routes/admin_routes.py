@@ -400,9 +400,13 @@ def clear_activity_logs(
     db: Session = Depends(get_db),
     admin: User = Depends(require_admin)
 ):
-    deleted = db.query(Scan).delete()
-    db.commit()
-    return {"success": True, "deleted": deleted}
+    try:
+        deleted = db.query(Scan).delete(synchronize_session=False)
+        db.commit()
+        return {"success": True, "deleted": deleted}
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Erro ao apagar histórico: {str(e)}")
 
 # ==================== SYSTEM INFO ====================
 @router.get("/system")

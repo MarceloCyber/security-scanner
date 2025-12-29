@@ -162,7 +162,7 @@ async function loadDashboard() {
         if (scans7Days) scans7Days.textContent = data.scans_last_7_days || 0;
         
         const newUsers7Days = document.getElementById('newUsers7Days');
-        if (newUsers7Days) newUsers7Days.textContent = data.new_users_last_7_days || 0;
+        if (newUsers7Days) newUsers7Days.textContent = data.new_users_7_days || 0;
         
     } catch (error) {
         console.error('Erro ao carregar dashboard:', error);
@@ -809,6 +809,22 @@ async function loadPayments() {
         showToast('Erro ao carregar pagamentos', 'error');
     }
 }
+
+async function clearPayments() {
+    try {
+        const confirmClear = confirm('O histórico de pagamentos é consultado diretamente do Stripe/Mercado Pago. Deseja apenas limpar a tabela local?');
+        if (!confirmClear) return;
+        const tbody = document.getElementById('paymentsTableBody');
+        if (tbody) {
+            tbody.innerHTML = '<tr><td colspan="10" class="loading-cell">Nenhuma sessão encontrada</td></tr>';
+        }
+        showToast('Tabela de pagamentos limpa (não afeta provedor externo)', 'success');
+    } catch (error) {
+        showToast('Erro ao limpar tabela de pagamentos', 'error');
+    }
+}
+
+window.clearPayments = clearPayments;
 
 async function loadCancelled(page = 1) {
     try {

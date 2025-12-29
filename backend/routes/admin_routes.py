@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 from database import get_db
 from models.user import User
 from models.scan import Scan
-from auth import get_current_user
+from auth import get_current_user, get_password_hash
 from middleware.subscription import upgrade_user_plan
 from utils.email_service import email_service
 import json
@@ -51,6 +51,48 @@ class UserResponse(BaseModel):
 
 class BackupRestoreRequest(BaseModel):
     filename: str
+
+class BootstrapAdminRequest(BaseModel):
+    username: str
+    email: str
+    password: str
+
+@router.post("/bootstrap")
+def bootstrap_admin(
+    req: BootstrapAdminRequest,
+    db: Session = Depends(get_db)
+):
+    existing_admins = db.query(User).filter(User.is_admin == True).count()
+    if existing_admins > 0:
+        raise HTTPException(status_code=403, detail="Administrador já existe")
+    username = (req.username or "").strip()
+    email = (req.email or "").strip().lower()
+    password = (req.password or "").strip()
+    if not username or not email or not password or len(password) < 6:
+        raise HTTPException(status_code=400, detail="Dados inválidos")
+    user = db.query(User).filter((User.username == username) | (User.email == email)).first()
+    if user:
+        user.is_admin = True
+        user.hashed_password = get_password_hash(password)
+        user.subscription_plan = user.subscription_plan or "free"
+        user.subscription_status = user.subscription_status or "active"
+        user.scans_limit = user.scans_limit or 10
+        db.commit()
+        db.refresh(user)
+        return {"success": True, "message": "Administrador habilitado", "user_id": user.id}
+    new_user = User(
+        username=username,
+        email=email,
+        hashed_password=get_password_hash(password),
+        subscription_plan="free",
+        subscription_status="active",
+        scans_limit=10,
+        is_admin=True
+    )
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
+    return {"success": True, "message": "Administrador criado", "user_id": new_user.id}
 
 # ==================== DASHBOARD STATS ====================
 @router.get("/stats")

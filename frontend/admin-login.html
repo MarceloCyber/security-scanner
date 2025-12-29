@@ -472,6 +472,12 @@
                 </a>
             </div>
 
+            <div style="margin-top: 20px; text-align: center;">
+                <button onclick="openCreateAdminModal(); return false;" class="btn-admin-login" style="width: 100%;">
+                    Criar Primeiro Administrador
+                </button>
+            </div>
+
             <div class="security-notice">
                 <i class="fas fa-shield-alt"></i>
                 <p>
@@ -488,7 +494,7 @@
     </div>
 
     <script>
-        const API_URL = 'http://localhost:8000';
+        const API_URL = window.location.origin;
 
         document.getElementById('adminLoginForm').addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -707,6 +713,53 @@
                 closeForgotPasswordModal();
             }
         }
+
+        function openCreateAdminModal() {
+            document.getElementById('createAdminModal').style.display = 'flex';
+        }
+
+        function closeCreateAdminModal() {
+            document.getElementById('createAdminModal').style.display = 'none';
+            document.getElementById('newAdminUsername').value = '';
+            document.getElementById('newAdminEmail').value = '';
+            document.getElementById('newAdminPassword').value = '';
+            document.getElementById('createAdminMessage').innerHTML = '';
+        }
+
+        async function submitCreateAdmin() {
+            const username = document.getElementById('newAdminUsername').value.trim();
+            const email = document.getElementById('newAdminEmail').value.trim();
+            const password = document.getElementById('newAdminPassword').value;
+            const msg = document.getElementById('createAdminMessage');
+            const btn = document.getElementById('createAdminSubmitBtn');
+            if (!username || !email || !password) {
+                msg.innerHTML = '<div class="alert alert-error">Preencha todos os campos.</div>';
+                return;
+            }
+            btn.disabled = true;
+            btn.innerText = 'Criando...';
+            try {
+                const response = await fetch(`${API_URL}/api/admin/bootstrap`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, email, password })
+                });
+                const data = await response.json();
+                if (response.ok) {
+                    msg.innerHTML = '<div class="alert alert-success">Administrador criado. Você pode efetuar login agora.</div>';
+                    document.getElementById('adminUsername').value = username;
+                    document.getElementById('adminPassword').value = password;
+                    setTimeout(() => { closeCreateAdminModal(); }, 1500);
+                } else {
+                    msg.innerHTML = `<div class="alert alert-error">${data.detail || 'Erro ao criar administrador.'}</div>`;
+                }
+            } catch (e) {
+                msg.innerHTML = '<div class="alert alert-error">Erro de conexão com o servidor.</div>';
+            } finally {
+                btn.disabled = false;
+                btn.innerText = 'Criar Administrador';
+            }
+        }
     </script>
 
     <!-- Forgot Password Modal -->
@@ -746,6 +799,28 @@
             <p style="text-align: center; margin-top: 20px; color: #666; font-size: 13px;">
                 O link será válido por 1 hora
             </p>
+        </div>
+    </div>
+
+    <div id="createAdminModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <span class="modal-close" onclick="closeCreateAdminModal()">&times;</span>
+            <h2 style="color: #1e3c72; margin-bottom: 10px;">👤 Criar Primeiro Administrador</h2>
+            <p style="color: #666; margin-bottom: 20px;">Use apenas uma vez. Após criado, este recurso é desabilitado.</p>
+            <div id="createAdminMessage" style="margin-bottom: 15px;"></div>
+            <div class="form-group">
+                <label style="display:block; margin-bottom:8px; color:#333; font-weight:600;">Usuário</label>
+                <input type="text" id="newAdminUsername" class="form-input" placeholder="admin" required>
+            </div>
+            <div class="form-group">
+                <label style="display:block; margin-bottom:8px; color:#333; font-weight:600;">Email</label>
+                <input type="email" id="newAdminEmail" class="form-input" placeholder="admin@security.com" required>
+            </div>
+            <div class="form-group">
+                <label style="display:block; margin-bottom:8px; color:#333; font-weight:600;">Senha</label>
+                <input type="password" id="newAdminPassword" class="form-input" placeholder="mínimo 6 caracteres" required>
+            </div>
+            <button onclick="submitCreateAdmin()" id="createAdminSubmitBtn" class="btn-admin-login" style="width:100%; margin-top:10px;">Criar Administrador</button>
         </div>
     </div>
 

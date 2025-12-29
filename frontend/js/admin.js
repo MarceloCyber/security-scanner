@@ -3,7 +3,7 @@
 // Gerenciamento completo do painel administrativo
 // =============================================
 
-const API_URL = 'http://localhost:8000';
+const API_URL = window.location.origin;
 let currentPage = 1;
 let currentSearch = '';
 let currentPlanFilter = '';

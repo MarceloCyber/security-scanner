@@ -35,3 +35,9 @@ numpy==1.26.4
 scipy==1.11.4
 scikit-learn==1.4.2
 joblib==1.3.2
+
+# HTTP Client
+httpx==0.27.0
+
+# Crypto (explicit, used directly)
+bcrypt==4.0.1

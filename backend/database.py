@@ -6,12 +6,20 @@ from config import settings
 def _is_sqlite(url: str) -> bool:
     return url.startswith("sqlite")
 
-connect_args = {"check_same_thread": False} if _is_sqlite(settings.DATABASE_URL) else {}
-engine = create_engine(
-    settings.DATABASE_URL,
-    connect_args=connect_args,
-    pool_pre_ping=True,
-)
+def _make_engine(url: str):
+    return create_engine(
+        url,
+        connect_args={"check_same_thread": False} if _is_sqlite(url) else {},
+        pool_pre_ping=True,
+    )
+
+engine = _make_engine(settings.DATABASE_URL)
+try:
+    conn = engine.connect()
+    conn.close()
+except Exception:
+    engine = _make_engine("sqlite:///./security_scanner.db")
+
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 Base = declarative_base()

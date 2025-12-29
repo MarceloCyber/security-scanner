@@ -12,7 +12,7 @@ from auth import get_current_user
 from models.user import User
 from models.scan import Scan
 from pydantic import BaseModel
-from middleware.subscription import increment_scan_count, check_subscription_status
+from middleware.subscription import increment_scan_count, check_subscription_status, check_tool_access
 
 # Import novos scanners
 from scanners.multilang_scanner import scan_code as multilang_scan
@@ -41,6 +41,17 @@ async def scan_dependencies_endpoint(
 ):
     """Escaneia dependências em busca de CVEs"""
     try:
+        if not check_tool_access("vulnerability_scanner", current_user):
+            raise HTTPException(
+                status_code=403,
+                detail={
+                    "error": "tool_locked",
+                    "message": "Esta ferramenta não está disponível no seu plano atual",
+                    "tool": "vulnerability_scanner",
+                    "current_plan": current_user.subscription_plan,
+                    "upgrade_url": "/pricing"
+                }
+            )
         results = scan_dependencies(request.content, request.file_type)
         
         scan = Scan(
@@ -82,6 +93,17 @@ async def scan_ports_endpoint(
         check_result = check_subscription_status(current_user)
         if not check_result["active"]:
             raise HTTPException(status_code=403, detail=check_result["message"])
+        if not check_tool_access("port_scanner", current_user):
+            raise HTTPException(
+                status_code=403,
+                detail={
+                    "error": "tool_locked",
+                    "message": "Esta ferramenta não está disponível no seu plano atual",
+                    "tool": "port_scanner",
+                    "current_plan": current_user.subscription_plan,
+                    "upgrade_url": "/pricing"
+                }
+            )
         
         results = scan_ports(request.target, request.ports)
         
@@ -125,6 +147,17 @@ async def scan_docker_endpoint(
 ):
     """Escaneia Dockerfile ou docker-compose.yml"""
     try:
+        if not check_tool_access("container_scanner", current_user):
+            raise HTTPException(
+                status_code=403,
+                detail={
+                    "error": "tool_locked",
+                    "message": "Esta ferramenta não está disponível no seu plano atual",
+                    "tool": "container_scanner",
+                    "current_plan": current_user.subscription_plan,
+                    "upgrade_url": "/pricing"
+                }
+            )
         if request.scan_type == "dockerfile":
             results = scan_dockerfile(request.content)
         elif request.scan_type == "docker-compose":
@@ -167,6 +200,17 @@ async def scan_graphql_endpoint(
 ):
     """Escaneia API GraphQL"""
     try:
+        if not check_tool_access("api_security_tester", current_user):
+            raise HTTPException(
+                status_code=403,
+                detail={
+                    "error": "tool_locked",
+                    "message": "Esta ferramenta não está disponível no seu plano atual",
+                    "tool": "api_security_tester",
+                    "current_plan": current_user.subscription_plan,
+                    "upgrade_url": "/pricing"
+                }
+            )
         results = scan_graphql(request.url, request.headers)
         
         scan = Scan(
@@ -203,6 +247,17 @@ async def scan_with_ml_endpoint(
 ):
     """Escaneia código com Machine Learning"""
     try:
+        if not check_tool_access("vulnerability_scanner", current_user):
+            raise HTTPException(
+                status_code=403,
+                detail={
+                    "error": "tool_locked",
+                    "message": "Esta ferramenta não está disponível no seu plano atual",
+                    "tool": "vulnerability_scanner",
+                    "current_plan": current_user.subscription_plan,
+                    "upgrade_url": "/pricing"
+                }
+            )
         results = analyze_with_ml(request.code)
         metrics = get_security_metrics(request.code)
         
@@ -345,6 +400,17 @@ async def scan_multilang_endpoint(
 ):
     """Escaneia código em múltiplas linguagens"""
     try:
+        if not check_tool_access("code_scanner", current_user):
+            raise HTTPException(
+                status_code=403,
+                detail={
+                    "error": "tool_locked",
+                    "message": "Esta ferramenta não está disponível no seu plano atual",
+                    "tool": "code_scanner",
+                    "current_plan": current_user.subscription_plan,
+                    "upgrade_url": "/pricing"
+                }
+            )
         results = multilang_scan(request.code, request.filename)
         
         scan = Scan(

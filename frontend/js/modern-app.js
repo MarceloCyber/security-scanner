@@ -261,6 +261,11 @@ function initializeApp() {
                 return; // Deixa o link funcionar normalmente
             }
             e.preventDefault();
+            if (this.classList.contains('locked')) {
+                showToast('Esta ferramenta requer um plano superior. Faça upgrade!', 'info');
+                setTimeout(() => window.location.href = 'pricing.html', 1500);
+                return;
+            }
             const page = this.dataset.page;
             navigateTo(page);
         });
@@ -296,6 +301,21 @@ function setupEventListeners() {
 
 // Navigation
 function navigateTo(pageName) {
+    const navItem = document.querySelector(`.nav-item[data-page="${pageName}"]`);
+    if (navItem && navItem.classList.contains('locked')) {
+        showToast('Esta ferramenta requer um plano superior. Faça upgrade!', 'info');
+        setTimeout(() => window.location.href = 'pricing.html', 1500);
+        return;
+    }
+    const plan = (localStorage.getItem('userPlan') || 'free').toLowerCase();
+    if (plan === 'free') {
+        const allowed = ['dashboard', 'port-scan'];
+        if (!allowed.includes(pageName)) {
+            showToast('Esta ferramenta requer um plano superior. Faça upgrade!', 'info');
+            setTimeout(() => window.location.href = 'pricing.html', 1500);
+            return;
+        }
+    }
     // Update navigation
     document.querySelectorAll('.nav-item').forEach(item => {
         item.classList.remove('active');

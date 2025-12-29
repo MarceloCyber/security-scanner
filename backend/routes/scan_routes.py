@@ -10,7 +10,7 @@ from models.scan import Scan
 from scanners.code_scanner import scan_code
 from scanners.api_scanner import APISecurityScanner
 from pydantic import BaseModel
-from middleware.subscription import increment_scan_count, check_subscription_status
+from middleware.subscription import increment_scan_count, check_subscription_status, check_tool_access
 
 router = APIRouter()
 
@@ -45,6 +45,17 @@ async def scan_code_endpoint(
         check_result = check_subscription_status(current_user)
         if not check_result["active"]:
             raise HTTPException(status_code=403, detail=check_result["message"])
+        if not check_tool_access("code_scanner", current_user):
+            raise HTTPException(
+                status_code=403,
+                detail={
+                    "error": "tool_locked",
+                    "message": "Esta ferramenta não está disponível no seu plano atual",
+                    "tool": "code_scanner",
+                    "current_plan": current_user.subscription_plan,
+                    "upgrade_url": "/pricing"
+                }
+            )
         
         # Prepara opções de scan
         scan_options = request.scan_options.dict() if request.scan_options else {
@@ -93,6 +104,17 @@ async def scan_api_endpoint(
         check_result = check_subscription_status(current_user)
         if not check_result["active"]:
             raise HTTPException(status_code=403, detail=check_result["message"])
+        if not check_tool_access("api_security_tester", current_user):
+            raise HTTPException(
+                status_code=403,
+                detail={
+                    "error": "tool_locked",
+                    "message": "Esta ferramenta não está disponível no seu plano atual",
+                    "tool": "api_security_tester",
+                    "current_plan": current_user.subscription_plan,
+                    "upgrade_url": "/pricing"
+                }
+            )
         # Cria scanner
         scanner = APISecurityScanner(
             base_url=request.base_url,
@@ -133,6 +155,17 @@ async def upload_file_scan(
         check_result = check_subscription_status(current_user)
         if not check_result["active"]:
             raise HTTPException(status_code=403, detail=check_result["message"])
+        if not check_tool_access("code_scanner", current_user):
+            raise HTTPException(
+                status_code=403,
+                detail={
+                    "error": "tool_locked",
+                    "message": "Esta ferramenta não está disponível no seu plano atual",
+                    "tool": "code_scanner",
+                    "current_plan": current_user.subscription_plan,
+                    "upgrade_url": "/pricing"
+                }
+            )
         # Lê conteúdo do arquivo
         content = await file.read()
         code = content.decode('utf-8')

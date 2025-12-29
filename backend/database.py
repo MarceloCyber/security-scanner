@@ -18,7 +18,10 @@ try:
     conn = engine.connect()
     conn.close()
 except Exception:
-    engine = _make_engine("sqlite:///./security_scanner.db")
+    if _is_sqlite(settings.DATABASE_URL):
+        engine = _make_engine("sqlite:///./security_scanner.db")
+    else:
+        raise
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 

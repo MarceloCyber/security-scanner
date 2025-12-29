@@ -17,10 +17,12 @@ from starlette.middleware.base import BaseHTTPMiddleware
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from database import engine, Base
+from sqlalchemy import inspect
 from routes import auth_routes, scan_routes, extended_scan_routes, tools_routes, redteam_routes, blueteam_routes, payment_routes, user_routes, admin_routes
 
-# Cria tabelas no banco de dados
-Base.metadata.create_all(bind=engine)
+inspector = inspect(engine)
+if not inspector.get_table_names():
+    Base.metadata.create_all(bind=engine)
 
 app = FastAPI(
     title="Ades Plataform API",

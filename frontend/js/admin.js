@@ -71,9 +71,7 @@ function checkAdminAuth() {
     })
     .catch(error => {
         console.error('Erro de autenticação:', error);
-        localStorage.removeItem('token');
-        sessionStorage.removeItem('token');
-        window.location.href = 'admin-login.html';
+        showToast('Falha ao verificar credenciais. Tente novamente.', 'error');
     });
 }
 

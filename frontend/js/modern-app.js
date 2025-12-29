@@ -56,7 +56,7 @@ document.addEventListener('DOMContentLoaded', function() {
         window.location.href = '/index.html';
         return;
     }
-
+    prelockTools();
     initializeApp();
     setupEventListeners();
     loadDashboardStats();
@@ -247,6 +247,28 @@ async function checkSubscription() {
     } catch (error) {
         console.error('Error checking subscription:', error);
     }
+}
+
+function prelockTools() {
+    const plan = (localStorage.getItem('userPlan') || 'free').toLowerCase();
+    const toolAccess = {
+        'free': ['port-scan'],
+        'starter': ['port-scan', 'scanner', 'encoder', 'subdomain', 'hash-analyzer', 'password-strength'],
+        'professional': ['port-scan', 'scanner', 'encoder', 'phishing', 'payloads', 'subdomain', 'sql-injection', 'xss-tester', 'brute-force', 'log-analyzer', 'threat-intel', 'hash-analyzer', 'password-strength', 'reports'],
+        'enterprise': ['port-scan', 'scanner', 'encoder', 'phishing', 'payloads', 'subdomain', 'sql-injection', 'xss-tester', 'brute-force', 'log-analyzer', 'threat-intel', 'hash-analyzer', 'password-strength', 'reports']
+    };
+    const allowedTools = toolAccess[plan] || [];
+    const allTools = ['dashboard', 'phishing', 'payloads', 'encoder', 'scanner', 'port-scan', 'sql-injection', 'xss-tester', 'brute-force', 'subdomain', 'log-analyzer', 'threat-intel', 'hash-analyzer', 'password-strength', 'reports'];
+    allTools.forEach(toolId => {
+        if (toolId === 'dashboard') return;
+        if (!allowedTools.includes(toolId)) {
+            const navItem = document.querySelector(`.nav-item[data-page="${toolId}"]`);
+            if (navItem) {
+                navItem.classList.add('locked');
+                navItem.title = 'Upgrade necessário para acessar esta ferramenta';
+            }
+        }
+    });
 }
 
 function initializeApp() {

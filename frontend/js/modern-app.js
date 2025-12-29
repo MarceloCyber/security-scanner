@@ -57,6 +57,8 @@ document.addEventListener('DOMContentLoaded', function() {
         return;
     }
     prelockTools();
+    prelockToolCards();
+    prepopulateSubscriptionCard();
     initializeApp();
     setupEventListeners();
     loadDashboardStats();
@@ -269,6 +271,72 @@ function prelockTools() {
             }
         }
     });
+}
+
+function prelockToolCards() {
+    const plan = (localStorage.getItem('userPlan') || 'free').toLowerCase();
+    const toolAccess = {
+        'free': ['port-scan'],
+        'starter': ['port-scan', 'scanner', 'encoder', 'subdomain', 'hash-analyzer', 'password-strength'],
+        'professional': ['port-scan', 'scanner', 'encoder', 'phishing', 'payloads', 'subdomain', 'sql-injection', 'xss-tester', 'brute-force', 'log-analyzer', 'threat-intel', 'hash-analyzer', 'password-strength', 'reports'],
+        'enterprise': ['port-scan', 'scanner', 'encoder', 'phishing', 'payloads', 'subdomain', 'sql-injection', 'xss-tester', 'brute-force', 'log-analyzer', 'threat-intel', 'hash-analyzer', 'password-strength', 'reports']
+    };
+    const allowedTools = toolAccess[plan] || [];
+    const toolCards = document.querySelectorAll('.tool-card');
+    toolCards.forEach(card => {
+        const button = card.querySelector('button');
+        if (!button) return;
+        const onclickAttr = button.getAttribute('onclick');
+        if (!onclickAttr) return;
+        const match = onclickAttr.match(/navigateTo\('([^']+)'\)/);
+        if (!match) return;
+        const toolId = match[1];
+        if (!allowedTools.includes(toolId)) {
+            card.classList.add('locked');
+            card.style.opacity = '0.6';
+            card.style.position = 'relative';
+            if (!card.querySelector('.lock-overlay')) {
+                const overlay = document.createElement('div');
+                overlay.className = 'lock-overlay';
+                overlay.innerHTML = '<i class="fas fa-lock"></i><br><span>Upgrade Necessário</span>';
+                overlay.style.cssText = 'position:absolute;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);display:flex;flex-direction:column;align-items:center;justify-content:center;color:#fff;font-size:1.5em;border-radius:15px;cursor:pointer;';
+                overlay.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    showToast('Esta ferramenta requer um plano superior. Faça upgrade!', 'info');
+                    setTimeout(() => window.location.href = 'pricing.html', 1500);
+                });
+                card.appendChild(overlay);
+            }
+            button.style.pointerEvents = 'none';
+        }
+    });
+}
+
+function prepopulateSubscriptionCard() {
+    const plan = (localStorage.getItem('userPlan') || 'free').toLowerCase();
+    const scansThisMonth = parseInt(localStorage.getItem('scansThisMonth') || '0', 10);
+    const scansLimit = parseInt(localStorage.getItem('scansLimit') || '10', 10);
+    const card = document.getElementById('subscriptionCard');
+    if (!card) return;
+    card.style.display = 'block';
+    const planBadge = document.getElementById('planBadge');
+    if (planBadge) planBadge.textContent = plan.toUpperCase();
+    const usageFill = document.getElementById('usageFill');
+    const usageText = document.getElementById('usageText');
+    if (usageFill && usageText) {
+        if (scansLimit > 0) {
+            const percentage = Math.min((scansThisMonth / scansLimit) * 100, 100);
+            usageFill.style.width = percentage + '%';
+            usageText.textContent = `${scansThisMonth} / ${scansLimit}`;
+            if (percentage >= 90) usageFill.style.background = '#f56565';
+            else if (percentage >= 70) usageFill.style.background = '#ed8936';
+            else usageFill.style.background = '#48bb78';
+        } else {
+            usageText.textContent = 'Ilimitado';
+            usageFill.style.width = '0%';
+        }
+    }
 }
 
 function initializeApp() {

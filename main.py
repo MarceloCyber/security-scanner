@@ -1,16 +1,12 @@
 #!/usr/bin/env python3
 """
-Entry point for Railway deployment.
-Redirects to the actual FastAPI app in backend/main.py
+Entry point for platform deployments.
+Imports the actual FastAPI app from backend/main.py
 """
-import sys
 import os
 
-# Add backend directory to Python path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'backend'))
-
-# Import the FastAPI app
-from main import app
+# Import the FastAPI app directly from backend
+from backend.main import app
 
 # This allows Railway to run: uvicorn main:app
 if __name__ == "__main__":

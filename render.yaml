@@ -15,5 +15,6 @@ services:
           name: security-scanner-db
           property: connectionString
 
+
 databases:
   - name: security-scanner-db

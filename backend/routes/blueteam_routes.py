@@ -3,7 +3,7 @@ Blue Team Tools Routes - Production Ready
 Ferramentas de Blue Team para defesa e análise de segurança
 """
 
-from fastapi import APIRouter, HTTPException, UploadFile, File
+from fastapi import APIRouter, HTTPException, UploadFile, File, Depends
 from pydantic import BaseModel, validator
 from typing import List, Dict, Any
 import re
@@ -12,6 +12,12 @@ from datetime import datetime
 import secrets
 import string
 import logging
+from sqlalchemy.orm import Session
+
+from auth import get_current_user
+from models.user import User
+from database import get_db
+from middleware.subscription import check_subscription_status, check_tool_access
 
 # Configurar logger
 logger = logging.getLogger(__name__)
@@ -98,12 +104,37 @@ class PasswordGenerateRequest(BaseModel):
 # ==================== LOG ANALYZER ====================
 
 @router.post("/logs/analyze")
-async def analyze_log(log_type: str, file: UploadFile = File(...)):
+async def analyze_log(
+    log_type: str,
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_user)
+):
     """
     Analisa arquivo de log em busca de atividades suspeitas
     """
     
     try:
+        status = check_subscription_status(current_user)
+        if not status["valid"]:
+            raise HTTPException(
+                status_code=403,
+                detail={
+                    "error": status.get("reason", "subscription_invalid"),
+                    "message": status.get("message", "Assinatura inválida"),
+                    "current_plan": current_user.subscription_plan
+                }
+            )
+        if not check_tool_access("log_analyzer", current_user):
+            raise HTTPException(
+                status_code=403,
+                detail={
+                    "error": "tool_locked",
+                    "message": "Esta ferramenta não está disponível no seu plano atual",
+                    "tool": "log_analyzer",
+                    "current_plan": current_user.subscription_plan,
+                    "upgrade_url": "/pricing"
+                }
+            )
         logger.info(f"Log analysis started. Type: {log_type}, File: {file.filename}")
         
         # Valida tipo de log
@@ -216,12 +247,36 @@ async def analyze_log(log_type: str, file: UploadFile = File(...)):
 # ==================== THREAT INTELLIGENCE ====================
 
 @router.post("/threat-intel/query")
-async def query_threat_intel(request: ThreatIntelRequest):
+async def query_threat_intel(
+    request: ThreatIntelRequest,
+    current_user: User = Depends(get_current_user)
+):
     """
     Consulta threat intelligence sobre um alvo
     """
     
     try:
+        status = check_subscription_status(current_user)
+        if not status["valid"]:
+            raise HTTPException(
+                status_code=403,
+                detail={
+                    "error": status.get("reason", "subscription_invalid"),
+                    "message": status.get("message", "Assinatura inválida"),
+                    "current_plan": current_user.subscription_plan
+                }
+            )
+        if not check_tool_access("threat_intelligence", current_user):
+            raise HTTPException(
+                status_code=403,
+                detail={
+                    "error": "tool_locked",
+                    "message": "Esta ferramenta não está disponível no seu plano atual",
+                    "tool": "threat_intelligence",
+                    "current_plan": current_user.subscription_plan,
+                    "upgrade_url": "/pricing"
+                }
+            )
         logger.info(f"Threat intel query started for target: {request.target}")
         
         # Simula resposta de threat intel
@@ -296,7 +351,10 @@ async def query_threat_intel(request: ThreatIntelRequest):
 # ==================== HASH ANALYZER ====================
 
 @router.post("/hash/analyze")
-async def analyze_hash(request: HashAnalyzeRequest):
+async def analyze_hash(
+    request: HashAnalyzeRequest,
+    current_user: User = Depends(get_current_user)
+):
     """
     Analisa e identifica hashes
     """
@@ -376,7 +434,10 @@ async def analyze_hash(request: HashAnalyzeRequest):
 # ==================== PASSWORD STRENGTH CHECKER ====================
 
 @router.post("/password/check")
-async def check_password_strength(request: PasswordCheckRequest):
+async def check_password_strength(
+    request: PasswordCheckRequest,
+    current_user: User = Depends(get_current_user)
+):
     """
     Avalia a força de uma senha
     """
@@ -506,7 +567,10 @@ async def check_password_strength(request: PasswordCheckRequest):
 
 
 @router.post("/password/generate")
-async def generate_password(request: PasswordGenerateRequest):
+async def generate_password(
+    request: PasswordGenerateRequest,
+    current_user: User = Depends(get_current_user)
+):
     """
     Gera senha forte
     """

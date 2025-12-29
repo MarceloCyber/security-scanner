@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pagamento Confirmado - Security Scanner Pro</title>
+    <title>Pagamento Confirmado - Ades Plataform</title>
     <link rel="stylesheet" href="css/modern-style.css?v=6.2">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
@@ -220,8 +220,14 @@
             }
 
             try {
-                // Aguardar alguns segundos para o webhook processar
-                await new Promise(resolve => setTimeout(resolve, 3000));
+                await new Promise(resolve => setTimeout(resolve, 1500));
+
+                const verify = await apiRequest(`/payments/verify-session?session_id=${sessionId}`);
+                if (verify && verify.verified) {
+                    const info = await apiRequest('/user/subscription-info');
+                    showSuccess(info);
+                    return;
+                }
 
                 // Buscar informações da assinatura
                 const response = await apiRequest('/user/subscription-info');
@@ -229,7 +235,6 @@
                 if (response.subscription_plan !== 'free') {
                     showSuccess(response);
                 } else {
-                    // Tentar novamente após mais alguns segundos
                     await new Promise(resolve => setTimeout(resolve, 2000));
                     const retryResponse = await apiRequest('/user/subscription-info');
                     

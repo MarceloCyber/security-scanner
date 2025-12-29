@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cadastro - Security Scanner Pro</title>
+    <title>Cadastro - Ades Plataform</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
         * {
@@ -305,9 +305,15 @@
                 <i class="fas fa-shield-alt"></i>
             </div>
             <h1>Criar Conta</h1>
-            <p>Cadastre-se no Security Scanner Pro</p>
+            <p>Cadastre-se na Ades Plataform</p>
             <div class="plan-badge" id="planBadge">
                 <i class="fas fa-crown"></i> Plano Free
+            </div>
+            <div class="plan-selector" style="margin-top: 10px; display: flex; gap: 8px; justify-content: center;">
+                <button type="button" class="btn-select" data-plan="free" style="padding:8px 12px; border-radius:8px; border:1px solid #374151; background:#1f2937; color:#e5e7eb; cursor:pointer;">Free</button>
+                <button type="button" class="btn-select" data-plan="starter" style="padding:8px 12px; border-radius:8px; border:1px solid #374151; background:#1f2937; color:#e5e7eb; cursor:pointer;">Starter</button>
+                <button type="button" class="btn-select" data-plan="professional" style="padding:8px 12px; border-radius:8px; border:1px solid #374151; background:#1f2937; color:#e5e7eb; cursor:pointer;">Professional</button>
+                <button type="button" class="btn-select" data-plan="enterprise" style="padding:8px 12px; border-radius:8px; border:1px solid #374151; background:#1f2937; color:#e5e7eb; cursor:pointer;">Enterprise</button>
             </div>
         </div>
 
@@ -416,7 +422,7 @@
             <div class="checkbox-group">
                 <input type="checkbox" id="terms" name="terms" required>
                 <label for="terms">
-                    Eu concordo com os <a href="#">Termos de Uso</a> e <a href="#">Política de Privacidade</a>
+                    Eu concordo com os <a href="terms.html">Termos de Uso</a> e <a href="privacy.html">Política de Privacidade</a>
                 </label>
             </div>
             <div class="error-message" id="termsError"></div>
@@ -432,9 +438,9 @@
     </div>
 
     <script>
-        // Get plan from URL
+        // Get plan from URL / selector
         const urlParams = new URLSearchParams(window.location.search);
-        const selectedPlan = urlParams.get('plan') || 'free';
+        let selectedPlan = urlParams.get('plan') || 'free';
         
         const planNames = {
             'free': 'Free',
@@ -443,9 +449,26 @@
             'enterprise': 'Enterprise'
         };
 
-        document.getElementById('planBadge').innerHTML = `
-            <i class="fas fa-crown"></i> Plano ${planNames[selectedPlan]}
-        `;
+        function updatePlanUI() {
+            document.getElementById('planBadge').innerHTML = `
+                <i class="fas fa-crown"></i> Plano ${planNames[selectedPlan]}
+            `;
+            document.querySelectorAll('.btn-select').forEach(btn => {
+                const active = btn.getAttribute('data-plan') === selectedPlan;
+                btn.style.background = active ? 'linear-gradient(135deg, var(--primary), var(--secondary))' : '#1f2937';
+                btn.style.borderColor = active ? 'transparent' : '#374151';
+                btn.style.color = active ? '#ffffff' : '#e5e7eb';
+            });
+        }
+
+        updatePlanUI();
+
+        document.querySelectorAll('.btn-select').forEach(btn => {
+            btn.addEventListener('click', () => {
+                selectedPlan = btn.getAttribute('data-plan');
+                updatePlanUI();
+            });
+        });
 
         // Form validation
         const form = document.getElementById('registerForm');
@@ -662,6 +685,27 @@
             error.textContent = message;
             error.classList.add('show');
         }
+    </script>
+    <script>
+        (function(){
+            if (localStorage.getItem('cookie_consent') === 'accepted') return;
+            const banner = document.createElement('div');
+            banner.style.cssText = 'position:fixed;bottom:0;left:0;right:0;background:#111827;color:#e5e7eb;border-top:1px solid #1f2937;padding:12px 16px;z-index:9999;display:flex;gap:12px;align-items:center;justify-content:center;flex-wrap:wrap;';
+            const text = document.createElement('span');
+            text.textContent = 'Usamos cookies essenciais para autenticação e experiência.';
+            const link = document.createElement('a');
+            link.href = 'cookies.html';
+            link.textContent = 'Saiba mais';
+            link.style.cssText = 'color:#60a5fa;text-decoration:none;font-weight:600;';
+            const btn = document.createElement('button');
+            btn.textContent = 'Aceitar';
+            btn.style.cssText = 'background:#667eea;color:#fff;border:none;padding:8px 14px;border-radius:8px;font-weight:600;cursor:pointer;';
+            btn.onclick = function(){ localStorage.setItem('cookie_consent','accepted'); banner.remove(); };
+            banner.appendChild(text);
+            banner.appendChild(link);
+            banner.appendChild(btn);
+            document.body.appendChild(banner);
+        })();
     </script>
 </body>
 </html>

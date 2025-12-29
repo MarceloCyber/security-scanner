@@ -90,6 +90,9 @@ async def scan_api_endpoint(
 ):
     """Escaneia API em busca de vulnerabilidades"""
     try:
+        check_result = check_subscription_status(current_user)
+        if not check_result["active"]:
+            raise HTTPException(status_code=403, detail=check_result["message"])
         # Cria scanner
         scanner = APISecurityScanner(
             base_url=request.base_url,
@@ -111,7 +114,7 @@ async def scan_api_endpoint(
         db.add(scan)
         db.commit()
         db.refresh(scan)
-        
+        increment_scan_count(current_user, db)
         return {
             "scan_id": scan.id,
             "results": results
@@ -127,6 +130,9 @@ async def upload_file_scan(
 ):
     """Upload e escaneia arquivo de código"""
     try:
+        check_result = check_subscription_status(current_user)
+        if not check_result["active"]:
+            raise HTTPException(status_code=403, detail=check_result["message"])
         # Lê conteúdo do arquivo
         content = await file.read()
         code = content.decode('utf-8')
@@ -146,7 +152,7 @@ async def upload_file_scan(
         db.add(scan)
         db.commit()
         db.refresh(scan)
-        
+        increment_scan_count(current_user, db)
         return {
             "scan_id": scan.id,
             "filename": file.filename,

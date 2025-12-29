@@ -16,8 +16,11 @@ def create_test_user():
         
         if existing_user:
             print("⚠️  Usuário 'teste' já existe. Atualizando senha...")
-            # Atualiza a senha
             existing_user.hashed_password = get_password_hash("teste123")
+            existing_user.subscription_plan = "professional"
+            existing_user.subscription_status = "active"
+            existing_user.scans_limit = -1
+            existing_user.scans_this_month = 0
             db.commit()
             print("✅ Senha atualizada com sucesso!")
         else:
@@ -26,7 +29,11 @@ def create_test_user():
             new_user = User(
                 username="teste",
                 email="teste@example.com",
-                hashed_password=get_password_hash("teste123")
+                hashed_password=get_password_hash("teste123"),
+                subscription_plan="professional",
+                subscription_status="active",
+                scans_limit=-1,
+                scans_this_month=0
             )
             db.add(new_user)
             db.commit()

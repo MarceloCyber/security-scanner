@@ -18,6 +18,7 @@ from database import get_db
 from auth import get_current_user
 from models.user import User
 from models.scan import Scan
+from middleware.subscription import check_subscription_status, check_tool_access
 
 # Configurar logger
 logger = logging.getLogger(__name__)
@@ -151,6 +152,27 @@ async def test_sql_injection(
     """
     
     try:
+        status = check_subscription_status(current_user)
+        if not status["valid"]:
+            raise HTTPException(
+                status_code=403,
+                detail={
+                    "error": status.get("reason", "subscription_invalid"),
+                    "message": status.get("message", "Assinatura inválida"),
+                    "current_plan": current_user.subscription_plan
+                }
+            )
+        if not check_tool_access("sqli_tester", current_user):
+            raise HTTPException(
+                status_code=403,
+                detail={
+                    "error": "tool_locked",
+                    "message": "Esta ferramenta não está disponível no seu plano atual",
+                    "tool": "sqli_tester",
+                    "current_plan": current_user.subscription_plan,
+                    "upgrade_url": "/pricing"
+                }
+            )
         logger.info(f"SQL Injection test started for URL: {request.url}")
         
         # Payloads básicos de SQLi
@@ -264,6 +286,27 @@ async def test_xss(
     """
     
     try:
+        status = check_subscription_status(current_user)
+        if not status["valid"]:
+            raise HTTPException(
+                status_code=403,
+                detail={
+                    "error": status.get("reason", "subscription_invalid"),
+                    "message": status.get("message", "Assinatura inválida"),
+                    "current_plan": current_user.subscription_plan
+                }
+            )
+        if not check_tool_access("xss_tester", current_user):
+            raise HTTPException(
+                status_code=403,
+                detail={
+                    "error": "tool_locked",
+                    "message": "Esta ferramenta não está disponível no seu plano atual",
+                    "tool": "xss_tester",
+                    "current_plan": current_user.subscription_plan,
+                    "upgrade_url": "/pricing"
+                }
+            )
         logger.info(f"XSS test started for URL: {request.url}")
         
         payloads = {
@@ -353,13 +396,37 @@ async def test_xss(
 # ==================== BRUTE FORCE TOOL ====================
 
 @router.post("/bruteforce/start")
-async def start_brute_force(request: BruteForceRequest):
+async def start_brute_force(
+    request: BruteForceRequest,
+    current_user: User = Depends(get_current_user)
+):
     """
     Inicia ataque brute force (simulado por segurança)
     AVISO: Use apenas em ambientes de teste autorizados
     """
     
     try:
+        status = check_subscription_status(current_user)
+        if not status["valid"]:
+            raise HTTPException(
+                status_code=403,
+                detail={
+                    "error": status.get("reason", "subscription_invalid"),
+                    "message": status.get("message", "Assinatura inválida"),
+                    "current_plan": current_user.subscription_plan
+                }
+            )
+        if not check_tool_access("password_auditor", current_user):
+            raise HTTPException(
+                status_code=403,
+                detail={
+                    "error": "tool_locked",
+                    "message": "Esta ferramenta não está disponível no seu plano atual",
+                    "tool": "password_auditor",
+                    "current_plan": current_user.subscription_plan,
+                    "upgrade_url": "/pricing"
+                }
+            )
         logger.info(f"Brute force test started for URL: {request.url}")
         
         # Wordlists simuladas
@@ -403,13 +470,37 @@ async def start_brute_force(request: BruteForceRequest):
 # ==================== SUBDOMAIN ENUMERATION ====================
 
 @router.post("/subdomain/enumerate")
-async def enumerate_subdomains(request: SubdomainEnumRequest):
+async def enumerate_subdomains(
+    request: SubdomainEnumRequest,
+    current_user: User = Depends(get_current_user)
+):
     """
     Enumera subdomínios de um domínio
     AVISO: Use apenas em domínios que você tem permissão para enumerar
     """
     
     try:
+        status = check_subscription_status(current_user)
+        if not status["valid"]:
+            raise HTTPException(
+                status_code=403,
+                detail={
+                    "error": status.get("reason", "subscription_invalid"),
+                    "message": status.get("message", "Assinatura inválida"),
+                    "current_plan": current_user.subscription_plan
+                }
+            )
+        if not check_tool_access("subdomain_finder", current_user):
+            raise HTTPException(
+                status_code=403,
+                detail={
+                    "error": "tool_locked",
+                    "message": "Esta ferramenta não está disponível no seu plano atual",
+                    "tool": "subdomain_finder",
+                    "current_plan": current_user.subscription_plan,
+                    "upgrade_url": "/pricing"
+                }
+            )
         logger.info(f"Subdomain enumeration started for domain: {request.domain}")
         
         # Subdomínios comuns para teste

@@ -1,4 +1,4 @@
-const API_URL = 'http://localhost:8000/api';
+const API_URL = '/api';
 
 // Force clear any old redirects
 console.log('Auth.js loaded - version 2.0');

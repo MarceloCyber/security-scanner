@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Checkout - Security Scanner Pro</title>
+    <title>Checkout - Ades Plataform</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
         * {
@@ -233,6 +233,16 @@
             cursor: not-allowed;
         }
 
+        .error-banner {
+            display: none;
+            background: rgba(245, 101, 101, 0.15);
+            border: 1px solid #f56565;
+            color: #fed7d7;
+            padding: 0.75rem 1rem;
+            border-radius: 10px;
+            margin-top: 1rem;
+        }
+
         .security-badges {
             display: flex;
             align-items: center;
@@ -307,7 +317,8 @@
     <div class="container">
         <div class="checkout-header">
             <h1><i class="fas fa-shield-alt"></i> Checkout Seguro</h1>
-            <p>Complete seu pagamento e comece a usar o Security Scanner Pro</p>
+            <p>Complete seu pagamento e comece a usar a Ades Plataform</p>
+            <div id="errorBanner" class="error-banner"></div>
         </div>
 
         <div class="checkout-content">
@@ -465,19 +476,34 @@
         document.getElementById('planPrice').textContent = plan.price;
         document.getElementById('totalPrice').textContent = plan.price;
 
-        // Payment method selection
+        // Payment method selection (preserva dados ao alternar)
+        const methodToFormId = {
+            'credit-card': 'creditCardForm',
+            'pix': 'pixForm',
+            'boleto': 'boletoForm'
+        };
         document.querySelectorAll('.payment-method').forEach(method => {
             method.addEventListener('click', function() {
-                // Remove active from all methods
                 document.querySelectorAll('.payment-method').forEach(m => m.classList.remove('active'));
                 document.querySelectorAll('.payment-form').forEach(f => f.classList.remove('active'));
-                
-                // Add active to selected
                 this.classList.add('active');
                 const methodType = this.dataset.method;
-                document.getElementById(methodType.replace('-', '') + 'Form').classList.add('active');
+                const formId = methodToFormId[methodType];
+                if (formId) {
+                    document.getElementById(formId).classList.add('active');
+                }
             });
         });
+
+        function showError(message) {
+            const banner = document.getElementById('errorBanner');
+            banner.textContent = message;
+            banner.style.display = 'block';
+            setTimeout(() => {
+                banner.style.display = 'none';
+                banner.textContent = '';
+            }, 7000);
+        }
 
         // Card number formatting
         document.getElementById('cardNumber').addEventListener('input', function(e) {
@@ -511,23 +537,23 @@
                 const cardCvv = document.getElementById('cardCvv').value;
                 const cardName = document.getElementById('cardName').value;
 
-                if (!cardNumber || cardNumber.length < 16) {
-                    alert('Número do cartão inválido');
+                if (!cardNumber || cardNumber.replace(/\s/g, '').length < 13) {
+                    showError('Número do cartão inválido');
                     return;
                 }
 
                 if (!cardExpiry || cardExpiry.length < 5) {
-                    alert('Data de validade inválida');
+                    showError('Data de validade inválida');
                     return;
                 }
 
                 if (!cardCvv || cardCvv.length < 3) {
-                    alert('CVV inválido');
+                    showError('CVV inválido');
                     return;
                 }
 
                 if (!cardName) {
-                    alert('Nome no cartão é obrigatório');
+                    showError('Nome no cartão é obrigatório');
                     return;
                 }
             }
@@ -539,6 +565,10 @@
         async function processPayment(plan, method) {
             const loading = document.getElementById('loading');
             loading.classList.add('show');
+            const loadingText = loading.querySelector('p');
+            if (method === 'credit-card') loadingText.textContent = 'Redirecionando para o checkout seguro...';
+            if (method === 'pix') loadingText.textContent = 'Gerando QR Code PIX...';
+            if (method === 'boleto') loadingText.textContent = 'Gerando boleto bancário...';
 
             try {
                 const token = localStorage.getItem('token');
@@ -560,7 +590,8 @@
                 });
 
                 if (!response.ok) {
-                    throw new Error('Erro ao processar pagamento');
+                    const errText = await response.text();
+                    throw new Error('Erro ao processar pagamento: ' + (errText || response.status));
                 }
 
                 const data = await response.json();
@@ -568,15 +599,101 @@
                 if (data.checkout_url) {
                     // Redirect to Stripe checkout
                     window.location.href = data.checkout_url;
-                } else {
-                    throw new Error('URL de checkout não recebida');
+                    return;
                 }
+
+                // PIX flow
+                if (data.pix) {
+                    const pix = data.pix;
+                    const pixForm = document.getElementById('pixForm');
+                    pixForm.classList.add('active');
+                    document.querySelector('[data-method="pix"]').classList.add('active');
+                    document.querySelector('[data-method="credit-card"]').classList.remove('active');
+                    document.getElementById('creditCardForm').classList.remove('active');
+
+                    const container = document.createElement('div');
+                    container.style.textAlign = 'center';
+                    container.style.padding = '1rem';
+                    container.innerHTML = `
+                        <img alt="QR Code PIX" style="max-width: 260px; border-radius: 10px;" src="data:image/png;base64,${pix.qr_code_base64 || ''}">
+                        <p style="color: var(--text-dark); margin-top: 1rem;">Escaneie o QR Code ou copie o código abaixo:</p>
+                        <div style="background: var(--dark-light); padding: 10px; border-radius: 8px; word-break: break-all; font-size: 0.9rem;">${pix.qr_code || ''}</div>
+                        ${pix.ticket_url ? `<p style="margin-top: 10px;"><a href="${pix.ticket_url}" target="_blank" rel="noopener" class="upgrade-link">Abrir no Mercado Pago</a></p>` : ''}
+                        <p style="color: var(--text-dark); font-size: 0.9rem; margin-top: 10px;">Aguardando confirmação do pagamento...</p>
+                    `;
+                    pixForm.innerHTML = '';
+                    pixForm.appendChild(container);
+
+                    // Poll status
+                    const paymentId = pix.id;
+                    const poll = async () => {
+                        try {
+                            const statusRes = await fetch(`/api/payments/mercadopago/payment-status/${paymentId}`);
+                            if (!statusRes.ok) return;
+                            const statusData = await statusRes.json();
+                            if (statusData.status === 'approved') {
+                                window.location.href = `payment-success.html?method=pix`;
+                            }
+                        } catch (e) {}
+                    };
+                    const interval = setInterval(poll, 5000);
+                    // Stop loader
+                    loading.classList.remove('show');
+                    return;
+                }
+
+                // Boleto flow
+                if (data.boleto) {
+                    const boleto = data.boleto;
+                    const boletoForm = document.getElementById('boletoForm');
+                    boletoForm.classList.add('active');
+                    document.querySelector('[data-method="boleto"]').classList.add('active');
+                    document.querySelector('[data-method="credit-card"]').classList.remove('active');
+                    document.getElementById('creditCardForm').classList.remove('active');
+
+                    const container = document.createElement('div');
+                    container.style.textAlign = 'center';
+                    container.style.padding = '1rem';
+                    container.innerHTML = `
+                        <p style="color: var(--text-dark); margin: 1rem 0;">Seu boleto foi gerado. O pagamento pode levar até 3 dias úteis para compensar.</p>
+                        ${boleto.external_resource_url ? `<a href="${boleto.external_resource_url}" target="_blank" rel="noopener" class="upgrade-link"><i class="fas fa-barcode"></i> Abrir Boleto</a>` : '<p>Link do boleto indisponível</p>'}
+                    `;
+                    boletoForm.innerHTML = '';
+                    boletoForm.appendChild(container);
+
+                    // Stop loader
+                    loading.classList.remove('show');
+                    return;
+                }
+
+                throw new Error('Nenhuma resposta de pagamento válida recebida');
             } catch (error) {
                 console.error('Payment error:', error);
-                alert('Erro ao processar pagamento: ' + error.message);
+                showError('Erro ao processar pagamento: ' + error.message);
                 loading.classList.remove('show');
             }
         }
+    </script>
+    <script>
+        (function(){
+            if (localStorage.getItem('cookie_consent') === 'accepted') return;
+            const banner = document.createElement('div');
+            banner.style.cssText = 'position:fixed;bottom:0;left:0;right:0;background:#111827;color:#e5e7eb;border-top:1px solid #1f2937;padding:12px 16px;z-index:9999;display:flex;gap:12px;align-items:center;justify-content:center;flex-wrap:wrap;';
+            const text = document.createElement('span');
+            text.textContent = 'Usamos cookies essenciais para autenticação e experiência.';
+            const link = document.createElement('a');
+            link.href = 'cookies.html';
+            link.textContent = 'Saiba mais';
+            link.style.cssText = 'color:#60a5fa;text-decoration:none;font-weight:600;';
+            const btn = document.createElement('button');
+            btn.textContent = 'Aceitar';
+            btn.style.cssText = 'background:#667eea;color:#fff;border:none;padding:8px 14px;border-radius:8px;font-weight:600;cursor:pointer;';
+            btn.onclick = function(){ localStorage.setItem('cookie_consent','accepted'); banner.remove(); };
+            banner.appendChild(text);
+            banner.appendChild(link);
+            banner.appendChild(btn);
+            document.body.appendChild(banner);
+        })();
     </script>
 </body>
 </html>

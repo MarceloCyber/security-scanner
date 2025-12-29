@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Security Scanner Pro - Plataforma completa de análise e testes de segurança para aplicações web">
-    <title>Security Scanner Pro - Proteção Profissional para suas Aplicações</title>
+    <meta name="description" content="Ades Plataform - Plataforma completa de análise e testes de segurança para aplicações web">
+    <title>Ades Plataform - Proteção Profissional para suas Aplicações</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
         * {
@@ -569,13 +569,14 @@
     <!-- Navbar -->
     <nav class="navbar">
         <div class="logo">
-            <i class="fas fa-shield-alt"></i> Security Scanner Pro
+            <i class="fas fa-shield-alt"></i> Ades Plataform
         </div>
         <ul class="nav-links" id="navLinks">
             <li><a href="#features">Recursos</a></li>
             <li><a href="#how-it-works">Como Funciona</a></li>
             <li><a href="#testimonials">Depoimentos</a></li>
             <li><a href="pricing.html" class="cta-nav">Ver Planos</a></li>
+            <li><a href="register.html">Cadastrar</a></li>
             <li><a href="index.html">Login</a></li>
         </ul>
         <div class="menu-toggle" id="menuToggle">
@@ -595,7 +596,7 @@
                     Detecte vulnerabilidades antes dos hackers.
                 </p>
                 <div class="hero-buttons">
-                    <a href="pricing.html" class="btn btn-primary">
+                    <a href="register.html" class="btn btn-primary">
                         <i class="fas fa-rocket"></i> Começar Grátis
                     </a>
                     <a href="#features" class="btn btn-secondary">
@@ -725,7 +726,7 @@
     <section class="testimonials" id="testimonials">
         <div class="section-header">
             <h2>O que dizem nossos <span class="gradient-text">Clientes</span></h2>
-            <p>Milhares de desenvolvedores confiam no Security Scanner Pro</p>
+            <p>Milhares de desenvolvedores confiam na Ades Plataform</p>
         </div>
         <div class="testimonials-grid">
             <div class="testimonial-card">
@@ -783,7 +784,7 @@
     <footer class="footer">
         <div class="footer-content">
             <div class="footer-section">
-                <h3><i class="fas fa-shield-alt"></i> Security Scanner Pro</h3>
+                <h3><i class="fas fa-shield-alt"></i> Ades Plataform</h3>
                 <p>Plataforma líder em análise de segurança para aplicações web. Proteja seu código, proteja seu negócio.</p>
                 <div class="social-links">
                     <a href="#"><i class="fab fa-twitter"></i></a>
@@ -797,7 +798,7 @@
                 <a href="#features">Recursos</a>
                 <a href="pricing.html">Preços</a>
                 <a href="#how-it-works">Como Funciona</a>
-                <a href="#">Documentação</a>
+                <a href="documentation.html">Documentação</a>
             </div>
             <div class="footer-section">
                 <h3>Empresa</h3>
@@ -808,14 +809,14 @@
             </div>
             <div class="footer-section">
                 <h3>Legal</h3>
-                <a href="#">Termos de Uso</a>
-                <a href="#">Política de Privacidade</a>
+                <a href="terms.html">Termos de Uso</a>
+                <a href="privacy.html">Política de Privacidade</a>
                 <a href="#">Segurança</a>
                 <a href="#">SLA</a>
             </div>
         </div>
         <div class="footer-bottom">
-            <p>&copy; 2025 Security Scanner Pro. Todos os direitos reservados.</p>
+            <p>&copy; 2025 Ades Plataform. Todos os direitos reservados.</p>
         </div>
     </footer>
 
@@ -852,6 +853,26 @@
                 navbar.style.background = 'rgba(26, 29, 41, 0.95)';
             }
         });
+
+        (function(){
+            if (localStorage.getItem('cookie_consent') === 'accepted') return;
+            const banner = document.createElement('div');
+            banner.style.cssText = 'position:fixed;bottom:0;left:0;right:0;background:#111827;color:#e5e7eb;border-top:1px solid #1f2937;padding:12px 16px;z-index:9999;display:flex;gap:12px;align-items:center;justify-content:center;flex-wrap:wrap;';
+            const text = document.createElement('span');
+            text.textContent = 'Usamos cookies essenciais para autenticação e experiência.';
+            const link = document.createElement('a');
+            link.href = 'cookies.html';
+            link.textContent = 'Saiba mais';
+            link.style.cssText = 'color:#60a5fa;text-decoration:none;font-weight:600;';
+            const btn = document.createElement('button');
+            btn.textContent = 'Aceitar';
+            btn.style.cssText = 'background:#667eea;color:#fff;border:none;padding:8px 14px;border-radius:8px;font-weight:600;cursor:pointer;';
+            btn.onclick = function(){ localStorage.setItem('cookie_consent','accepted'); banner.remove(); };
+            banner.appendChild(text);
+            banner.appendChild(link);
+            banner.appendChild(btn);
+            document.body.appendChild(banner);
+        })();
     </script>
 </body>
 </html>

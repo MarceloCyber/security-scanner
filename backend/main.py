@@ -1,9 +1,17 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 import os
 import sys
+import time
+from jose import jwt
+from datetime import datetime
+from pathlib import Path
+import shutil
+import asyncio
+from starlette.middleware.base import BaseHTTPMiddleware
 
 # Adiciona o diretório pai ao path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -15,16 +23,17 @@ from routes import auth_routes, scan_routes, extended_scan_routes, tools_routes,
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI(
-    title="Security Scanner API",
+    title="Ades Plataform API",
     description="API para análise de segurança de código e APIs baseada no OWASP Top 10",
     version="1.0.0",
     docs_url="/api/docs",
     redoc_url="/api/redoc"
 )
 
+UPTIME_START = time.time()
+
 # Configuração CORS para produção
 ALLOWED_ORIGINS = [
-    "https://*.vercel.app",
     "http://localhost:8000",
     "http://localhost:3000",
     os.getenv("FRONTEND_URL", "http://localhost:8000")
@@ -32,16 +41,148 @@ ALLOWED_ORIGINS = [
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Liberado para desenvolvimento, restringir em produção
+    allow_origins=ALLOWED_ORIGINS,
+    allow_origin_regex=r"https://.*\\.vercel\\.app",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
+class SecurityHeadersMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request, call_next):
+        response = await call_next(request)
+        response.headers.setdefault("X-Content-Type-Options", "nosniff")
+        response.headers.setdefault("X-Frame-Options", "DENY")
+        response.headers.setdefault("Referrer-Policy", "no-referrer")
+        path = request.url.path
+        if path.startswith("/phishing/") or path.startswith("/api/tools/phishing"):
+            response.headers["Permissions-Policy"] = "geolocation=(self), microphone=(), camera=(self)"
+        else:
+            response.headers.setdefault("Permissions-Policy", "geolocation=(), microphone=(), camera=()")
+        response.headers.setdefault("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
+        response.headers.setdefault(
+            "Content-Security-Policy",
+            "default-src 'self'; "
+            "style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; "
+            "script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; "
+            "img-src 'self' data: https:; "
+            "font-src 'self' https://cdnjs.cloudflare.com data:; "
+            "connect-src 'self' https://api.mercadopago.com https://api.stripe.com https://ipapi.co https://ip-api.com https://nominatim.openstreetmap.org https://api.ipify.org "
+            f"{os.getenv('FRONTEND_URL', 'http://localhost:8000')} http://localhost:8000; "
+            "frame-src 'self' https://www.openstreetmap.org https://www.google.com https://maps.google.com; "
+            "frame-ancestors 'none'; base-uri 'self'"
+        )
+        response.headers.setdefault("X-XSS-Protection", "1; mode=block")
+        return response
+
+app.add_middleware(SecurityHeadersMiddleware)
+
+# Rate limiting por plano (requests/min)
+PLAN_RATE_LIMITS = {
+    "free": 10,
+    "starter": 50,
+    "professional": 100,
+    "enterprise": 500,
+}
+
+# Store em memória (mínimo viável). Em produção use Redis.
+RATE_LIMIT_CACHE = {}
+
+from database import SessionLocal
+from config import settings
+from models.user import User
+
+@app.middleware("http")
+async def rate_limit_middleware(request: Request, call_next):
+    path = request.url.path
+    if not path.startswith("/api"):
+        return await call_next(request)
+
+    # Determina chave e plano
+    key = None
+    plan = "free"
+    username = None
+    token = request.headers.get("authorization", "")
+    if token.lower().startswith("bearer "):
+        try:
+            payload = jwt.decode(token.split(" ", 1)[1], settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+            username = payload.get("sub")
+        except Exception:
+            username = None
+    
+    if username:
+        db = SessionLocal()
+        try:
+            user = db.query(User).filter(User.username == username).first()
+            if user and user.subscription_plan:
+                plan = user.subscription_plan
+            key = f"user:{user.id}" if user else f"user:{username}"
+        finally:
+            db.close()
+    else:
+        client_ip = request.client.host if request.client else "unknown"
+        key = f"ip:{client_ip}"
+
+    limit = PLAN_RATE_LIMITS.get(plan, 10)
+    client_host = request.client.host if request.client else None
+    if client_host in ("127.0.0.1", "::1", "0.0.0.0"):
+        limit = max(limit, 200)
+    now = int(time.time())
+    window = now // 60
+    entry = RATE_LIMIT_CACHE.get(key)
+    if not entry or entry.get("window") != window:
+        entry = {"window": window, "count": 0}
+        RATE_LIMIT_CACHE[key] = entry
+
+    if entry["count"] >= limit:
+        reset_ts = (window + 1) * 60
+        return JSONResponse(
+            status_code=429,
+            content={"detail": "Rate limit exceeded", "plan": plan},
+            headers={
+                "X-RateLimit-Limit": str(limit),
+                "X-RateLimit-Remaining": "0",
+                "X-RateLimit-Reset": str(reset_ts),
+            },
+        )
+
+    entry["count"] += 1
+    response = await call_next(request)
+    remaining = max(limit - entry["count"], 0)
+    reset_ts = (window + 1) * 60
+    response.headers["X-RateLimit-Limit"] = str(limit)
+    response.headers["X-RateLimit-Remaining"] = str(remaining)
+    response.headers["X-RateLimit-Reset"] = str(reset_ts)
+    return response
+
 # Rotas da API (DEVEM VIR ANTES do mount de arquivos estáticos)
 @app.get("/api/health")
 def health_check():
-    return {"status": "healthy", "message": "Security Scanner API is running"}
+    return {"status": "healthy", "message": "Ades Plataform API is running"}
+
+@app.get("/api/uptime")
+def uptime():
+    return {"uptime_seconds": int(time.time() - UPTIME_START), "started_at": datetime.utcfromtimestamp(UPTIME_START).isoformat() + "Z"}
+
+@app.on_event("startup")
+async def schedule_backups():
+    from config import settings
+    if settings.DATABASE_URL.startswith("sqlite"):
+        async def _task():
+            base_dir = Path(__file__).resolve().parents[1]
+            db_path = base_dir / "security_scanner.db"
+            backups_dir = base_dir / "backups"
+            backups_dir.mkdir(parents=True, exist_ok=True)
+            while True:
+                try:
+                    if db_path.exists():
+                        ts = datetime.utcnow().strftime("%Y%m%d-%H%M%S")
+                        backup_file = backups_dir / f"security_scanner-{ts}.db"
+                        shutil.copy2(db_path, backup_file)
+                    await asyncio.sleep(21600)
+                except Exception:
+                    await asyncio.sleep(21600)
+        asyncio.create_task(_task())
 
 app.include_router(auth_routes.router, prefix="/api/auth", tags=["Authentication"])
 app.include_router(scan_routes.router, prefix="/api", tags=["Scans"])

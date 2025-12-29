@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Preços - Security Scanner Pro</title>
+    <title>Preços - Ades Plataform</title>
     <link rel="stylesheet" href="css/modern-style.css?v=6.2">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
@@ -325,6 +325,12 @@
             <p style="color: #a0aec0; margin-top: 20px;">
                 <i class="fas fa-lock"></i> Pagamento 100% seguro via Stripe e Mercado Pago
             </p>
+            <p style="color: #a0aec0; margin-top: 12px; font-size: 0.95em;">
+                Ao prosseguir, você concorda com os
+                <a href="terms.html" style="color: #667eea; text-decoration: none;">Termos de Uso</a>
+                e a
+                <a href="privacy.html" style="color: #667eea; text-decoration: none;">Política de Privacidade</a>.
+            </p>
         </div>
 
         <div class="faq-section">
@@ -376,16 +382,21 @@
                     <i class="fas fa-chevron-down"></i>
                 </div>
                 <div class="faq-answer">
-                    Aceitamos cartões de crédito (via Stripe), PIX e boleto bancário (via Mercado Pago). Pagamento 100% seguro.
+                    aceitamos todos os cartões de crédito via stripe e, em breve, pix e boleto no mercado pago.
                 </div>
             </div>
         </div>
-    </div>
+</div>
 
-    <script>
+<script>
         // Funções locais (sem depender de modern-app.js que verifica autenticação)
         function getToken() {
-            return localStorage.getItem('token');
+            return (
+                localStorage.getItem('token') ||
+                sessionStorage.getItem('token') ||
+                localStorage.getItem('access_token') ||
+                sessionStorage.getItem('access_token')
+            );
         }
 
         function showToast(message, type = 'info') {
@@ -431,7 +442,42 @@
             if (loader) loader.remove();
         }
 
-        async function apiRequest(endpoint, options = {}) {
+        function showFriendlyCheckoutError(planId) {
+            const existing = document.getElementById('checkoutErrorModal');
+            if (existing) existing.remove();
+            const overlay = document.createElement('div');
+            overlay.id = 'checkoutErrorModal';
+            overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:10000;display:flex;align-items:center;justify-content:center;';
+            const box = document.createElement('div');
+            box.style.cssText = 'background:#1a1d29;color:#e5e7eb;border:1px solid #2d3748;border-radius:12px;max-width:520px;width:90%;padding:24px;box-shadow:0 20px 50px rgba(0,0,0,0.5);';
+            box.innerHTML = `
+                <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
+                    <i class="fas fa-clock" style="color:#f6ad55;"></i>
+                    <h3 style="margin:0;font-size:20px;">Checkout indisponível no momento</h3>
+                </div>
+                <p style="margin:0 0 12px 0;color:#cbd5e1;">
+                    Estamos com instabilidade no provedor de pagamento. Aguarde alguns minutos e tente novamente. Nenhuma cobrança foi realizada.
+                </p>
+                <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px;">
+                    <button id="retryCheckoutBtn" style="background:#667eea;color:#fff;border:none;padding:10px 16px;border-radius:8px;font-weight:600;cursor:pointer;"><i class="fas fa-redo"></i> Tentar novamente</button>
+                    <button id="closeCheckoutErrorBtn" style="background:#2d3748;color:#e5e7eb;border:1px solid #374151;padding:10px 16px;border-radius:8px;font-weight:600;cursor:pointer;">Fechar</button>
+                </div>
+            `;
+            overlay.appendChild(box);
+            document.body.appendChild(overlay);
+            document.getElementById('closeCheckoutErrorBtn').onclick = () => overlay.remove();
+            document.getElementById('retryCheckoutBtn').onclick = async () => {
+                overlay.remove();
+                try {
+                    showLoading();
+                    await subscribeToPlan(planId);
+                } finally {
+                    hideLoading();
+                }
+            };
+        }
+
+    async function apiRequest(endpoint, options = {}) {
             const token = getToken();
             const headers = {
                 'Content-Type': 'application/json',
@@ -447,7 +493,7 @@
                 if (response.status === 401) {
                     // Sem autenticação, mas não redireciona
                     throw new Error('Não autenticado');
-                }
+    }
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
 
@@ -496,7 +542,7 @@
                     { text: 'Suporte prioritário', enabled: true },
                     { text: 'API Access', enabled: false }
                 ],
-                buttonText: 'Começar Teste Grátis',
+                buttonText: 'Assinar agora',
                 buttonClass: 'starter'
             },
             {
@@ -519,7 +565,7 @@
                     { text: 'API Access completo', enabled: true },
                     { text: 'Suporte 24/7', enabled: true }
                 ],
-                buttonText: 'Começar Teste Grátis',
+                buttonText: 'Assinar agora',
                 buttonClass: 'professional'
             },
             {
@@ -589,10 +635,16 @@
                             </ul>
                             ${isCurrentPlan ? 
                                 '<div class="current-plan-badge"><i class="fas fa-check"></i> Plano Atual</div>' :
-                                `<button class="subscribe-btn ${plan.buttonClass}" onclick="subscribeToPlan('${plan.id}')" ${isCurrentPlan ? 'disabled' : ''}>
-                                    <i class="fas ${plan.id === 'enterprise' ? 'fa-phone' : 'fa-shopping-cart'}"></i>
-                                    ${plan.buttonText}
-                                </button>`
+                                (plan.id === 'enterprise' ? `
+                                    <button class="subscribe-btn enterprise" onclick="subscribeToPlan('enterprise')">
+                                        <i class="fas fa-shopping-cart"></i> Assinar agora
+                                    </button>
+                                ` : `
+                                    <button class="subscribe-btn ${plan.buttonClass}" onclick="subscribeToPlan('${plan.id}')" ${isCurrentPlan ? 'disabled' : ''}>
+                                        <i class="fas fa-shopping-cart"></i>
+                                        ${plan.buttonText}
+                                    </button>
+                                `)
                             }
                         </div>
                     `;
@@ -601,41 +653,31 @@
 
         // Subscrever a um plano
         async function subscribeToPlan(planId) {
-            // Verificar se está logado
             if (!getToken()) {
-                // Redirecionar para registro com o plano selecionado
-                window.location.href = `register.html?plan=${planId}`;
+                showToast('Faça login para continuar com a assinatura', 'info');
+                window.location.href = 'index.html';
                 return;
             }
 
-            if (planId === 'enterprise') {
-                window.location.href = 'mailto:contato@securityscanner.pro?subject=Interesse no Plano Enterprise';
-                return;
-            }
-            
             if (planId === 'free') {
                 showToast('Você já está no plano Free', 'info');
                 return;
             }
-            
+
             try {
                 showLoading();
-                
-                // Criar sessão de checkout
-                const response = await apiRequest('/payments/create-checkout', {
+                const resp = await apiRequest('/payments/create-checkout', {
                     method: 'POST',
-                    body: JSON.stringify({ plan: planId })
+                    body: JSON.stringify({ plan: planId, payment_method: 'credit-card' })
                 });
-                
-                if (response.checkout_url) {
-                    // Redirecionar para página de pagamento
-                    window.location.href = response.checkout_url;
+                if (resp && resp.checkout_url) {
+                    window.location.href = resp.checkout_url;
                 } else {
-                    throw new Error('URL de checkout não recebida');
+                    throw new Error('Checkout indisponível');
                 }
-            } catch (error) {
-                console.error('Erro ao criar checkout:', error);
-                showToast('Erro ao processar pagamento. Tente novamente.', 'error');
+            } catch (e) {
+                console.error(e);
+                showFriendlyCheckoutError(planId);
             } finally {
                 hideLoading();
             }
@@ -651,6 +693,25 @@
 
         // Carregar ao iniciar
         document.addEventListener('DOMContentLoaded', loadPricing);
-    </script>
+    (function(){
+        if (localStorage.getItem('cookie_consent') === 'accepted') return;
+        const banner = document.createElement('div');
+        banner.style.cssText = 'position:fixed;bottom:0;left:0;right:0;background:#111827;color:#e5e7eb;border-top:1px solid #1f2937;padding:12px 16px;z-index:9999;display:flex;gap:12px;align-items:center;justify-content:center;flex-wrap:wrap;';
+        const text = document.createElement('span');
+        text.textContent = 'Usamos cookies essenciais para autenticação e experiência.';
+        const link = document.createElement('a');
+        link.href = 'cookies.html';
+        link.textContent = 'Saiba mais';
+        link.style.cssText = 'color:#60a5fa;text-decoration:none;font-weight:600;';
+        const btn = document.createElement('button');
+        btn.textContent = 'Aceitar';
+        btn.style.cssText = 'background:#667eea;color:#fff;border:none;padding:8px 14px;border-radius:8px;font-weight:600;cursor:pointer;';
+        btn.onclick = function(){ localStorage.setItem('cookie_consent','accepted'); banner.remove(); };
+        banner.appendChild(text);
+        banner.appendChild(link);
+        banner.appendChild(btn);
+        document.body.appendChild(banner);
+    })();
+</script>
 </body>
 </html>

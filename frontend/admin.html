@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Painel Administrativo - Security Scanner</title>
+    <title>Painel Administrativo - Ades Plataform</title>
     <link rel="stylesheet" href="css/admin.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
@@ -43,6 +43,14 @@
                     <i class="fas fa-users"></i>
                     <span>Usuários</span>
                 </a>
+                <a href="#payments" class="nav-item" data-page="payments">
+                    <i class="fas fa-credit-card"></i>
+                    <span>Pagamentos</span>
+                </a>
+                <a href="#cancelled" class="nav-item" data-page="cancelled">
+                    <i class="fas fa-user-times"></i>
+                    <span>Cancelados</span>
+                </a>
                 <a href="#activity" class="nav-item" data-page="activity">
                     <i class="fas fa-history"></i>
                     <span>Atividades</span>
@@ -65,9 +73,14 @@
             <div id="dashboard-page" class="admin-page active">
                 <div class="page-header">
                     <h2>Dashboard</h2>
-                    <button class="btn-refresh" onclick="loadDashboard()">
-                        <i class="fas fa-sync-alt"></i> Atualizar
-                    </button>
+                    <div class="page-actions">
+                        <button class="btn-refresh" onclick="loadDashboard()">
+                            <i class="fas fa-sync-alt"></i> Atualizar
+                        </button>
+                        <button class="btn-danger" onclick="clearActivity()">
+                            <i class="fas fa-trash"></i> Apagar histórico
+                        </button>
+                    </div>
                 </div>
 
                 <!-- Stats Cards -->
@@ -196,6 +209,12 @@
                             <option value="professional">Professional</option>
                             <option value="enterprise">Enterprise</option>
                         </select>
+                        <button class="btn-refresh" onclick="loadUsers()">
+                            <i class="fas fa-sync-alt"></i> Atualizar
+                        </button>
+                        <button class="btn-danger" onclick="clearActivity()">
+                            <i class="fas fa-trash"></i> Apagar histórico
+                        </button>
                     </div>
                 </div>
 
@@ -236,13 +255,91 @@
                 </div>
             </div>
 
+            <!-- Payments -->
+            <div id="payments-page" class="admin-page">
+                <div class="page-header">
+                    <h2>Sessões de Checkout</h2>
+                    <div class="page-actions">
+                        <button class="btn-refresh" onclick="loadPayments()">
+                            <i class="fas fa-sync-alt"></i> Atualizar
+                        </button>
+                        <button class="btn-danger" onclick="clearActivity()">
+                            <i class="fas fa-trash"></i> Apagar histórico
+                        </button>
+                    </div>
+                </div>
+                <div class="table-container">
+                    <table class="users-table">
+                        <thead>
+                            <tr>
+                                <th>Session</th>
+                                <th>Usuário</th>
+                                <th>Email</th>
+                                <th>Plano</th>
+                                <th>Valor</th>
+                                <th>Método</th>
+                                <th>Status</th>
+                                <th>Pagamento</th>
+                                <th>Criado</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="paymentsTableBody">
+                            <tr>
+                                <td colspan="10" class="loading-cell">
+                                    <i class="fas fa-spinner fa-spin"></i> Carregando...
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Cancelled Users -->
+            <div id="cancelled-page" class="admin-page">
+                <div class="page-header">
+                    <h2>Usuários Cancelados</h2>
+                    <div class="page-actions">
+                        <button class="btn-refresh" onclick="loadCancelled()">
+                            <i class="fas fa-sync-alt"></i> Atualizar
+                        </button>
+                    </div>
+                </div>
+                <div class="table-container">
+                    <table class="users-table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Usuário</th>
+                                <th>Email</th>
+                                <th>Plano</th>
+                                <th>Status</th>
+                                <th>Criado em</th>
+                            </tr>
+                        </thead>
+                        <tbody id="cancelledTableBody">
+                            <tr>
+                                <td colspan="6" class="loading-cell">
+                                    <i class="fas fa-spinner fa-spin"></i> Carregando...
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
             <!-- Activity Log -->
             <div id="activity-page" class="admin-page">
                 <div class="page-header">
                     <h2>Registro de Atividades</h2>
-                    <button class="btn-refresh" onclick="loadActivity()">
-                        <i class="fas fa-sync-alt"></i> Atualizar
-                    </button>
+                    <div class="page-actions">
+                        <button class="btn-refresh" onclick="loadActivity()">
+                            <i class="fas fa-sync-alt"></i> Atualizar
+                        </button>
+                        <button class="btn-danger" onclick="clearActivity()">
+                            <i class="fas fa-trash"></i> Apagar histórico
+                        </button>
+                    </div>
                 </div>
 
                 <div class="activity-list" id="activityList">
@@ -256,9 +353,14 @@
             <div id="system-page" class="admin-page">
                 <div class="page-header">
                     <h2>Informações do Sistema</h2>
-                    <button class="btn-refresh" onclick="loadSystemInfo()">
-                        <i class="fas fa-sync-alt"></i> Atualizar
-                    </button>
+                    <div class="page-actions">
+                        <button class="btn-refresh" onclick="loadSystemInfo()">
+                            <i class="fas fa-sync-alt"></i> Atualizar
+                        </button>
+                        <button class="btn-danger" onclick="clearActivity()">
+                            <i class="fas fa-trash"></i> Apagar histórico
+                        </button>
+                    </div>
                 </div>
 
                 <div class="system-grid">
@@ -343,6 +445,15 @@
                         <option value="professional">Professional</option>
                         <option value="enterprise">Enterprise</option>
                     </select>
+                </div>
+                <div class="form-group">
+                    <label>Ações de Plano</label>
+                    <div class="page-actions">
+                        <button class="btn-secondary" onclick="changePlanAction('free')">Free</button>
+                        <button class="btn-primary" onclick="changePlanAction('starter')">Starter</button>
+                        <button class="btn-primary" onclick="changePlanAction('professional')">Professional</button>
+                        <button class="btn-primary" onclick="changePlanAction('enterprise')">Enterprise</button>
+                    </div>
                 </div>
                 <div class="form-group">
                     <label>Status da Assinatura</label>

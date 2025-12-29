@@ -14,7 +14,7 @@ class EmailService:
         self.smtp_user = os.getenv('SMTP_USER', '')
         self.smtp_password = os.getenv('SMTP_PASSWORD', '')
         self.from_email = os.getenv('FROM_EMAIL', self.smtp_user)
-        self.from_name = os.getenv('FROM_NAME', 'Security Scanner Pro')
+        self.from_name = os.getenv('FROM_NAME', 'Ades Plataform')
 
     def send_email(self, to_email: str, subject: str, html_content: str, text_content: str = None):
         """Send an email"""
@@ -54,7 +54,7 @@ class EmailService:
             'enterprise': 'Enterprise'
         }
 
-        subject = f'Bem-vindo ao Security Scanner Pro - Plano {plan_names.get(plan, "Free")}'
+        subject = f'Bem-vindo à Ades Plataform - Plano {plan_names.get(plan, "Free")}'
         
         html_content = f"""
         <!DOCTYPE html>
@@ -110,7 +110,7 @@ class EmailService:
         <body>
             <div class="container">
                 <div class="header">
-                    <h1>🛡️ Bem-vindo ao Security Scanner Pro!</h1>
+                    <h1>🛡️ Bem-vindo à Ades Plataform!</h1>
                 </div>
                 <div class="content">
                     <h2>Olá, {username}!</h2>
@@ -145,7 +145,7 @@ class EmailService:
                     </p>
                 </div>
                 <div class="footer">
-                    <p>Security Scanner Pro - Proteção Profissional para Suas Aplicações</p>
+                    <p>Ades Plataform - Proteção Profissional para Suas Aplicações</p>
                     <p>Este é um email automático, por favor não responda.</p>
                 </div>
             </div>
@@ -154,7 +154,7 @@ class EmailService:
         """
 
         text_content = f"""
-        Bem-vindo ao Security Scanner Pro!
+        Bem-vindo à Ades Plataform!
 
         Olá, {username}!
 
@@ -173,7 +173,7 @@ class EmailService:
 
         Acesse: http://localhost:8000/index.html
 
-        Security Scanner Pro - Proteção Profissional para Suas Aplicações
+        Ades Plataform - Proteção Profissional para Suas Aplicações
         """
 
         return self.send_email(to_email, subject, html_content, text_content)
@@ -285,7 +285,7 @@ class EmailService:
                     </p>
                 </div>
                 <div class="footer">
-                    <p>Security Scanner Pro - Proteção Profissional para Suas Aplicações</p>
+                    <p>Ades Plataform - Proteção Profissional para Suas Aplicações</p>
                     <p>Este é um email automático, por favor não responda.</p>
                 </div>
             </div>
@@ -314,14 +314,14 @@ class EmailService:
 
         Acesse seu dashboard: http://localhost:8000/dashboard.html
 
-        Security Scanner Pro - Proteção Profissional para Suas Aplicações
+        Ades Plataform - Proteção Profissional para Suas Aplicações
         """
 
         return self.send_email(to_email, subject, html_content, text_content)
 
     def send_password_reset_email(self, to_email: str, username: str, reset_link: str):
         """Send password reset email"""
-        subject = 'Reset de Senha - Security Scanner Pro Admin'
+        subject = 'Reset de Senha - Ades Plataform Admin'
         
         html_content = f"""
         <!DOCTYPE html>
@@ -376,7 +376,7 @@ class EmailService:
                 <div class="content">
                     <p>Olá, <strong>{username}</strong>!</p>
                     
-                    <p>Você solicitou o reset de senha para sua conta de administrador no Security Scanner Pro.</p>
+                    <p>Você solicitou o reset de senha para sua conta de administrador na Ades Plataform.</p>
                     
                     <p>Clique no botão abaixo para criar uma nova senha:</p>
                     
@@ -401,7 +401,7 @@ class EmailService:
                     <hr style="margin: 30px 0; border: none; border-top: 1px solid #ddd;">
                     
                     <p style="color: #666; font-size: 12px;">
-                        Security Scanner Pro - Painel Administrativo<br>
+                        Ades Plataform - Painel Administrativo<br>
                         Este é um email automático, não responda.
                     </p>
                 </div>
@@ -411,7 +411,7 @@ class EmailService:
         """
 
         text_content = f"""
-        Reset de Senha - Security Scanner Pro Admin
+        Reset de Senha - Ades Plataform Admin
 
         Olá, {username}!
 
@@ -425,7 +425,7 @@ class EmailService:
         - Se você não solicitou este reset, ignore este email
         - Nunca compartilhe este link com ninguém
 
-        Security Scanner Pro - Painel Administrativo
+        Ades Plataform - Painel Administrativo
         """
 
         return self.send_email(to_email, subject, html_content, text_content)

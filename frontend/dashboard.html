@@ -6,7 +6,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>Security Scanner Pro - Ferramentas de Segurança</title>
+    <title>Ades Plataform - Ferramentas de Segurança</title>
     <link rel="stylesheet" href="/css/modern-style.css?v=6.2">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
@@ -108,7 +108,7 @@
     <div class="sidebar" id="sidebar">
         <div class="sidebar-header">
             <i class="fas fa-shield-halved"></i>
-            <h2>Security Scanner Pro</h2>
+            <h2>Ades Plataform</h2>
         </div>
         <nav class="sidebar-nav">
             <a href="#dashboard" class="nav-item active" data-page="dashboard">
@@ -196,6 +196,10 @@
                 <i class="fas fa-file-pdf"></i>
                 <span>Reports</span>
             </a>
+            <a href="#profile" class="nav-item" data-page="profile">
+                <i class="fas fa-user"></i>
+                <span>Profile</span>
+            </a>
         </nav>
 
         <!-- Subscription Info -->
@@ -204,6 +208,7 @@
                 <span class="plan-badge" id="planBadge">FREE</span>
                 <a href="pricing.html" class="upgrade-link">Upgrade</a>
             </div>
+            <div id="subscriptionStatusBanner" style="display:none; background: rgba(245,101,101,0.15); border:1px solid #f56565; color:#fed7d7; padding:8px 10px; border-radius:8px; margin-bottom:8px;"></div>
             <div class="subscription-usage">
                 <div class="usage-label">Scans este mês</div>
                 <div class="usage-bar">
@@ -238,7 +243,7 @@
             </div>
             <div id="search-results" class="search-results-dropdown" style="display: none;"></div>
             <div class="header-actions">
-                <button class="btn-icon" id="notification-icon" onclick="showNotificationsPanel()" title="Notificações">
+                <button class="btn-icon" id="notification-icon" title="Notificações">
                     <i class="fas fa-bell"></i>
                     <span class="badge badge-danger">3</span>
                 </button>
@@ -249,7 +254,7 @@
         <div class="page active" id="dashboard-page">
             <div class="page-header">
                 <h1>Dashboard</h1>
-                <p>Bem-vindo ao Security Scanner Professional</p>
+                <p>Bem-vindo à Ades Plataform</p>
             </div>
 
             <div class="stats-grid">
@@ -824,6 +829,50 @@
             </div>
         </div>
 
+        <!-- Profile Page -->
+        <div class="page" id="profile-page">
+            <div class="page-header">
+                <h1><i class="fas fa-user"></i> Perfil</h1>
+                <p>Gerencie sua assinatura</p>
+            </div>
+            <div class="content-grid">
+                <div class="card" style="max-width:700px;">
+                    <div class="card-header">
+                        <h2>Informações da Conta</h2>
+                    </div>
+                    <div class="card-body">
+                        <div class="form-group">
+                            <label>Email</label>
+                            <input type="text" id="profileEmail" class="form-control" readonly>
+                        </div>
+                        <div class="form-group">
+                            <label>Usuário</label>
+                            <input type="text" id="profileUsername" class="form-control" readonly>
+                        </div>
+                        <div class="form-group" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                            <div>
+                                <label>Plano</label>
+                                <input type="text" id="profilePlan" class="form-control" readonly>
+                            </div>
+                            <div>
+                                <label>Status</label>
+                                <input type="text" id="profileStatus" class="form-control" readonly>
+                            </div>
+                        </div>
+                        <div style="display:flex;gap:10px;margin-top:16px;">
+                            <button class="btn-danger" id="cancelSubscriptionBtn" onclick="cancelSubscription()">
+                                <i class="fas fa-ban"></i> Cancelar assinatura
+                            </button>
+                            <button class="btn-primary" onclick="upgradeFromProfile()">
+                                <i class="fas fa-arrow-up"></i> Upgrade
+                            </button>
+                        </div>
+                        <div id="profileHint" style="color:#a0aec0;font-size:0.9em;margin-top:10px;"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- SQL Injection Tester Page -->
         <div class="page" id="sql-injection-page">
             <div class="page-header">
@@ -1312,6 +1361,34 @@
         <div class="spinner"></div>
     </div>
 
+    <div style="text-align: center; padding: 15px; color: #a0aec0; font-size: 0.9em;">
+        <span>Ao usar a plataforma, você concorda com os </span>
+        <a href="terms.html" style="color: #667eea; text-decoration: none;">Termos de Uso</a>
+        <span> e a </span>
+        <a href="privacy.html" style="color: #667eea; text-decoration: none;">Política de Privacidade</a>.
+    </div>
+
     <script src="js/modern-app.js?v=7.3"></script>
+    <script>
+        (function(){
+            if (localStorage.getItem('cookie_consent') === 'accepted') return;
+            const banner = document.createElement('div');
+            banner.style.cssText = 'position:fixed;bottom:0;left:0;right:0;background:#111827;color:#e5e7eb;border-top:1px solid #1f2937;padding:12px 16px;z-index:9999;display:flex;gap:12px;align-items:center;justify-content:center;flex-wrap:wrap;';
+            const text = document.createElement('span');
+            text.textContent = 'Usamos cookies essenciais para autenticação e experiência.';
+            const link = document.createElement('a');
+            link.href = 'cookies.html';
+            link.textContent = 'Saiba mais';
+            link.style.cssText = 'color:#60a5fa;text-decoration:none;font-weight:600;';
+            const btn = document.createElement('button');
+            btn.textContent = 'Aceitar';
+            btn.style.cssText = 'background:#667eea;color:#fff;border:none;padding:8px 14px;border-radius:8px;font-weight:600;cursor:pointer;';
+            btn.onclick = function(){ localStorage.setItem('cookie_consent','accepted'); banner.remove(); };
+            banner.appendChild(text);
+            banner.appendChild(link);
+            banner.appendChild(btn);
+            document.body.appendChild(banner);
+        })();
+    </script>
 </body>
 </html>

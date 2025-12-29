@@ -100,6 +100,8 @@ function initNavigation() {
                 // Carrega dados da página
                 if (pageId === 'dashboard') loadDashboard();
                 else if (pageId === 'users') loadUsers();
+                else if (pageId === 'payments') loadPayments();
+                else if (pageId === 'cancelled') loadCancelled();
                 else if (pageId === 'activity') loadActivity();
                 else if (pageId === 'system') loadSystemInfo();
             }
@@ -252,6 +254,15 @@ function renderUsersTable(users) {
                 <button class="btn-icon btn-delete" onclick="openDeleteModal(${user.id}, '${escapeHtml(user.username)}')" title="Excluir">
                     <i class="fas fa-trash"></i>
                 </button>
+                <button class="btn-icon" onclick="promptChangePlan(${user.id})" title="Trocar Plano">
+                    <i class="fas fa-exchange-alt"></i>
+                </button>
+                <button class="btn-icon" onclick="cancelSubscriptionAdmin(${user.id})" title="Cancelar Assinatura">
+                    <i class="fas fa-ban"></i>
+                </button>
+                <button class="btn-icon" onclick="refundLastInvoice(${user.id})" title="Reembolso (Stripe)">
+                    <i class="fas fa-undo"></i>
+                </button>
             </td>
         </tr>
     `).join('');
@@ -397,6 +408,54 @@ async function confirmDeleteUser() {
     }
 }
 
+async function promptChangePlan(userId) {
+    const plan = prompt('Informe o novo plano: free | starter | professional | enterprise');
+    if (!plan) return;
+    try {
+        await fetchAPI(`/api/admin/subscriptions/${userId}/change-plan?new_plan=${encodeURIComponent(plan)}`, { method: 'POST' });
+        showToast('Plano atualizado', 'success');
+        loadUsers(currentPage);
+    } catch (error) {
+        showToast('Erro ao atualizar plano', 'error');
+    }
+}
+
+async function changePlanAction(plan) {
+    if (!currentUserId) return;
+    try {
+        await fetchAPI(`/api/admin/subscriptions/${currentUserId}/change-plan?new_plan=${encodeURIComponent(plan)}`, { method: 'POST' });
+        const editPlan = document.getElementById('editUserPlan');
+        if (editPlan) editPlan.value = plan;
+        showToast('Plano atualizado', 'success');
+        loadUsers(currentPage);
+    } catch (error) {
+        showToast('Erro ao atualizar plano', 'error');
+    }
+}
+
+window.changePlanAction = changePlanAction;
+
+async function cancelSubscriptionAdmin(userId) {
+    if (!confirm('Confirmar cancelamento da assinatura?')) return;
+    try {
+        await fetchAPI(`/api/admin/subscriptions/${userId}/cancel`, { method: 'POST' });
+        showToast('Assinatura cancelada', 'success');
+        loadUsers(currentPage);
+    } catch (error) {
+        showToast('Erro ao cancelar assinatura', 'error');
+    }
+}
+
+async function refundLastInvoice(userId) {
+    if (!confirm('Confirmar reembolso da última fatura (Stripe)?')) return;
+    try {
+        await fetchAPI(`/api/admin/subscriptions/${userId}/refund`, { method: 'POST' });
+        showToast('Reembolso solicitado', 'success');
+    } catch (error) {
+        showToast('Erro ao solicitar reembolso', 'error');
+    }
+}
+
 // ============ Reset Scans ============
 async function resetUserScans(userId) {
     if (!confirm('Deseja realmente resetar os scans deste usuário?')) return;
@@ -420,51 +479,70 @@ async function loadActivity() {
     try {
         const response = await fetchAPI('/api/admin/activity');
         const data = await response.json();
-        
         const activityList = document.getElementById('activityList');
-        if (!activityList) {
-            console.error('Elemento activityList não encontrado');
-            return;
-        }
-        
-        // A API retorna {activities: [...], total: X}
-        const activities = data.activities || data;
-        
-        // Verifica se activities é um array
-        if (!Array.isArray(activities)) {
-            console.error('Activities não é um array:', activities);
-            activityList.innerHTML = '<div class="loading-state">Erro ao carregar atividades</div>';
-            return;
-        }
-        
+        if (!activityList) return;
+
+        const activities = Array.isArray(data.activities) ? data.activities : [];
         if (activities.length === 0) {
             activityList.innerHTML = '<div class="loading-state">Nenhuma atividade recente</div>';
             return;
         }
-        
-        activityList.innerHTML = activities.map(activity => `
-            <div class="activity-log-item">
-                <div class="activity-log-icon">
-                    <i class="fas fa-radar"></i>
+
+        const groups = {};
+        for (const a of activities) {
+            const key = a.user_id || a.username || 'desconhecido';
+            if (!groups[key]) groups[key] = { username: a.username || 'Usuário desconhecido', user_id: a.user_id || null, items: [] };
+            groups[key].items.push(a);
+        }
+
+        const html = Object.values(groups).map(group => {
+            const count = group.items.length;
+            const itemsHtml = group.items.map(activity => `
+                <div class="activity-item-detail">
+                    <div class="aid-type">${escapeHtml(activity.scan_type || 'Desconhecido')}</div>
+                    <div class="aid-target">${escapeHtml(activity.target || 'N/A')}</div>
+                    <div class="aid-time">${formatDateTime(activity.created_at)}</div>
                 </div>
-                <div class="activity-log-details">
-                    <strong>${escapeHtml(activity.username || 'Usuário desconhecido')}</strong>
-                    <span>
-                        Scan de ${activity.scan_type || 'tipo desconhecido'} em ${activity.target || 'alvo não especificado'}
-                        ${activity.vulnerabilities_found ? `- ${activity.vulnerabilities_found} vulnerabilidades` : ''}
-                    </span>
+            `).join('');
+            return `
+                <div class="activity-group">
+                    <div class="activity-group-header">
+                        <div class="agh-left">
+                            <strong>${escapeHtml(group.username)}</strong>
+                            ${group.user_id ? `<span class="agh-id">ID ${group.user_id}</span>` : ''}
+                            <span class="agh-count">${count} atividades</span>
+                        </div>
+                        <div class="agh-right">
+                            <button class="btn-refresh" onclick="loadActivity()"><i class="fas fa-sync-alt"></i> Atualizar</button>
+                            <button class="btn-danger" onclick="clearActivity()"><i class="fas fa-trash"></i> Apagar histórico</button>
+                        </div>
+                    </div>
+                    <div class="activity-group-body">${itemsHtml}</div>
                 </div>
-                <div class="activity-log-time">
-                    ${formatDateTime(activity.created_at)}
-                </div>
-            </div>
-        `).join('');
-        
+            `;
+        }).join('');
+
+        activityList.innerHTML = html;
     } catch (error) {
         console.error('Erro ao carregar atividades:', error);
+        const activityList = document.getElementById('activityList');
+        if (activityList) activityList.innerHTML = '<div class="loading-state">Erro ao carregar atividades</div>';
         showToast('Erro ao carregar atividades', 'error');
     }
 }
+
+async function clearActivity() {
+    if (!confirm('Deseja apagar todo o histórico de atividades?')) return;
+    try {
+        await fetchAPI('/api/admin/activity', { method: 'DELETE' });
+        showToast('Histórico de atividades apagado', 'success');
+        loadActivity();
+    } catch (error) {
+        showToast('Erro ao apagar histórico', 'error');
+    }
+}
+
+window.clearActivity = clearActivity;
 
 // ============ Sistema ============
 async function loadSystemInfo() {
@@ -672,7 +750,88 @@ function getStatusLabel(status) {
     return labels[status?.toLowerCase()] || 'Ativo';
 }
 
+function getPaymentStatusLabel(session) {
+    const ps = (session.payment_status || '').toLowerCase();
+    const st = (session.status || '').toLowerCase();
+    if (ps === 'paid' || ps === 'no_payment_required') return 'Pago';
+    if (st === 'expired' || st === 'canceled') return 'Falhou';
+    return 'Pendente';
+}
+
+function getPaymentStatusClass(session) {
+    const ps = (session.payment_status || '').toLowerCase();
+    const st = (session.status || '').toLowerCase();
+    if (ps === 'paid' || ps === 'no_payment_required') return 'paid';
+    if (st === 'expired' || st === 'canceled') return 'failed';
+    return 'pending';
+}
+
 // ============ Funções globais (para onclick no HTML) ============
 window.openEditModal = openEditModal;
 window.openDeleteModal = openDeleteModal;
 window.resetUserScans = resetUserScans;
+
+async function loadPayments() {
+    try {
+        const response = await fetchAPI('/api/admin/payments/sessions');
+        const data = await response.json();
+        const tbody = document.getElementById('paymentsTableBody');
+        if (!tbody) return;
+    const rows = (data.sessions || []).map(s => {
+        const user = s.user || {};
+        const url = s.url ? `<a href="${s.url}" target="_blank" rel="noopener">Abrir</a>` : '-';
+        const amount = typeof s.amount_total === 'number' ? `R$ ${(s.amount_total / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : '-';
+        const methods = (s.payment_methods && s.payment_methods.length) ? s.payment_methods.join(', ') : '-';
+        const paymentLabel = getPaymentStatusLabel(s);
+        const paymentClass = getPaymentStatusClass(s);
+        return `
+            <tr>
+                <td>${s.id}</td>
+                <td>${escapeHtml(user.username || '-')}</td>
+                <td>${escapeHtml(user.email || '-')}</td>
+                <td>${getPlanLabel(s.plan || user.plan)}</td>
+                <td>${amount}</td>
+                <td>${escapeHtml(methods)}</td>
+                <td>${escapeHtml(s.status || '-')}</td>
+                <td><span class="status-badge ${paymentClass}">${paymentLabel}</span></td>
+                <td>${formatDateTime(s.created)}</td>
+                <td>${url}</td>
+            </tr>
+        `;
+    }).join('');
+    tbody.innerHTML = rows || '<tr><td colspan="10" class="loading-cell">Nenhuma sessão encontrada</td></tr>';
+    } catch (error) {
+        console.error('Erro ao carregar pagamentos:', error);
+        const tbody = document.getElementById('paymentsTableBody');
+        if (tbody) {
+            tbody.innerHTML = '<tr><td colspan="10" class="loading-cell">Erro ao carregar pagamentos</td></tr>';
+        }
+        showToast('Erro ao carregar pagamentos', 'error');
+    }
+}
+
+async function loadCancelled(page = 1) {
+    try {
+        const response = await fetchAPI(`/api/admin/users?page=${page}&limit=200`);
+        const data = await response.json();
+        const tbody = document.getElementById('cancelledTableBody');
+        if (!tbody) return;
+        const users = Array.isArray(data.users) ? data.users : [];
+        const cancelled = users.filter(u => (u.subscription_status || '').toLowerCase() === 'cancelled');
+        const rows = cancelled.map(user => `
+            <tr>
+                <td>${user.id}</td>
+                <td>${escapeHtml(user.username || '-')}</td>
+                <td>${escapeHtml(user.email || '-')}</td>
+                <td>${getPlanLabel(user.subscription_plan)}</td>
+                <td><span class="status-badge cancelled">Cancelado</span></td>
+                <td>${formatDateTime(user.created_at)}</td>
+            </tr>
+        `).join('');
+        tbody.innerHTML = rows || '<tr><td colspan="6" class="loading-cell">Nenhum usuário cancelado</td></tr>';
+    } catch (error) {
+        const tbody = document.getElementById('cancelledTableBody');
+        if (tbody) tbody.innerHTML = '<tr><td colspan="6" class="loading-cell">Erro ao carregar cancelados</td></tr>';
+        showToast('Erro ao carregar cancelados', 'error');
+    }
+}

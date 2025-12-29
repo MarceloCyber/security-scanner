@@ -482,7 +482,6 @@ async function apiRequest(endpoint, options = {}) {
     }
 
     try {
-        showLoading();
         let response = await fetch(`${API_URL}${endpoint}`, {
             ...options,
             headers
@@ -505,10 +504,8 @@ async function apiRequest(endpoint, options = {}) {
             }
             throw new Error(data.detail || 'Erro na requisição');
         }
-        hideLoading();
         return data;
     } catch (error) {
-        hideLoading();
         throw error;
     }
 }

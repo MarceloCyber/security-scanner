@@ -643,6 +643,8 @@ async def upgrade_plan(
     if new_plan not in ["free", "starter", "professional", "enterprise"]:
         raise HTTPException(status_code=400, detail="Plano inválido")
     
+    if not getattr(current_user, "is_admin", False):
+        raise HTTPException(status_code=403, detail="Acesso negado")
     upgrade_user_plan(current_user, new_plan, 1, db)
     
     return {

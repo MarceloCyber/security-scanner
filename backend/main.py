@@ -17,7 +17,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from database import engine, Base
-from sqlalchemy import inspect
+from sqlalchemy import inspect, text
 from routes import auth_routes, scan_routes, extended_scan_routes, tools_routes, redteam_routes, blueteam_routes, payment_routes, user_routes, admin_routes
 
 inspector = inspect(engine)
@@ -185,6 +185,15 @@ async def schedule_backups():
                 except Exception:
                     await asyncio.sleep(21600)
         asyncio.create_task(_task())
+
+@app.on_event("startup")
+async def align_sequences():
+    if not settings.DATABASE_URL.startswith("sqlite"):
+        try:
+            with engine.begin() as conn:
+                conn.execute(text("SELECT setval(pg_get_serial_sequence('scans','id'), COALESCE((SELECT MAX(id) FROM scans), 0));"))
+        except Exception:
+            pass
 
 app.include_router(auth_routes.router, prefix="/api/auth", tags=["Authentication"])
 app.include_router(scan_routes.router, prefix="/api", tags=["Scans"])

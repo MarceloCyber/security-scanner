@@ -808,7 +808,6 @@ def import_data(
             stats["scans_skipped"] += 1
             continue
         new_s = Scan(
-            id=s.get("id"),
             user_id=s.get("user_id"),
             scan_type=s.get("scan_type"),
             target=s.get("target"),

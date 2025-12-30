@@ -59,6 +59,7 @@ document.addEventListener('DOMContentLoaded', function() {
     prelockTools();
     prelockToolCards();
     prepopulateSubscriptionCard();
+    prepopulateDashboardStats();
     initializeApp();
     setupEventListeners();
     loadDashboardStats();
@@ -336,6 +337,29 @@ function prepopulateSubscriptionCard() {
             usageText.textContent = 'Ilimitado';
             usageFill.style.width = '0%';
         }
+    }
+}
+
+function prepopulateDashboardStats() {
+    const ts = localStorage.getItem('dashboard.totalScans');
+    if (ts !== null) {
+        const el = document.getElementById('total-scans');
+        if (el) el.textContent = ts;
+    }
+    const tp = localStorage.getItem('dashboard.totalPhishing');
+    if (tp !== null) {
+        const el = document.getElementById('total-phishing');
+        if (el) el.textContent = tp;
+    }
+    const tv = localStorage.getItem('dashboard.totalVulns');
+    if (tv !== null) {
+        const el = document.getElementById('total-vulns');
+        if (el) el.textContent = tv;
+    }
+    const tr = localStorage.getItem('dashboard.totalReports');
+    if (tr !== null) {
+        const el = document.getElementById('total-reports');
+        if (el) el.textContent = tr;
     }
 }
 
@@ -629,24 +653,29 @@ async function loadDashboardStats() {
         // Atualizar total de scans do mês atual
         const scansThisMonth = subscriptionInfo.scans_this_month || 0;
         document.getElementById('total-scans').textContent = scansThisMonth;
+        localStorage.setItem('dashboard.totalScans', String(scansThisMonth));
         
         // Carregar estatísticas de phishing
         try {
             const stats = await apiRequest('/tools/stats');
-            document.getElementById('total-phishing').textContent = stats.phishing.generated_pages || 0;
+            const phishingTotal = stats.phishing && stats.phishing.generated_pages ? stats.phishing.generated_pages : 0;
+            document.getElementById('total-phishing').textContent = phishingTotal;
+            localStorage.setItem('dashboard.totalPhishing', String(phishingTotal));
         } catch (error) {
-            document.getElementById('total-phishing').textContent = '0';
+            const cachedPh = localStorage.getItem('dashboard.totalPhishing');
+            if (cachedPh !== null) {
+                document.getElementById('total-phishing').textContent = cachedPh;
+            }
         }
         
         // Load scan stats para vulnerabilidades e relatórios
         try {
             const scansResponse = await apiRequest('/scans');
             
-            // Total de relatórios é o total geral de scans
-            const totalScans = scansResponse.total || 0;
-            document.getElementById('total-reports').textContent = totalScans;
+            const totalReports = scansResponse.total || 0;
+            document.getElementById('total-reports').textContent = totalReports;
+            localStorage.setItem('dashboard.totalReports', String(totalReports));
             
-            // Calculate total vulnerabilities
             let totalVulns = 0;
             if (scansResponse.scans) {
                 scansResponse.scans.forEach(scan => {
@@ -656,17 +685,27 @@ async function loadDashboardStats() {
                 });
             }
             document.getElementById('total-vulns').textContent = totalVulns;
+            localStorage.setItem('dashboard.totalVulns', String(totalVulns));
         } catch (error) {
-            document.getElementById('total-reports').textContent = '0';
-            document.getElementById('total-vulns').textContent = '0';
+            const cachedReports = localStorage.getItem('dashboard.totalReports');
+            if (cachedReports !== null) {
+                document.getElementById('total-reports').textContent = cachedReports;
+            }
+            const cachedVulns = localStorage.getItem('dashboard.totalVulns');
+            if (cachedVulns !== null) {
+                document.getElementById('total-vulns').textContent = cachedVulns;
+            }
         }
     } catch (error) {
         console.error('Error loading dashboard stats:', error);
-        // Valores padrão em caso de erro
-        document.getElementById('total-scans').textContent = '0';
-        document.getElementById('total-phishing').textContent = '0';
-        document.getElementById('total-vulns').textContent = '0';
-        document.getElementById('total-reports').textContent = '0';
+        const ts = localStorage.getItem('dashboard.totalScans');
+        if (ts !== null) document.getElementById('total-scans').textContent = ts;
+        const tp = localStorage.getItem('dashboard.totalPhishing');
+        if (tp !== null) document.getElementById('total-phishing').textContent = tp;
+        const tv = localStorage.getItem('dashboard.totalVulns');
+        if (tv !== null) document.getElementById('total-vulns').textContent = tv;
+        const tr = localStorage.getItem('dashboard.totalReports');
+        if (tr !== null) document.getElementById('total-reports').textContent = tr;
     }
 }
 
@@ -716,7 +755,7 @@ async function generatePhishingPage() {
                 capture_webhook: captureWebhook || null,
                 custom_title: customTitle || null,
                 expiration_hours: expirationHours
-            })
+})
         });
 
         let message = 'Página gerada com sucesso!';

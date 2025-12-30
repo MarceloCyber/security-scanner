@@ -604,6 +604,13 @@
         // Auto-foco no campo de usuário
         document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('adminUsername').focus();
+            const params = new URLSearchParams(window.location.search);
+            const reason = params.get('reason');
+            if (reason === 'token_expired') {
+                showAlert('Sua sessão expirou. Faça login novamente.');
+            } else if (reason === 'rate_limited') {
+                showAlert('Limite de requisições excedido. Faça login novamente.');
+            }
             
             // Verifica se já está logado como admin
             const token = localStorage.getItem('token') || sessionStorage.getItem('token');

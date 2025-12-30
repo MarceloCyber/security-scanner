@@ -660,14 +660,17 @@ async function fetchAPI(endpoint, options = {}) {
             return await fetch(`${API_URL}${endpoint}`, reqOptions);
         };
         let response = await doFetch();
+        if (response.status === 401) {
+            localStorage.removeItem('token');
+            sessionStorage.removeItem('token');
+            window.location.href = 'admin-login.html?reason=token_expired';
+            throw new Error('Não autorizado');
+        }
         if (response.status === 429) {
-            const resetHeader = response.headers.get('X-RateLimit-Reset');
-            const resetTs = parseInt(resetHeader || '0', 10);
-            const waitMs = Math.max(resetTs * 1000 - Date.now(), 500);
-            if (waitMs > 0) {
-                await new Promise(r => setTimeout(r, waitMs));
-                response = await doFetch();
-            }
+            localStorage.removeItem('token');
+            sessionStorage.removeItem('token');
+            window.location.href = 'admin-login.html?reason=rate_limited';
+            throw new Error('Limite de requisições excedido');
         }
         if (!response.ok) {
             let detail = 'Erro desconhecido';

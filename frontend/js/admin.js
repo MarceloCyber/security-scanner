@@ -12,10 +12,12 @@ let currentUsername = '';
 
 // ============ Inicialização ============
 document.addEventListener('DOMContentLoaded', () => {
-    checkAdminAuth();
-    initNavigation();
-    initModals();
-    loadDashboard();
+    (async () => {
+        await checkAdminAuth();
+        initNavigation();
+        initModals();
+        await loadDashboard();
+    })();
     
     // Event Listeners - com verificação de existência
     const userSearch = document.getElementById('userSearch');
@@ -42,24 +44,18 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // ============ Autenticação ============
-function checkAdminAuth() {
+async function checkAdminAuth() {
     const token = localStorage.getItem('token') || sessionStorage.getItem('token');
     if (!token) {
         window.location.href = 'admin-login.html';
         return;
     }
 
-    // Verifica se é admin
-    fetch(`${API_URL}/api/user/subscription-info`, {
-        headers: {
-            'Authorization': `Bearer ${token}`
-        }
-    })
-    .then(response => {
-        if (!response.ok) throw new Error('Não autorizado');
-        return response.json();
-    })
-    .then(data => {
+    try {
+        const response = await fetchAPI('/api/user/subscription-info', {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await response.json();
         if (!data.is_admin) {
             showToast('Acesso negado. Apenas administradores.', 'error');
             setTimeout(() => {
@@ -68,11 +64,10 @@ function checkAdminAuth() {
             return;
         }
         document.getElementById('adminUsername').textContent = data.username || 'Admin';
-    })
-    .catch(error => {
+    } catch (error) {
         console.error('Erro de autenticação:', error);
         showToast('Falha ao verificar credenciais. Tente novamente.', 'error');
-    });
+    }
 }
 
 function logout() {
@@ -622,30 +617,70 @@ function closeModal(modalId) {
 }
 
 // ============ Utilitários ============
+let __rl_active = 0;
+const __rl_queue = [];
+const __rl_max = 1;
+function __rl_acquire() {
+    return new Promise(resolve => {
+        if (__rl_active < __rl_max) {
+            __rl_active++;
+            resolve();
+        } else {
+            __rl_queue.push(resolve);
+        }
+    });
+}
+function __rl_release() {
+    __rl_active--;
+    if (__rl_queue.length) {
+        __rl_active++;
+        const next = __rl_queue.shift();
+        next();
+    }
+}
 async function fetchAPI(endpoint, options = {}) {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('token') || sessionStorage.getItem('token');
     const defaultOptions = {
         headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
         }
     };
-    
-    const response = await fetch(`${API_URL}${endpoint}`, {
-        ...defaultOptions,
-        ...options,
-        headers: {
-            ...defaultOptions.headers,
-            ...options.headers
+    await __rl_acquire();
+    try {
+        const reqOptions = {
+            ...defaultOptions,
+            ...options,
+            headers: {
+                ...defaultOptions.headers,
+                ...options.headers
+            }
+        };
+        const doFetch = async () => {
+            return await fetch(`${API_URL}${endpoint}`, reqOptions);
+        };
+        let response = await doFetch();
+        if (response.status === 429) {
+            const resetHeader = response.headers.get('X-RateLimit-Reset');
+            const resetTs = parseInt(resetHeader || '0', 10);
+            const waitMs = Math.max(resetTs * 1000 - Date.now(), 500);
+            if (waitMs > 0) {
+                await new Promise(r => setTimeout(r, waitMs));
+                response = await doFetch();
+            }
         }
-    });
-    
-    if (!response.ok) {
-        const error = await response.json().catch(() => ({ detail: 'Erro desconhecido' }));
-        throw new Error(error.detail || `Erro HTTP: ${response.status}`);
+        if (!response.ok) {
+            let detail = 'Erro desconhecido';
+            try {
+                const err = await response.json();
+                detail = err.detail || detail;
+            } catch {}
+            throw new Error(detail || `Erro HTTP: ${response.status}`);
+        }
+        return response;
+    } finally {
+        __rl_release();
     }
-    
-    return response;
 }
 
 function showToast(message, type = 'success') {

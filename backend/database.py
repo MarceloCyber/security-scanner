@@ -7,11 +7,20 @@ def _is_sqlite(url: str) -> bool:
     return url.startswith("sqlite")
 
 def _make_engine(url: str):
-    return create_engine(
-        url,
-        connect_args={"check_same_thread": False} if _is_sqlite(url) else {},
-        pool_pre_ping=True,
-    )
+    try:
+        return create_engine(
+            url,
+            connect_args={"check_same_thread": False} if _is_sqlite(url) else {},
+            pool_pre_ping=True,
+        )
+    except Exception:
+        if _is_sqlite(url) or "<" in url or ">" in url:
+            return create_engine(
+                "sqlite:///./security_scanner.db",
+                connect_args={"check_same_thread": False},
+                pool_pre_ping=True,
+            )
+        raise
 
 engine = _make_engine(settings.DATABASE_URL)
 try:

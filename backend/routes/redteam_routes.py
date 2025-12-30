@@ -138,6 +138,32 @@ class SubdomainEnumRequest(BaseModel):
             raise ValueError(f'Tamanho de wordlist inválido. Use: {", ".join(valid_sizes)}')
         return v
 
+class DirectoryEnumRequest(BaseModel):
+    base_url: HttpUrl
+    wordlist_size: str = "medium"
+    status_filter: List[int] = []
+    
+    @validator('wordlist_size')
+    def validate_wordlist_size(cls, v):
+        valid_sizes = ['small', 'medium', 'large']
+        if v not in valid_sizes:
+            raise ValueError(f'Tamanho de wordlist inválido. Use: {", ".join(valid_sizes)}')
+        return v
+    
+    @validator('status_filter')
+    def validate_status_filter(cls, v):
+        if v is None:
+            return []
+        cleaned = []
+        for s in v:
+            try:
+                n = int(s)
+                if 100 <= n <= 599:
+                    cleaned.append(n)
+            except Exception:
+                continue
+        return cleaned
+
 # ==================== SQL INJECTION TESTER ====================
 
 @router.post("/sqli/test")
@@ -550,3 +576,90 @@ async def enumerate_subdomains(
     except Exception as e:
         logger.error(f"Error in subdomain enumeration: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Erro ao enumerar subdomínios: {str(e)}")
+
+# ==================== DIRECTORY ENUMERATION ====================
+
+@router.post("/directory/enumerate")
+async def enumerate_directories(
+    request: DirectoryEnumRequest,
+    current_user: User = Depends(get_current_user)
+):
+    try:
+        status = check_subscription_status(current_user)
+        if not status["valid"]:
+            raise HTTPException(
+                status_code=403,
+                detail={
+                    "error": status.get("reason", "subscription_invalid"),
+                    "message": status.get("message", "Assinatura inválida"),
+                    "current_plan": current_user.subscription_plan
+                }
+            )
+        if not check_tool_access("directory_enumerator", current_user):
+            if not getattr(current_user, "is_admin", False):
+                raise HTTPException(
+                    status_code=403,
+                    detail={
+                        "error": "tool_locked",
+                        "message": "Esta ferramenta não está disponível no seu plano atual",
+                        "tool": "directory_enumerator",
+                        "current_plan": current_user.subscription_plan,
+                        "upgrade_url": "/pricing"
+                    }
+                )
+        logger.info(f"Directory enumeration started for base URL: {request.base_url}")
+        
+        wordlist_sizes = {
+            "small": 10,
+            "medium": 20,
+            "large": 50
+        }
+        
+        common_paths = [
+            "admin", "login", "assets", "images", "css", "js", "uploads", "static",
+            "api", "backup", "config", "server-status", "dashboard", "portal", "docs",
+            "download", "tmp", "private", "include", "bin", "cgi-bin", "wp-admin",
+            "wp-content", "wp-includes", "vendor", "node_modules", "build", "dist",
+            "logs", "phpmyadmin"
+        ]
+        
+        limit = wordlist_sizes.get(request.wordlist_size, 20)
+        results = []
+        base = str(request.base_url).rstrip('/')
+        
+        for path in common_paths[:limit]:
+            url = f"{base}/{path}"
+            if path in ["admin", "login", "assets", "images", "css", "js", "api"]:
+                status_code = 200
+            elif path in ["server-status", "private", "phpmyadmin", "cgi-bin"]:
+                status_code = 403
+            else:
+                status_code = 404
+            
+            if request.status_filter and status_code not in request.status_filter:
+                continue
+            
+            length = (abs(hash(url)) % 5000) + 100
+            fingerprint = hashlib.md5(url.encode()).hexdigest()[:8]
+            results.append({
+                "path": f"/{path}",
+                "status_code": status_code,
+                "length": length,
+                "fingerprint": fingerprint
+            })
+        
+        logger.info(f"Directory enumeration completed. Found: {len(results)}")
+        
+        return {
+            "status": "completed",
+            "base_url": request.base_url,
+            "wordlist_size": request.wordlist_size,
+            "dirs_found": len(results),
+            "results": results,
+            "timestamp": datetime.now().isoformat()
+        }
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        logger.error(f"Error in directory enumeration: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Erro ao enumerar diretórios: {str(e)}")

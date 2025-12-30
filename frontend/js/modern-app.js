@@ -60,6 +60,8 @@ document.addEventListener('DOMContentLoaded', function() {
     prelockToolCards();
     prepopulateSubscriptionCard();
     prepopulateDashboardStats();
+    updateSidebarUsername();
+    prepopulateToolResults();
     initializeApp();
     setupEventListeners();
     loadDashboardStats();
@@ -257,11 +259,11 @@ function prelockTools() {
     const toolAccess = {
         'free': ['port-scan'],
         'starter': ['port-scan', 'scanner', 'encoder', 'subdomain', 'hash-analyzer', 'password-strength'],
-        'professional': ['port-scan', 'scanner', 'encoder', 'phishing', 'payloads', 'subdomain', 'sql-injection', 'xss-tester', 'brute-force', 'log-analyzer', 'threat-intel', 'hash-analyzer', 'password-strength', 'reports'],
-        'enterprise': ['port-scan', 'scanner', 'encoder', 'phishing', 'payloads', 'subdomain', 'sql-injection', 'xss-tester', 'brute-force', 'log-analyzer', 'threat-intel', 'hash-analyzer', 'password-strength', 'reports']
+        'professional': ['port-scan', 'scanner', 'encoder', 'phishing', 'payloads', 'subdomain', 'directory-enum', 'sql-injection', 'xss-tester', 'brute-force', 'log-analyzer', 'ioc-analyzer', 'threat-intel', 'hash-analyzer', 'password-strength', 'reports'],
+        'enterprise': ['port-scan', 'scanner', 'encoder', 'phishing', 'payloads', 'subdomain', 'directory-enum', 'sql-injection', 'xss-tester', 'brute-force', 'log-analyzer', 'ioc-analyzer', 'threat-intel', 'hash-analyzer', 'password-strength', 'reports']
     };
     const allowedTools = toolAccess[plan] || [];
-    const allTools = ['dashboard', 'phishing', 'payloads', 'encoder', 'scanner', 'port-scan', 'sql-injection', 'xss-tester', 'brute-force', 'subdomain', 'log-analyzer', 'threat-intel', 'hash-analyzer', 'password-strength', 'reports'];
+    const allTools = ['dashboard', 'phishing', 'payloads', 'encoder', 'scanner', 'port-scan', 'sql-injection', 'xss-tester', 'brute-force', 'subdomain', 'directory-enum', 'log-analyzer', 'ioc-analyzer', 'threat-intel', 'hash-analyzer', 'password-strength', 'reports'];
     allTools.forEach(toolId => {
         if (toolId === 'dashboard') return;
         if (!allowedTools.includes(toolId)) {
@@ -361,6 +363,232 @@ function prepopulateDashboardStats() {
         const el = document.getElementById('total-reports');
         if (el) el.textContent = tr;
     }
+}
+
+function updateSidebarUsername() {
+    const el = document.getElementById('username');
+    if (el) el.textContent = localStorage.getItem('username') || 'Usuário';
+}
+
+function prepopulateToolResults() {
+    try {
+        const sqliHtml = localStorage.getItem('tool.sqli.resultsHtml');
+        if (sqliHtml) {
+            const el = document.getElementById('sqli-results');
+            if (el) el.innerHTML = sqliHtml;
+            const count = localStorage.getItem('tool.sqli.vulnCount');
+            const badge = document.getElementById('sqli-vuln-count');
+            if (badge && count !== null) badge.textContent = count;
+        }
+
+        const xssHtml = localStorage.getItem('tool.xss.resultsHtml');
+        if (xssHtml) {
+            const el = document.getElementById('xss-results');
+            if (el) el.innerHTML = xssHtml;
+            const count = localStorage.getItem('tool.xss.vulnCount');
+            const badge = document.getElementById('xss-vuln-count');
+            if (badge && count !== null) badge.textContent = count;
+        }
+
+        const bruteHtml = localStorage.getItem('tool.brute.resultsHtml');
+        if (bruteHtml) {
+            const el = document.getElementById('bf-results');
+            if (el) el.innerHTML = bruteHtml;
+            const prog = localStorage.getItem('tool.brute.progress');
+            const pEl = document.getElementById('bf-progress');
+            if (pEl && prog !== null) pEl.textContent = `${prog}%`;
+        }
+
+        const subHtml = localStorage.getItem('tool.subdomain.resultsHtml');
+        if (subHtml) {
+            const el = document.getElementById('subdomain-results');
+            if (el) el.innerHTML = subHtml;
+            const count = localStorage.getItem('tool.subdomain.count');
+            const badge = document.getElementById('subdomain-count');
+            if (badge && count !== null) badge.textContent = count;
+        }
+
+        const logHtml = localStorage.getItem('tool.log.resultsHtml');
+        if (logHtml) {
+            const el = document.getElementById('log-results');
+            if (el) el.innerHTML = logHtml;
+            const threats = localStorage.getItem('tool.log.threats');
+            const badge = document.getElementById('log-threats');
+            if (badge && threats !== null) badge.textContent = threats;
+        }
+
+        const thHtml = localStorage.getItem('tool.threat.resultsHtml');
+        if (thHtml) {
+            const el = document.getElementById('threat-results');
+            if (el) el.innerHTML = thHtml;
+            const score = localStorage.getItem('tool.threat.score');
+            const mal = localStorage.getItem('tool.threat.malicious');
+            const badge = document.getElementById('threat-score');
+            if (badge && score !== null) {
+                badge.textContent = `Score: ${score}`;
+                const isMal = mal === 'true';
+                badge.className = `badge badge-${isMal ? 'danger' : 'success'}`;
+            }
+        }
+
+        const hashHtml = localStorage.getItem('tool.hash.resultsHtml');
+        if (hashHtml) {
+            const el = document.getElementById('hash-results');
+            if (el) el.innerHTML = hashHtml;
+        }
+
+        const pwdHtml = localStorage.getItem('tool.password.resultsHtml');
+        if (pwdHtml) {
+            const el = document.getElementById('password-results');
+            if (el) el.innerHTML = pwdHtml;
+        }
+
+        const dirHtml = localStorage.getItem('tool.direnum.resultsHtml');
+        if (dirHtml) {
+            const el = document.getElementById('direnum-results');
+            if (el) el.innerHTML = dirHtml;
+            const count = localStorage.getItem('tool.direnum.count');
+            const badge = document.getElementById('direnum-count');
+            if (badge && count !== null) badge.textContent = count;
+        }
+
+        const iocHtml = localStorage.getItem('tool.ioc.resultsHtml');
+        if (iocHtml) {
+            const el = document.getElementById('ioc-results');
+            if (el) el.innerHTML = iocHtml;
+            const count = localStorage.getItem('tool.ioc.count');
+            const badge = document.getElementById('ioc-count');
+            if (badge && count !== null) badge.textContent = count;
+        }
+    } catch (e) {}
+}
+
+function clearAllSQLiResults() {
+    if (!confirm('Tem certeza que deseja limpar todos os resultados do SQL Injection Tester?')) return;
+    try {
+        localStorage.removeItem('tool.sqli.resultsHtml');
+        localStorage.removeItem('tool.sqli.vulnCount');
+    } catch (_) {}
+    const el = document.getElementById('sqli-results');
+    if (el) el.innerHTML = '<p class="text-muted">Configure o teste e clique em "Iniciar Teste"</p>';
+    const badge = document.getElementById('sqli-vuln-count');
+    if (badge) badge.textContent = '0';
+    showToast('Resultados limpos com sucesso', 'success');
+}
+
+function clearAllXSSResults() {
+    if (!confirm('Tem certeza que deseja limpar todos os resultados do XSS Tester?')) return;
+    try {
+        localStorage.removeItem('tool.xss.resultsHtml');
+        localStorage.removeItem('tool.xss.vulnCount');
+    } catch (_) {}
+    const el = document.getElementById('xss-results');
+    if (el) el.innerHTML = '<p class="text-muted">Configure e inicie o teste</p>';
+    const badge = document.getElementById('xss-vuln-count');
+    if (badge) badge.textContent = '0';
+    showToast('Resultados limpos com sucesso', 'success');
+}
+
+function clearAllBruteForceResults() {
+    if (!confirm('Tem certeza que deseja limpar todos os resultados do Brute Force Tool?')) return;
+    try {
+        localStorage.removeItem('tool.brute.resultsHtml');
+        localStorage.removeItem('tool.brute.progress');
+    } catch (_) {}
+    const el = document.getElementById('bf-results');
+    if (el) el.innerHTML = '<p class="text-muted">Configure e inicie o ataque</p>';
+    const pEl = document.getElementById('bf-progress');
+    if (pEl) pEl.textContent = '0%';
+    showToast('Resultados limpos com sucesso', 'success');
+}
+
+function clearAllSubdomainResults() {
+    if (!confirm('Tem certeza que deseja limpar todos os resultados do Subdomain Enumeration?')) return;
+    try {
+        localStorage.removeItem('tool.subdomain.resultsHtml');
+        localStorage.removeItem('tool.subdomain.count');
+    } catch (_) {}
+    const el = document.getElementById('subdomain-results');
+    if (el) el.innerHTML = '<p class="text-muted">Inicie a enumeração</p>';
+    const badge = document.getElementById('subdomain-count');
+    if (badge) badge.textContent = '0';
+    showToast('Resultados limpos com sucesso', 'success');
+}
+
+function clearAllLogAnalysis() {
+    if (!confirm('Tem certeza que deseja limpar todos os resultados do Log Analyzer?')) return;
+    try {
+        localStorage.removeItem('tool.log.resultsHtml');
+        localStorage.removeItem('tool.log.threats');
+    } catch (_) {}
+    const el = document.getElementById('log-results');
+    if (el) el.innerHTML = '<p class="text-muted">Faça upload de um log para análise</p>';
+    const badge = document.getElementById('log-threats');
+    if (badge) badge.textContent = '0';
+    showToast('Resultados limpos com sucesso', 'success');
+}
+
+function clearAllThreatIntel() {
+    if (!confirm('Tem certeza que deseja limpar todos os resultados do Threat Intelligence?')) return;
+    try {
+        localStorage.removeItem('tool.threat.resultsHtml');
+        localStorage.removeItem('tool.threat.score');
+        localStorage.removeItem('tool.threat.malicious');
+    } catch (_) {}
+    const el = document.getElementById('threat-results');
+    if (el) el.innerHTML = '<p class="text-muted">Configure e faça uma consulta</p>';
+    const badge = document.getElementById('threat-score');
+    if (badge) {
+        badge.textContent = 'N/A';
+        badge.className = 'badge';
+    }
+    showToast('Resultados limpos com sucesso', 'success');
+}
+
+function clearAllDirEnum() {
+    if (!confirm('Tem certeza que deseja limpar todos os resultados do Directory Enumerator?')) return;
+    try {
+        localStorage.removeItem('tool.direnum.resultsHtml');
+        localStorage.removeItem('tool.direnum.count');
+    } catch (_) {}
+    const el = document.getElementById('direnum-results');
+    if (el) el.innerHTML = '<p class="text-muted">Inicie a enumeração de diretórios</p>';
+    const badge = document.getElementById('direnum-count');
+    if (badge) badge.textContent = '0';
+    showToast('Resultados limpos com sucesso', 'success');
+}
+
+function clearAllIOCAnalyzer() {
+    if (!confirm('Tem certeza que deseja limpar todos os resultados do IOC Analyzer?')) return;
+    try {
+        localStorage.removeItem('tool.ioc.resultsHtml');
+        localStorage.removeItem('tool.ioc.count');
+    } catch (_) {}
+    const el = document.getElementById('ioc-results');
+    if (el) el.innerHTML = '<p class="text-muted">Cole IOCs para análise</p>';
+    const badge = document.getElementById('ioc-count');
+    if (badge) badge.textContent = '0';
+    showToast('Resultados limpos com sucesso', 'success');
+}
+
+function clearAllHashAnalysis() {
+    if (!confirm('Tem certeza que deseja limpar todos os resultados do Hash Analyzer?')) return;
+    try {
+        localStorage.removeItem('tool.hash.resultsHtml');
+    } catch (_) {}
+    const el = document.getElementById('hash-results');
+    if (el) el.innerHTML = '<p class="text-muted">Insira hashes para análise</p>';
+    showToast('Resultados limpos com sucesso', 'success');
+}
+
+function clearAllPasswordAnalysis() {
+    if (!confirm('Tem certeza que deseja limpar todos os resultados do Password Strength Checker?')) return;
+    try {
+        localStorage.removeItem('tool.password.resultsHtml');
+    } catch (_) {}
+    const el = document.getElementById('password-results');
+    if (el) el.innerHTML = '<p class="text-muted">Digite uma senha para análise</p>';
+    showToast('Resultados limpos com sucesso', 'success');
 }
 
 function initializeApp() {
@@ -2781,6 +3009,10 @@ async function startSQLiTest() {
         `;
         
         document.getElementById('sqli-results').innerHTML = resultsHtml;
+        try {
+            localStorage.setItem('tool.sqli.resultsHtml', resultsHtml);
+            localStorage.setItem('tool.sqli.vulnCount', String(response.vulnerabilities_found));
+        } catch (_) {}
         hideLoading();
         showToast('Teste SQL Injection concluído', 'success');
         
@@ -2841,6 +3073,10 @@ async function startXSSTest() {
         `;
         
         document.getElementById('xss-results').innerHTML = resultsHtml;
+        try {
+            localStorage.setItem('tool.xss.resultsHtml', resultsHtml);
+            localStorage.setItem('tool.xss.vulnCount', String(response.vulnerabilities_found));
+        } catch (_) {}
         hideLoading();
         showToast('Teste XSS concluído', 'success');
         
@@ -2911,6 +3147,10 @@ async function startBruteForce() {
         `;
         
         document.getElementById('bf-results').innerHTML = resultsHtml;
+        try {
+            localStorage.setItem('tool.brute.resultsHtml', resultsHtml);
+            localStorage.setItem('tool.brute.progress', String(response.progress));
+        } catch (_) {}
         hideLoading();
         showToast('Brute force concluído', 'success');
     } catch (error) {
@@ -2971,11 +3211,120 @@ async function startSubdomainEnum() {
         `;
         
         document.getElementById('subdomain-results').innerHTML = resultsHtml;
+        try {
+            localStorage.setItem('tool.subdomain.resultsHtml', resultsHtml);
+            localStorage.setItem('tool.subdomain.count', String(response.subdomains_found));
+        } catch (_) {}
         hideLoading();
         showToast('Enumeração concluída', 'success');
     } catch (error) {
         hideLoading();
         showToast('Erro na enumeração', 'error');
+    }
+}
+
+async function startDirEnum() {
+    const baseUrl = document.getElementById('dir-base-url').value;
+    const wordlist = document.getElementById('dir-wordlist').value;
+    const statusText = document.getElementById('dir-status-filter').value.trim();
+    const status_filter = statusText ? statusText.split(',').map(s => parseInt(s.trim())).filter(n => !isNaN(n)) : [];
+    if (!baseUrl) {
+        showToast('Digite a URL base', 'error');
+        return;
+    }
+    showLoading();
+    try {
+        const response = await apiRequest('/redteam/directory/enumerate', {
+            method: 'POST',
+            body: JSON.stringify({ base_url: baseUrl, wordlist_size: wordlist, status_filter })
+        });
+        document.getElementById('direnum-count').textContent = response.dirs_found;
+        const resultsHtml = `
+            <div class="alert alert-${response.dirs_found > 0 ? 'success' : 'info'}">
+                <i class="fas fa-${response.dirs_found > 0 ? 'check-circle' : 'info-circle'}"></i>
+                <strong>${response.dirs_found} diretório(s) encontrados</strong>
+            </div>
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Path</th>
+                        <th>Status</th>
+                        <th>Tamanho</th>
+                        <th>Fingerprint</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${response.results.map(r => `
+                        <tr>
+                            <td>${r.path}</td>
+                            <td><span class="badge badge-${r.status_code === 200 ? 'success' : r.status_code === 403 ? 'warning' : 'secondary'}">${r.status_code}</span></td>
+                            <td>${r.length}</td>
+                            <td>${r.fingerprint}</td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        `;
+        document.getElementById('direnum-results').innerHTML = resultsHtml;
+        try {
+            localStorage.setItem('tool.direnum.resultsHtml', resultsHtml);
+            localStorage.setItem('tool.direnum.count', String(response.dirs_found));
+        } catch (_) {}
+        hideLoading();
+        showToast('Enumeração de diretórios concluída', 'success');
+    } catch (error) {
+        hideLoading();
+        showToast('Erro na enumeração de diretórios', 'error');
+    }
+}
+
+async function analyzeIOC() {
+    const raw = document.getElementById('ioc-input').value;
+    const indicators = raw.split('\n').map(s => s.trim()).filter(s => s);
+    const sources = [];
+    if (document.getElementById('ioc-source-virustotal').checked) sources.push('virustotal');
+    if (document.getElementById('ioc-source-alienvault').checked) sources.push('alienvault');
+    if (indicators.length === 0) {
+        showToast('Cole pelo menos um IOC', 'error');
+        return;
+    }
+    showLoading();
+    try {
+        const response = await apiRequest('/blueteam/ioc/analyze', {
+            method: 'POST',
+            body: JSON.stringify({ indicators, sources })
+        });
+        document.getElementById('ioc-count').textContent = response.total;
+        const resultsHtml = `
+            <div class="stats-grid" style="grid-template-columns: repeat(4, 1fr); margin-bottom: 20px;">
+                <div class="stat-card"><div class="stat-content"><h3>${response.summary.ips}</h3><p>IPs</p></div></div>
+                <div class="stat-card"><div class="stat-content"><h3>${response.summary.domains}</h3><p>Domínios</p></div></div>
+                <div class="stat-card"><div class="stat-content"><h3>${response.summary.urls}</h3><p>URLs</p></div></div>
+                <div class="stat-card"><div class="stat-content"><h3>${response.summary.hashes}</h3><p>Hashes</p></div></div>
+            </div>
+            ${response.results.map(item => `
+                <div class="card" style="margin-bottom: 10px;">
+                    <div class="card-header">
+                        <h3>${item.indicator}</h3>
+                        <span class="badge badge-${item.is_malicious ? 'danger' : 'success'}">${item.is_malicious ? 'MALICIOUS' : 'CLEAN'}</span>
+                    </div>
+                    <div class="card-body">
+                        <p><strong>Tipo:</strong> ${item.type.toUpperCase()}</p>
+                        ${item.details ? `<pre>${JSON.stringify(item.details, null, 2)}</pre>` : ''}
+                    </div>
+                </div>
+            `).join('')}
+        `;
+        document.getElementById('ioc-results').innerHTML = resultsHtml;
+        try {
+            localStorage.setItem('tool.ioc.resultsHtml', resultsHtml);
+            localStorage.setItem('tool.ioc.count', String(response.total));
+        } catch (_) {}
+        hideLoading();
+        showToast('Análise de IOCs concluída', 'success');
+    } catch (error) {
+        hideLoading();
+        showToast('Erro na análise de IOCs', 'error');
     }
 }
 
@@ -3061,6 +3410,10 @@ async function analyzeLog() {
         `;
         
         document.getElementById('log-results').innerHTML = resultsHtml;
+        try {
+            localStorage.setItem('tool.log.resultsHtml', resultsHtml);
+            localStorage.setItem('tool.log.threats', String(data.threats_found));
+        } catch (_) {}
         hideLoading();
         showToast('Análise de log concluída', 'success');
     } catch (error) {
@@ -3125,6 +3478,11 @@ async function queryThreatIntel() {
         `;
         
         document.getElementById('threat-results').innerHTML = resultsHtml;
+        try {
+            localStorage.setItem('tool.threat.resultsHtml', resultsHtml);
+            localStorage.setItem('tool.threat.score', String(response.reputation_score));
+            localStorage.setItem('tool.threat.malicious', String(!!response.is_malicious));
+        } catch (_) {}
         hideLoading();
         showToast('Consulta concluída', 'success');
     } catch (error) {
@@ -3204,6 +3562,9 @@ async function analyzeHash() {
         `;
         
         document.getElementById('hash-results').innerHTML = resultsHtml;
+        try {
+            localStorage.setItem('tool.hash.resultsHtml', resultsHtml);
+        } catch (_) {}
         hideLoading();
         showToast('Análise concluída', 'success');
     } catch (error) {
@@ -3256,6 +3617,9 @@ async function checkPasswordStrength() {
         `;
         
         document.getElementById('password-results').innerHTML = resultsHtml;
+        try {
+            localStorage.setItem('tool.password.resultsHtml', resultsHtml);
+        } catch (_) {}
         showToast('Análise concluída', 'success');
     } catch (error) {
         showToast('Erro ao verificar senha', 'error');
@@ -3388,6 +3752,13 @@ const searchDatabase = [
         keywords: ['subdomain', 'enum', 'dns', 'domain', 'reconnaissance']
     },
     {
+        id: 'directory-enum',
+        title: 'Directory Enumerator',
+        description: 'Enumere diretórios e caminhos ocultos',
+        icon: 'fa-folder-open',
+        keywords: ['directory', 'enum', 'dirb', 'gobuster', 'paths']
+    },
+    {
         id: 'log-analyzer',
         title: 'Log Analyzer',
         description: 'Analise logs em busca de ameaças',
@@ -3400,6 +3771,13 @@ const searchDatabase = [
         description: 'Consulte informações de ameaças',
         icon: 'fa-shield-alt',
         keywords: ['threat', 'intelligence', 'ioc', 'malware', 'reputation']
+    },
+    {
+        id: 'ioc-analyzer',
+        title: 'IOC Analyzer',
+        description: 'Analise indicators of compromise (IOCs)',
+        icon: 'fa-list-check',
+        keywords: ['ioc', 'indicator', 'compromise', 'malware', 'threat']
     },
     {
         id: 'hash-analyzer',

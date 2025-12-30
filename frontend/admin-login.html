@@ -767,15 +767,15 @@
         <div class="modal-content">
             <span class="modal-close" onclick="closeForgotPasswordModal()">&times;</span>
             
-            <h2 style="color: #1e3c72; margin-bottom: 10px;">🔑 Recuperar Senha</h2>
-            <p style="color: #666; margin-bottom: 25px;">
+            <h2 style="color: rgba(255, 255, 255, 0.9); margin-bottom: 10px;">🔑 Recuperar Senha</h2>
+            <p style="color: rgba(255, 255, 255, 0.7); margin-bottom: 25px;">
                 Digite seu email de administrador para receber o link de reset
             </p>
 
             <div id="forgotMessage" style="margin-bottom: 15px;"></div>
 
             <div class="form-group">
-                <label for="forgotEmail" style="display: block; margin-bottom: 8px; color: #333; font-weight: 600;">
+                <label for="forgotEmail" style="display: block; margin-bottom: 8px; color: rgba(255, 255, 255, 0.9); font-weight: 600;">
                     Email do Administrador
                 </label>
                 <input 
@@ -805,19 +805,19 @@
     <div id="createAdminModal" class="modal" style="display: none;">
         <div class="modal-content">
             <span class="modal-close" onclick="closeCreateAdminModal()">&times;</span>
-            <h2 style="color: #1e3c72; margin-bottom: 10px;">👤 Criar Primeiro Administrador</h2>
-            <p style="color: #666; margin-bottom: 20px;">Use apenas uma vez. Após criado, este recurso é desabilitado.</p>
+            <h2 style="color: rgba(255, 255, 255, 0.9); margin-bottom: 10px;">👤 Criar Primeiro Administrador</h2>
+            <p style="color: rgba(255, 255, 255, 0.7); margin-bottom: 20px;">Use apenas uma vez. Após criado, este recurso é desabilitado.</p>
             <div id="createAdminMessage" style="margin-bottom: 15px;"></div>
             <div class="form-group">
-                <label style="display:block; margin-bottom:8px; color:#333; font-weight:600;">Usuário</label>
+                <label style="display:block; margin-bottom:8px; color: rgba(255, 255, 255, 0.9); font-weight:600;">Usuário</label>
                 <input type="text" id="newAdminUsername" class="form-input" placeholder="admin" required>
             </div>
             <div class="form-group">
-                <label style="display:block; margin-bottom:8px; color:#333; font-weight:600;">Email</label>
+                <label style="display:block; margin-bottom:8px; color: rgba(255, 255, 255, 0.9); font-weight:600;">Email</label>
                 <input type="email" id="newAdminEmail" class="form-input" placeholder="admin@security.com" required>
             </div>
             <div class="form-group">
-                <label style="display:block; margin-bottom:8px; color:#333; font-weight:600;">Senha</label>
+                <label style="display:block; margin-bottom:8px; color: rgba(255, 255, 255, 0.9); font-weight:600;">Senha</label>
                 <input type="password" id="newAdminPassword" class="form-input" placeholder="mínimo 6 caracteres" required>
             </div>
             <button onclick="submitCreateAdmin()" id="createAdminSubmitBtn" class="btn-admin-login" style="width:100%; margin-top:10px;">Criar Administrador</button>
@@ -840,14 +840,17 @@
         }
 
         .modal-content {
-            background: white;
+            background: rgba(255, 255, 255, 0.06);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
             padding: 40px;
             border-radius: 20px;
             max-width: 500px;
             width: 90%;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
             animation: modalSlideIn 0.3s ease;
             position: relative;
+            color: white;
         }
 
         @keyframes modalSlideIn {
@@ -867,13 +870,13 @@
             top: 20px;
             font-size: 28px;
             font-weight: bold;
-            color: #999;
+            color: rgba(255, 255, 255, 0.7);
             cursor: pointer;
             transition: color 0.3s ease;
         }
 
         .modal-close:hover {
-            color: #333;
+            color: #fff;
         }
 
         .alert {
@@ -884,15 +887,15 @@
         }
 
         .alert-success {
-            background: #d4edda;
-            border: 1px solid #c3e6cb;
-            color: #155724;
+            background: rgba(16, 185, 129, 0.12);
+            border: 1px solid rgba(16, 185, 129, 0.28);
+            color: #d1fae5;
         }
 
         .alert-error {
-            background: #f8d7da;
-            border: 1px solid #f5c6cb;
-            color: #721c24;
+            background: rgba(239, 68, 68, 0.12);
+            border: 1px solid rgba(239, 68, 68, 0.28);
+            color: #fecaca;
         }
     </style>
 </body>

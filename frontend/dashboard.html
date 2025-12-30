@@ -170,6 +170,10 @@
                 <i class="fas fa-sitemap"></i>
                 <span>Subdomain Enumeration</span>
             </a>
+            <a href="#directory-enum" class="nav-item" data-page="directory-enum">
+                <i class="fas fa-folder-open"></i>
+                <span>Directory Enumerator</span>
+            </a>
             
             <!-- Blue Team Tools -->
             <div class="nav-section">
@@ -186,6 +190,10 @@
             <a href="#hash-analyzer" class="nav-item" data-page="hash-analyzer">
                 <i class="fas fa-fingerprint"></i>
                 <span>Hash Analyzer</span>
+            </a>
+            <a href="#ioc-analyzer" class="nav-item" data-page="ioc-analyzer">
+                <i class="fas fa-list-check"></i>
+                <span>IOC Analyzer</span>
             </a>
             <a href="#password-strength" class="nav-item" data-page="password-strength">
                 <i class="fas fa-lock"></i>
@@ -922,6 +930,9 @@
                     <div class="card-header">
                         <h2>Resultados do Teste</h2>
                         <span id="sqli-vuln-count" class="badge badge-danger">0</span>
+                        <button class="btn-sm" onclick="clearAllSQLiResults()" style="background: #dc3545; margin-left: 8px;" title="Limpar histórico">
+                            <i class="fas fa-trash-alt"></i> Limpar Tudo
+                        </button>
                     </div>
                     <div class="card-body">
                         <div id="sqli-results">
@@ -978,6 +989,9 @@
                     <div class="card-header">
                         <h2>Vulnerabilidades Detectadas</h2>
                         <span id="xss-vuln-count" class="badge badge-warning">0</span>
+                        <button class="btn-sm" onclick="clearAllXSSResults()" style="background: #dc3545; margin-left: 8px;" title="Limpar histórico">
+                            <i class="fas fa-trash-alt"></i> Limpar Tudo
+                        </button>
                     </div>
                     <div class="card-body">
                         <div id="xss-results">
@@ -1036,6 +1050,9 @@
                     <div class="card-header">
                         <h2>Status da Operação</h2>
                         <span id="bf-progress" class="badge">0%</span>
+                        <button class="btn-sm" onclick="clearAllBruteForceResults()" style="background: #dc3545; margin-left: 8px;" title="Limpar histórico">
+                            <i class="fas fa-trash-alt"></i> Limpar Tudo
+                        </button>
                     </div>
                     <div class="card-body">
                         <div id="bf-results">
@@ -1096,10 +1113,66 @@
                     <div class="card-header">
                         <h2>Subdomínios Encontrados</h2>
                         <span id="subdomain-count" class="badge badge-success">0</span>
+                        <button class="btn-sm" onclick="clearAllSubdomainResults()" style="background: #dc3545; margin-left: 8px;" title="Limpar histórico">
+                            <i class="fas fa-trash-alt"></i> Limpar Tudo
+                        </button>
                     </div>
                     <div class="card-body">
                         <div id="subdomain-results">
                             <p class="text-muted">Inicie a enumeração</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Directory Enumerator Page -->
+        <div class="page" id="directory-enum-page">
+            <div class="page-header">
+                <h1><i class="fas fa-folder-open"></i> Directory Enumerator</h1>
+                <p>Descubra diretórios e caminhos ocultos em um site</p>
+            </div>
+
+            <div class="content-grid">
+                <div class="card">
+                    <div class="card-header">
+                        <h2>Configuração</h2>
+                    </div>
+                    <div class="card-body">
+                        <div class="form-group">
+                            <label><i class="fas fa-link"></i> URL Base</label>
+                            <input type="url" id="dir-base-url" class="form-control" placeholder="https://example.com">
+                        </div>
+                        <div class="form-group">
+                            <label><i class="fas fa-book"></i> Wordlist</label>
+                            <select id="dir-wordlist" class="form-control">
+                                <option value="small">Pequena (100 termos)</option>
+                                <option value="medium">Média (1000 termos)</option>
+                                <option value="large">Grande (5000 termos)</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label><i class="fas fa-filter"></i> Status Codes</label>
+                            <input type="text" id="dir-status-filter" class="form-control" placeholder="200,403,404">
+                        </div>
+                        <button class="btn-primary btn-block" onclick="startDirEnum()">
+                            <i class="fas fa-search"></i>
+                            Enumerar Diretórios
+                        </button>
+                    </div>
+                </div>
+
+                <div class="card card-full">
+                    <div class="card-header">
+                        <h2>Diretórios Encontrados</h2>
+                        <span id="direnum-count" class="badge badge-success">0</span>
+                        <button class="btn-sm" onclick="clearAllDirEnum()" style="background: #dc3545; margin-left: 8px;" title="Limpar histórico">
+                            <i class="fas fa-trash-alt"></i> Limpar Tudo
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <div id="direnum-results">
+                            <p class="text-muted">Inicie a enumeração de diretórios</p>
                         </div>
                     </div>
                 </div>
@@ -1161,6 +1234,9 @@
                     <div class="card-header">
                         <h2>Resultados da Análise</h2>
                         <span id="log-threats" class="badge badge-danger">0</span>
+                        <button class="btn-sm" onclick="clearAllLogAnalysis()" style="background: #dc3545; margin-left: 8px;" title="Limpar histórico">
+                            <i class="fas fa-trash-alt"></i> Limpar Tudo
+                        </button>
                     </div>
                     <div class="card-body">
                         <div id="log-results">
@@ -1225,6 +1301,9 @@
                     <div class="card-header">
                         <h2>Informações de Threat Intelligence</h2>
                         <span id="threat-score" class="badge">N/A</span>
+                        <button class="btn-sm" onclick="clearAllThreatIntel()" style="background: #dc3545; margin-left: 8px;" title="Limpar histórico">
+                            <i class="fas fa-trash-alt"></i> Limpar Tudo
+                        </button>
                     </div>
                     <div class="card-body">
                         <div id="threat-results">
@@ -1272,10 +1351,65 @@
                 <div class="card card-full">
                     <div class="card-header">
                         <h2>Resultados</h2>
+                        <button class="btn-sm" onclick="clearAllHashAnalysis()" style="background: #dc3545; margin-left: 8px;" title="Limpar histórico">
+                            <i class="fas fa-trash-alt"></i> Limpar Tudo
+                        </button>
                     </div>
                     <div class="card-body">
                         <div id="hash-results">
                             <p class="text-muted">Insira hashes para análise</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- IOC Analyzer Page -->
+        <div class="page" id="ioc-analyzer-page">
+            <div class="page-header">
+                <h1><i class="fas fa-list-check"></i> IOC Analyzer</h1>
+                <p>Analise Indicators of Compromise (IPs, domínios, URLs, hashes)</p>
+            </div>
+
+            <div class="content-grid">
+                <div class="card">
+                    <div class="card-header">
+                        <h2>Entrada</h2>
+                    </div>
+                    <div class="card-body">
+                        <div class="form-group">
+                            <label><i class="fas fa-file-alt"></i> IOCs</label>
+                            <textarea id="ioc-input" class="form-control" rows="6" placeholder="Cole um por linha:&#10;8.8.8.8&#10;malware.com&#10;http://evil.test&#10;44d88612fea8a8f36de82e1278abb02f"></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label><i class="fas fa-database"></i> Fontes</label>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                                <label style="display: flex; align-items: center; gap: 8px;">
+                                    <input type="checkbox" id="ioc-source-virustotal" checked> VirusTotal
+                                </label>
+                                <label style="display: flex; align-items: center; gap: 8px;">
+                                    <input type="checkbox" id="ioc-source-alienvault" checked> AlienVault OTX
+                                </label>
+                            </div>
+                        </div>
+                        <button class="btn-info btn-block" onclick="analyzeIOC()">
+                            <i class="fas fa-search"></i>
+                            Analisar IOCs
+                        </button>
+                    </div>
+                </div>
+
+                <div class="card card-full">
+                    <div class="card-header">
+                        <h2>Resultados da Análise</h2>
+                        <span id="ioc-count" class="badge">0</span>
+                        <button class="btn-sm" onclick="clearAllIOCAnalyzer()" style="background: #dc3545; margin-left: 8px;" title="Limpar histórico">
+                            <i class="fas fa-trash-alt"></i> Limpar Tudo
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <div id="ioc-results">
+                            <p class="text-muted">Cole IOCs para análise</p>
                         </div>
                     </div>
                 </div>
@@ -1342,6 +1476,9 @@
                 <div class="card card-full">
                     <div class="card-header">
                         <h2>Análise de Força</h2>
+                        <button class="btn-sm" onclick="clearAllPasswordAnalysis()" style="background: #dc3545; margin-left: 8px;" title="Limpar histórico">
+                            <i class="fas fa-trash-alt"></i> Limpar Tudo
+                        </button>
                     </div>
                     <div class="card-body">
                         <div id="password-results">

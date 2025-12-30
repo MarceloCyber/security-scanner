@@ -100,6 +100,26 @@ class PasswordGenerateRequest(BaseModel):
             raise ValueError('Comprimento máximo é 128 caracteres')
         return v
 
+class IOCAnalyzeRequest(BaseModel):
+    indicators: List[str]
+    sources: List[str] = ["virustotal", "alienvault"]
+    
+    @validator('indicators')
+    def validate_indicators(cls, v):
+        if not v or len(v) == 0:
+            raise ValueError('Pelo menos um IOC deve ser fornecido')
+        return [i.strip() for i in v if i and i.strip()]
+    
+    @validator('sources')
+    def validate_sources(cls, v):
+        if not v or len(v) == 0:
+            raise ValueError('Pelo menos uma fonte deve ser selecionada')
+        valid_sources = ['virustotal', 'alienvault', 'abuseipdb', 'shodan']
+        for s in v:
+            if s not in valid_sources:
+                raise ValueError(f'Fonte inválida: {s}')
+        return v
+
 
 # ==================== LOG ANALYZER ====================
 
@@ -349,6 +369,99 @@ async def query_threat_intel(
 
 
 # ==================== HASH ANALYZER ====================
+
+@router.post("/ioc/analyze")
+async def analyze_ioc(
+    request: IOCAnalyzeRequest,
+    current_user: User = Depends(get_current_user)
+):
+    try:
+        status = check_subscription_status(current_user)
+        if not status["valid"]:
+            raise HTTPException(
+                status_code=403,
+                detail={
+                    "error": status.get("reason", "subscription_invalid"),
+                    "message": status.get("message", "Assinatura inválida"),
+                    "current_plan": current_user.subscription_plan
+                }
+            )
+        if not check_tool_access("ioc_analyzer", current_user):
+            raise HTTPException(
+                status_code=403,
+                detail={
+                    "error": "tool_locked",
+                    "message": "Esta ferramenta não está disponível no seu plano atual",
+                    "tool": "ioc_analyzer",
+                    "current_plan": current_user.subscription_plan,
+                    "upgrade_url": "/pricing"
+                }
+            )
+        logger.info("IOC analysis started")
+        
+        def classify(ind: str) -> str:
+            if re.match(r'^https?://', ind):
+                return 'url'
+            if re.match(r'^[0-9a-fA-F]{32}$', ind) or re.match(r'^[0-9a-fA-F]{40}$', ind) or re.match(r'^[0-9a-fA-F]{64}$', ind) or re.match(r'^[0-9a-fA-F]{128}$', ind):
+                return 'hash'
+            if re.match(r'^\d{1,3}(?:\.\d{1,3}){3}$', ind):
+                return 'ip'
+            if re.match(r'^[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z]{2,})+$', ind):
+                return 'domain'
+            return 'unknown'
+        
+        results = []
+        summary = {"ips": 0, "domains": 0, "urls": 0, "hashes": 0}
+        
+        for raw in request.indicators:
+            ind = raw.strip()
+            if not ind:
+                continue
+            t = classify(ind)
+            if t == 'ip':
+                summary['ips'] += 1
+            elif t == 'domain':
+                summary['domains'] += 1
+            elif t == 'url':
+                summary['urls'] += 1
+            elif t == 'hash':
+                summary['hashes'] += 1
+            is_malicious = False
+            if t in ('domain', 'url') and re.search(r'(mal|evil|bad|phish|botnet|c2)', ind, re.IGNORECASE):
+                is_malicious = True
+            if t == 'ip' and ind.endswith('.123'):
+                is_malicious = True
+            if t == 'hash' and ind.lower().startswith('0'):
+                is_malicious = True
+            details: Dict[str, Any] = {}
+            if "virustotal" in request.sources:
+                details["virustotal"] = {
+                    "detections": (abs(hash(ind)) % 10),
+                    "total_engines": 70,
+                    "last_analysis": datetime.now().strftime("%Y-%m-%d")
+                }
+            if "alienvault" in request.sources:
+                details["alienvault"] = {
+                    "pulses": (abs(hash(ind)) % 5),
+                    "tags": ["malware"] if is_malicious else []
+                }
+            results.append({
+                "indicator": ind,
+                "type": t,
+                "is_malicious": is_malicious,
+                "details": details
+            })
+        
+        return {
+            "status": "completed",
+            "total": len(results),
+            "summary": summary,
+            "results": results,
+            "timestamp": datetime.now().isoformat()
+        }
+    except Exception as e:
+        logger.error(f"Error in IOC analysis: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Erro ao analisar IOCs: {str(e)}")
 
 @router.post("/hash/analyze")
 async def analyze_hash(

@@ -41,11 +41,13 @@ TOOL_PERMISSIONS = {
         "xss_tester",
         "phishing_simulator",
         "subdomain_finder",
+        "directory_enumerator",
         "network_mapper",
         "vulnerability_scanner",
         "exploit_finder",
         "password_auditor",
         "log_analyzer",
+        "ioc_analyzer",
         "threat_intelligence",
         "api_security_tester",
         "container_scanner"

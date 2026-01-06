@@ -141,7 +141,7 @@ async function loadDashboard() {
         if (totalScans) totalScans.textContent = data.total_scans || 0;
         
         const monthlyRevenue = document.getElementById('monthlyRevenue');
-        if (monthlyRevenue) monthlyRevenue.textContent = `R$ ${(data.monthly_revenue || 0).toLocaleString()}`;
+        if (monthlyRevenue) monthlyRevenue.textContent = `R$ 0`;
         
         // Atualiza badge de scans hoje
         const scansToday = document.getElementById('scansToday');
@@ -156,6 +156,34 @@ async function loadDashboard() {
         
         const newUsers7Days = document.getElementById('newUsers7Days');
         if (newUsers7Days) newUsers7Days.textContent = data.new_users_7_days || 0;
+        
+        try {
+            const sessionsResp = await fetchAPI('/api/admin/payments/sessions');
+            const sessionsData = await sessionsResp.json();
+            const sessions = Array.isArray(sessionsData.sessions) ? sessionsData.sessions : [];
+            let approvedTotalBRL = 0;
+            let pendingTotalBRL = 0;
+            for (const s of sessions) {
+                const amount = typeof s.amount_total === 'number' ? s.amount_total : 0;
+                const currency = (s.currency || '').toLowerCase();
+                const payStatus = (s.payment_status || '').toLowerCase();
+                const status = (s.status || '').toLowerCase();
+                if (currency === 'brl') {
+                    if (payStatus === 'paid') {
+                        approvedTotalBRL += amount;
+                    } else if (status === 'open') {
+                        pendingTotalBRL += amount;
+                    }
+                }
+            }
+            const approved = (approvedTotalBRL / 100);
+            const pending = (pendingTotalBRL / 100);
+            const monthlyRevenueEl = document.getElementById('monthlyRevenue');
+            if (monthlyRevenueEl) monthlyRevenueEl.textContent = `R$ ${approved.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
+            const pendingEl = document.getElementById('pendingPaymentsAmount');
+            if (pendingEl) pendingEl.textContent = `R$ ${pending.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
+        } catch (e) {
+        }
         
     } catch (error) {
         console.error('Erro ao carregar dashboard:', error);

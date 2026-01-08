@@ -69,7 +69,7 @@ document.addEventListener('DOMContentLoaded', function() {
     setupNotificationsDropdown();
     checkSubscription();
     
-    setInterval(loadNotifications, 30000);
+setInterval(loadNotifications, 30000);
 });
 
 async function checkSubscription() {
@@ -143,8 +143,8 @@ async function checkSubscription() {
         const toolAccess = {
             'free': ['port-scan'], // Free só tem Port Scanner (10 scans/mês)
             'starter': ['port-scan', 'scanner', 'encoder', 'subdomain', 'hash-analyzer', 'password-strength'],
-            'professional': ['port-scan', 'scanner', 'encoder', 'phishing', 'payloads', 'subdomain', 'sql-injection', 'xss-tester', 'brute-force', 'log-analyzer', 'threat-intel', 'hash-analyzer', 'password-strength', 'reports'],
-            'enterprise': ['port-scan', 'scanner', 'encoder', 'phishing', 'payloads', 'subdomain', 'sql-injection', 'xss-tester', 'brute-force', 'log-analyzer', 'threat-intel', 'hash-analyzer', 'password-strength', 'reports']
+            'professional': ['port-scan', 'scanner', 'encoder', 'phishing', 'payloads', 'subdomain', 'sql-injection', 'xss-tester', 'brute-force', 'log-analyzer', 'threat-intel', 'hash-analyzer', 'password-strength', 'reports', 'ai-assistant'],
+            'enterprise': ['port-scan', 'scanner', 'encoder', 'phishing', 'payloads', 'subdomain', 'sql-injection', 'xss-tester', 'brute-force', 'log-analyzer', 'threat-intel', 'hash-analyzer', 'password-strength', 'reports', 'ai-assistant']
         };
 
         const allowedTools = toolAccess[plan] || [];
@@ -152,7 +152,7 @@ async function checkSubscription() {
         // Bloquear todas as ferramentas que não estão na lista permitida
         const allTools = ['dashboard', 'phishing', 'payloads', 'encoder', 'scanner', 'port-scan', 
                          'sql-injection', 'xss-tester', 'brute-force', 'subdomain', 
-                         'log-analyzer', 'threat-intel', 'hash-analyzer', 'password-strength', 'reports'];
+                         'log-analyzer', 'threat-intel', 'hash-analyzer', 'password-strength', 'reports', 'ai-assistant'];
         
         allTools.forEach(toolId => {
             if (toolId === 'dashboard') return; // Dashboard sempre acessível
@@ -254,16 +254,91 @@ async function checkSubscription() {
     }
 }
 
+// ==================== AI Assistant ====================
+let aiChatHistory = [];
+function initAiAssistant() {
+    const input = document.getElementById('aiUserInput');
+    if (input) {
+        input.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                sendAiMessage();
+            }
+        });
+    }
+}
+
+function appendChatMessage(role, text) {
+    const box = document.getElementById('aiChatMessages');
+    if (!box) return null;
+    const row = document.createElement('div');
+    row.style.margin = '8px 0';
+    row.style.display = 'flex';
+    row.style.justifyContent = role === 'user' ? 'flex-end' : 'flex-start';
+    const bubble = document.createElement('div');
+    bubble.style.maxWidth = '75%';
+    bubble.style.padding = '10px 12px';
+    bubble.style.borderRadius = '12px';
+    bubble.style.whiteSpace = 'pre-wrap';
+    bubble.style.wordBreak = 'break-word';
+    bubble.style.background = role === 'user' ? 'rgba(102,126,234,0.25)' : 'rgba(255,255,255,0.08)';
+    bubble.style.border = '1px solid rgba(255,255,255,0.12)';
+    bubble.textContent = text;
+    row.appendChild(bubble);
+    box.appendChild(row);
+    box.scrollTop = box.scrollHeight;
+    return bubble;
+}
+
+async function sendAiMessage() {
+    const input = document.getElementById('aiUserInput');
+    const sendBtn = document.getElementById('aiSendButton');
+    const text = (input?.value || '').trim();
+    if (!text) return;
+    appendChatMessage('user', text);
+    aiChatHistory.push({ role: 'user', content: text });
+    input.value = '';
+    try {
+        if (sendBtn) {
+            sendBtn.disabled = true;
+            sendBtn.setAttribute('aria-busy', 'true');
+            sendBtn.innerHTML = '<span>Enviando...</span> <i class="fas fa-spinner fa-spin"></i>';
+        }
+        const thinking = appendChatMessage('assistant', 'Pensando...');
+        const resp = await apiRequest('/tools/ai/assistant', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ message: text, history: aiChatHistory })
+        });
+        const reply = resp.reply || 'Sem resposta';
+        if (thinking) thinking.textContent = reply;
+        aiChatHistory.push({ role: 'assistant', content: reply });
+    } catch (error) {
+        const msg = error && error.message ? error.message : 'Falha ao consultar a IA';
+        const bubble = appendChatMessage('assistant', `Erro: ${msg}`);
+        if (bubble) {
+            bubble.style.background = 'rgba(245,101,101,0.15)';
+            bubble.style.border = '1px solid rgba(245,101,101,0.35)';
+        }
+    }
+    finally {
+        if (sendBtn) {
+            sendBtn.disabled = false;
+            sendBtn.removeAttribute('aria-busy');
+            sendBtn.innerHTML = '<span>Enviar</span> <i class="fas fa-paper-plane"></i>';
+        }
+    }
+}
+
 function prelockTools() {
     const plan = (localStorage.getItem('userPlan') || 'free').toLowerCase();
     const toolAccess = {
         'free': ['port-scan'],
         'starter': ['port-scan', 'scanner', 'encoder', 'subdomain', 'hash-analyzer', 'password-strength'],
-        'professional': ['port-scan', 'scanner', 'encoder', 'phishing', 'payloads', 'subdomain', 'directory-enum', 'sql-injection', 'xss-tester', 'brute-force', 'log-analyzer', 'ioc-analyzer', 'threat-intel', 'hash-analyzer', 'password-strength', 'reports'],
-        'enterprise': ['port-scan', 'scanner', 'encoder', 'phishing', 'payloads', 'subdomain', 'directory-enum', 'sql-injection', 'xss-tester', 'brute-force', 'log-analyzer', 'ioc-analyzer', 'threat-intel', 'hash-analyzer', 'password-strength', 'reports']
+        'professional': ['port-scan', 'scanner', 'encoder', 'phishing', 'payloads', 'subdomain', 'directory-enum', 'sql-injection', 'xss-tester', 'brute-force', 'log-analyzer', 'ioc-analyzer', 'threat-intel', 'hash-analyzer', 'password-strength', 'reports', 'ai-assistant'],
+        'enterprise': ['port-scan', 'scanner', 'encoder', 'phishing', 'payloads', 'subdomain', 'directory-enum', 'sql-injection', 'xss-tester', 'brute-force', 'log-analyzer', 'ioc-analyzer', 'threat-intel', 'hash-analyzer', 'password-strength', 'reports', 'ai-assistant']
     };
     const allowedTools = toolAccess[plan] || [];
-    const allTools = ['dashboard', 'phishing', 'payloads', 'encoder', 'scanner', 'port-scan', 'sql-injection', 'xss-tester', 'brute-force', 'subdomain', 'directory-enum', 'log-analyzer', 'ioc-analyzer', 'threat-intel', 'hash-analyzer', 'password-strength', 'reports'];
+    const allTools = ['dashboard', 'phishing', 'payloads', 'encoder', 'scanner', 'port-scan', 'sql-injection', 'xss-tester', 'brute-force', 'subdomain', 'directory-enum', 'log-analyzer', 'ioc-analyzer', 'threat-intel', 'hash-analyzer', 'password-strength', 'reports', 'ai-assistant'];
     allTools.forEach(toolId => {
         if (toolId === 'dashboard') return;
         if (!allowedTools.includes(toolId)) {
@@ -281,8 +356,8 @@ function prelockToolCards() {
     const toolAccess = {
         'free': ['port-scan'],
         'starter': ['port-scan', 'scanner', 'encoder', 'subdomain', 'hash-analyzer', 'password-strength'],
-        'professional': ['port-scan', 'scanner', 'encoder', 'phishing', 'payloads', 'subdomain', 'sql-injection', 'xss-tester', 'brute-force', 'log-analyzer', 'threat-intel', 'hash-analyzer', 'password-strength', 'reports'],
-        'enterprise': ['port-scan', 'scanner', 'encoder', 'phishing', 'payloads', 'subdomain', 'sql-injection', 'xss-tester', 'brute-force', 'log-analyzer', 'threat-intel', 'hash-analyzer', 'password-strength', 'reports']
+        'professional': ['port-scan', 'scanner', 'encoder', 'phishing', 'payloads', 'subdomain', 'sql-injection', 'xss-tester', 'brute-force', 'log-analyzer', 'threat-intel', 'hash-analyzer', 'password-strength', 'reports', 'ai-assistant'],
+        'enterprise': ['port-scan', 'scanner', 'encoder', 'phishing', 'payloads', 'subdomain', 'sql-injection', 'xss-tester', 'brute-force', 'log-analyzer', 'threat-intel', 'hash-analyzer', 'password-strength', 'reports', 'ai-assistant']
     };
     const allowedTools = toolAccess[plan] || [];
     const toolCards = document.querySelectorAll('.tool-card');
@@ -681,6 +756,8 @@ function navigateTo(pageName) {
         loadAvailableScans();
     } else if (pageName === 'profile') {
         loadProfile();
+    } else if (pageName === 'ai-assistant') {
+        initAiAssistant();
     }
 }
 
@@ -859,12 +936,26 @@ async function apiRequest(endpoint, options = {}) {
         }
         if (!response.ok) {
             if (response.status === 401) {
+                if (endpoint === '/tools/ai/assistant') {
+                    throw new Error('Não autorizado. Tente novamente ou faça login.');
+                }
                 localStorage.removeItem('access_token');
                 localStorage.removeItem('username');
                 window.location.href = '/index.html';
                 return;
             }
-            throw new Error(data.detail || 'Erro na requisição');
+            let msg = 'Erro na requisição';
+            const d = data && data.detail !== undefined ? data.detail : null;
+            if (typeof d === 'string') {
+                msg = d;
+            } else if (Array.isArray(d)) {
+                msg = d.map(x => (x && (x.msg || x.message)) || JSON.stringify(x)).join(' | ');
+            } else if (d && typeof d === 'object') {
+                msg = d.message || JSON.stringify(d);
+            } else if (data && typeof data.message === 'string') {
+                msg = data.message;
+            }
+            throw new Error(msg);
         }
         return data;
     } catch (error) {

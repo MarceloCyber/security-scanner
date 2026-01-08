@@ -208,6 +208,10 @@
                 <i class="fas fa-user"></i>
                 <span>Profile</span>
             </a>
+            <a href="#ai-assistant" class="nav-item" data-page="ai-assistant">
+                <i class="fas fa-robot"></i>
+                <span>AI Security Assistant</span>
+            </a>
         </nav>
 
         <!-- Subscription Info -->
@@ -370,6 +374,26 @@
                         <span>Abrir</span>
                         <i class="fas fa-arrow-right"></i>
                     </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- AI Assistant Page -->
+        <div class="page" id="ai-assistant-page">
+            <div class="page-header">
+                <h1><i class="fas fa-robot"></i> Assistente de IA</h1>
+                <p>Assistente de segurança da informação para dúvidas e orientações gerais.</p>
+            </div>
+            <div class="content-grid">
+                <div class="card" style="display:flex;flex-direction:column;height:60vh;">
+                    <div id="aiChatMessages" style="flex:1; overflow:auto; padding:12px; border:1px solid rgba(255,255,255,0.1); border-radius:8px; background: rgba(255,255,255,0.04);"></div>
+                    <div class="chat-input" style="display:flex; gap:8px; margin-top:12px;">
+                        <input id="aiUserInput" type="text" class="form-control" placeholder="Digite sua pergunta..." style="flex:1;">
+                        <button class="btn-primary" id="aiSendButton" onclick="sendAiMessage()">
+                            <span>Enviar</span>
+                            <i class="fas fa-paper-plane"></i>
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>

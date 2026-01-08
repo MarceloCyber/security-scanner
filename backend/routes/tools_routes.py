@@ -10,13 +10,20 @@ from datetime import datetime
 import os
 import httpx
 import json
+from dotenv import load_dotenv
+from sqlalchemy.orm import Session
+from jose import jwt
+from config import settings
+from database import get_db
 
 from auth import get_current_user
-from middleware.subscription import check_subscription_status
+from middleware.subscription import check_subscription_status, require_plan
+from models.user import User
 from tools.phishing_generator import PhishingPageGenerator
 from tools.payload_generator import PayloadGenerator
 from tools.encoder_decoder import EncoderDecoder
 
+load_dotenv()
 router = APIRouter()
 
 # Initialize tools
@@ -60,6 +67,11 @@ class DecodeRequest(BaseModel):
 class HashRequest(BaseModel):
     text: str
     hash_type: str
+
+
+class AIChatRequest(BaseModel):
+    message: str
+    history: Optional[List[dict]] = None  # [{role: 'user'|'assistant', content: str}]
 
 
 class PhishingCaptureData(BaseModel):
@@ -1033,6 +1045,154 @@ async def mark_notification_read(
         return {"success": True, "message": "Notification marked as read"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+# ==================== AI Security Assistant ====================
+@router.post("/ai/assistant", tags=["AI Assistant"])
+async def ai_security_assistant(payload: AIChatRequest, request: Request, db: Session = Depends(get_db)):
+    """Chat com assistente de IA voltado para segurança da informação.
+    Usa provedores gratuitos via chave de API (OpenRouter ou Groq) se configurados por ambiente.
+    """
+    system_prompt = (
+        "Você é um assistente de segurança da informação. Ajude com análise de riscos, boas práticas, "
+        "OWASP Top 10, hardening, resposta a incidentes, e dicas práticas. Seja objetivo, cite passos acionáveis, "
+        "e evite executar ações perigosas. Não forneça payloads maliciosos que violem leis; foque em conscientização e testes autorizados."
+    )
+
+    messages = [{"role": "system", "content": system_prompt}]
+    if payload.history:
+        for m in payload.history:
+            role = m.get("role")
+            content = m.get("content", "")
+            if role in ("user", "assistant") and isinstance(content, str):
+                messages.append({"role": role, "content": content})
+    messages.append({"role": "user", "content": payload.message})
+
+    auth_header = request.headers.get("authorization") or request.headers.get("Authorization")
+    if not auth_header or not auth_header.lower().startswith("bearer "):
+        raise HTTPException(status_code=401, detail="Could not validate credentials")
+    token = auth_header.split(" ", 1)[1]
+    try:
+        payload_token = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        username = payload_token.get("sub")
+        if not username:
+            raise HTTPException(status_code=401, detail="Could not validate credentials")
+        user = db.query(User).filter(User.username == username).first()
+        if not user:
+            raise HTTPException(status_code=401, detail="Could not validate credentials")
+        plan = (user.subscription_plan or "").strip().lower()
+        if plan not in ("professional", "enterprise"):
+            raise HTTPException(
+                status_code=403,
+                detail={
+                    "error": "upgrade_required",
+                    "message": "Esta funcionalidade requer o plano professional, enterprise",
+                    "current_plan": user.subscription_plan,
+                    "required_plans": ["professional", "enterprise"]
+                }
+            )
+    except HTTPException:
+        raise
+    except Exception:
+        raise HTTPException(status_code=401, detail="Could not validate credentials")
+
+    groq_key = os.getenv("GROQ_API_KEY") or os.getenv("GROQ_KEY")
+    openrouter_key = os.getenv("OPENROUTER_API_KEY") or os.getenv("OPENROUTER_KEY")
+
+    if groq_key:
+        base_url = "https://api.groq.com/openai/v1/chat/completions"
+        model = os.getenv("GROQ_MODEL", "llama-3.1-8b-instant")
+        headers = {
+            "Authorization": f"Bearer {groq_key}",
+            "Content-Type": "application/json"
+        }
+        body = {"model": model, "messages": messages, "temperature": 0.2}
+    elif openrouter_key:
+        base_url = "https://openrouter.ai/api/v1/chat/completions"
+        model = os.getenv("AI_MODEL", "meta-llama/llama-3.1-8b-instruct")
+        headers = {
+            "Authorization": f"Bearer {openrouter_key}",
+            "Content-Type": "application/json"
+        }
+        body = {"model": model, "messages": messages, "temperature": 0.2}
+    else:
+        user_msg = payload.message.strip() if isinstance(payload.message, str) else ""
+        base_reply = (
+            "Assistente de Segurança (modo básico)\n\n"
+            "Diretrizes práticas:\n"
+            "- Valide e saneie entradas (server-side).\n"
+            "- Use autenticação forte e MFA.\n"
+            "- Aplique princípios OWASP Top 10.\n"
+            "- Habilite cabeçalhos de segurança (CSP, HSTS, X-Frame-Options).\n"
+            "- Faça gestão de patches e revisão de dependências.\n\n"
+            "Ferramentas úteis no painel: Scanner de Código, Port Scanner, Encoder/Decoder.\n\n"
+        )
+        m = user_msg.lower()
+        if any(k in m for k in ["xss", "cross-site scripting"]):
+            reply = (
+                base_reply +
+                "XSS:\n"
+                "1) Escape de saída conforme o contexto (HTML/Attr/JS/URL).\n"
+                "2) Sanitize e valide entradas.\n"
+                "3) Ative CSP (default-src 'self'; script-src com nonce).\n"
+                "4) Remova eval/innerHTML sem sanitização.\n"
+                "5) Encode ao construir HTML dinamicamente."
+            )
+        elif any(k in m for k in ["sql", "injection", "sqli"]):
+            reply = (
+                base_reply +
+                "SQL Injection:\n"
+                "1) Use queries parametrizadas/prepared statements.\n"
+                "2) Bloqueie concatenação de SQL com input.\n"
+                "3) Mínimo privilégio no usuário de DB.\n"
+                "4) Auditoria de consultas e WAF onde possível.\n"
+                "5) Valide/normalize input por whitelist."
+            )
+        elif "csrf" in m:
+            reply = (
+                base_reply +
+                "CSRF:\n"
+                "1) Tokens anti-CSRF vinculados à sessão.\n"
+                "2) Verifique SameSite nos cookies (Lax/Strict).\n"
+                "3) Exija revalidação para ações sensíveis.\n"
+                "4) Origin/Referer checking conforme aplicável."
+            )
+        elif any(k in m for k in ["hardening", "segurança", "endurecimento"]):
+            reply = (
+                base_reply +
+                "Hardening:\n"
+                "- Desative serviços não usados.\n"
+                "- Mantenha sistema e libs atualizados.\n"
+                "- Registre e monitore eventos (SIEM).\n"
+                "- Segregue redes e aplique firewall.\n"
+                "- Backup e testes de restauração regulares."
+            )
+        else:
+            reply = (
+                base_reply +
+                ("Pergunta: " + user_msg + "\n\n" if user_msg else "") +
+                "Próximos passos:\n"
+                "- Detalhe o contexto (app/stack/dados).\n"
+                "- Execute um scan direcionado e revise findings.\n"
+                "- Aplique correções rápidas e planeje melhorias estruturais."
+            )
+        return {"reply": reply}
+
+    async with httpx.AsyncClient(timeout=30) as client:
+        resp = await client.post(base_url, headers=headers, json=body)
+        if resp.status_code >= 300:
+            try:
+                err = resp.json()
+                detail = err.get("error", {}).get("message") or err.get("message") or resp.text
+            except Exception:
+                detail = resp.text
+            raise HTTPException(status_code=resp.status_code, detail=detail)
+        data = resp.json()
+        reply = (
+            (data.get("choices") or [{}])[0].get("message", {}).get("content")
+            or (data.get("choices") or [{}])[0].get("text")
+            or ""
+        )
+        return {"reply": reply}
 
 
 @router.delete("/notifications/{notification_id}", tags=["Notifications"])

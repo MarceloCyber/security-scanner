@@ -8,6 +8,8 @@ from typing import Optional
 from models.user import User
 from auth import get_current_user
 from database import get_db
+from functools import wraps
+import inspect
 
 # Definição de ferramentas por plano
 TOOL_PERMISSIONS = {
@@ -140,6 +142,7 @@ def require_plan(required_plans: list):
         ...
     """
     def decorator(func):
+        @wraps(func)
         async def wrapper(*args, current_user: User = Depends(get_current_user), **kwargs):
             if current_user.subscription_plan not in required_plans:
                 raise HTTPException(
@@ -152,6 +155,7 @@ def require_plan(required_plans: list):
                     }
                 )
             return await func(*args, current_user=current_user, **kwargs)
+        wrapper.__signature__ = inspect.signature(func)
         return wrapper
     return decorator
 
@@ -167,6 +171,7 @@ def require_tool_access(tool_name: str):
         ...
     """
     def decorator(func):
+        @wraps(func)
         async def wrapper(*args, current_user: User = Depends(get_current_user), **kwargs):
             # Verificar acesso à ferramenta
             if not check_tool_access(tool_name, current_user):
@@ -194,6 +199,7 @@ def require_tool_access(tool_name: str):
                 )
             
             return await func(*args, current_user=current_user, **kwargs)
+        wrapper.__signature__ = inspect.signature(func)
         return wrapper
     return decorator
 

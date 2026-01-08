@@ -69,7 +69,7 @@ document.addEventListener('DOMContentLoaded', function() {
     setupNotificationsDropdown();
     checkSubscription();
     
-setInterval(loadNotifications, 30000);
+setInterval(loadNotifications, 5000);
 });
 
 async function checkSubscription() {
@@ -248,6 +248,8 @@ async function checkSubscription() {
             document.body.appendChild(banner);
             setTimeout(() => { banner.remove(); }, 6000);
         }
+
+        maybeShowUpgradeModal(plan);
 
     } catch (error) {
         console.error('Error checking subscription:', error);
@@ -759,6 +761,44 @@ function navigateTo(pageName) {
     } else if (pageName === 'ai-assistant') {
         initAiAssistant();
     }
+}
+
+function maybeShowUpgradeModal(plan) {
+    try {
+        const u = (localStorage.getItem('username') || 'user').toLowerCase();
+        const k = `upgradeModal.dismissed.${u}`;
+        const dismissed = localStorage.getItem(k) === '1';
+        const p = (plan || 'free').toLowerCase();
+        if (dismissed) return;
+        if (p !== 'free' && p !== 'starter') return;
+        const overlay = document.createElement('div');
+        overlay.className = 'modal-overlay active';
+        const isFree = p === 'free';
+        const iconClass = isFree ? 'warning' : 'success';
+        const icon = isFree ? '<i class="fas fa-star"></i>' : '<i class="fas fa-rocket"></i>';
+        const title = isFree ? 'Plano FREE' : 'Plano STARTER';
+        const body = isFree
+            ? 'Você está no plano FREE. Recursos limitados. Atualize para desbloquear ferramentas avançadas e acesso completo.'
+            : 'Você está no plano STARTER. Faça upgrade para liberar recursos avançados como Phishing, Payloads, AI Assistant e relatórios premium.';
+        const cta = isFree ? 'Fazer upgrade' : 'Ver planos';
+        overlay.innerHTML = `
+            <div class="modal-content">
+                <div class="modal-header">
+                    <div class="modal-icon ${iconClass}">${icon}</div>
+                    <h3 class="modal-title">${title}</h3>
+                </div>
+                <div class="modal-body">${body}</div>
+                <div class="modal-actions">
+                    <button id="upgradeModalClose" class="modal-btn modal-btn-cancel">Fechar</button>
+                    <a href="pricing.html" class="modal-btn modal-btn-confirm"><i class="fas fa-arrow-up"></i> ${cta}</a>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(overlay);
+        const close = () => { try { localStorage.setItem(k, '1'); } catch (_) {} overlay.remove(); };
+        overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+        document.getElementById('upgradeModalClose')?.addEventListener('click', close);
+    } catch (_) {}
 }
 
 function switchTab(tabId) {
@@ -2852,6 +2892,16 @@ async function loadNotifications() {
         
         // Store notifications for dropdown (we'll add dropdown UI later)
         window.currentNotifications = notifications;
+        const planChanged = Array.isArray(notifications) && notifications.some(n => n && n.event === 'plan_change');
+        if (planChanged) {
+            try { await checkSubscription(); } catch (e) {}
+            try {
+                const toMark = notifications.filter(n => n && n.event === 'plan_change').map(n => n.id);
+                for (const id of toMark) {
+                    try { await apiRequest(`/tools/notifications/${id}/read`, { method: 'POST' }); } catch (e) {}
+                }
+            } catch (e) {}
+        }
         
     } catch (error) {
         console.error('Error loading notifications:', error);
@@ -3263,51 +3313,100 @@ async function startSubdomainEnum() {
     showLoading();
     
     try {
-        const response = await apiRequest('/redteam/subdomain/enumerate', {
-            method: 'POST',
-            body: JSON.stringify({
-                domain,
-                method,
-                wordlist_size: wordlist
-            })
-        });
-        
-        document.getElementById('subdomain-count').textContent = response.subdomains_found;
-        
-        const resultsHtml = `
-            <div class="alert alert-success">
-                <i class="fas fa-check-circle"></i>
-                <strong>${response.subdomains_found} subdomínios encontrados</strong>
-            </div>
-            <table class="table">
-                <thead>
-                    <tr>
-                        <th>Subdomínio</th>
-                        <th>IP</th>
-                        <th>Status</th>
-                        <th>Server</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    ${response.results.map(sub => `
+        if (method === 'all') {
+            const methods = ['dns', 'certificate', 'api'];
+            const requests = methods.map(m => apiRequest('/redteam/subdomain/enumerate', {
+                method: 'POST',
+                body: JSON.stringify({ domain, method: m, wordlist_size: wordlist })
+            }));
+            const settled = await Promise.allSettled(requests);
+            const successes = settled.filter(s => s.status === 'fulfilled').map(s => s.value);
+            if (!successes.length) {
+                throw new Error('Falha ao executar métodos de enumeração');
+            }
+            const merged = successes.flatMap(r => Array.isArray(r.results) ? r.results : []);
+            const bySub = new Map();
+            merged.forEach(item => {
+                const key = item && item.subdomain ? item.subdomain : '';
+                if (!key) return;
+                if (!bySub.has(key)) bySub.set(key, item);
+            });
+            const finalResults = Array.from(bySub.values());
+            const count = finalResults.length;
+            document.getElementById('subdomain-count').textContent = count;
+            const resultsHtml = `
+                <div class="alert alert-success">
+                    <i class="fas fa-check-circle"></i>
+                    <strong>${count} subdomínios encontrados</strong>
+                </div>
+                <table class="table">
+                    <thead>
                         <tr>
-                            <td>${sub.subdomain}</td>
-                            <td>${sub.ip}</td>
-                            <td><span class="badge badge-success">${sub.status}</span></td>
-                            <td>${sub.server}</td>
+                            <th>Subdomínio</th>
+                            <th>IP</th>
+                            <th>Status</th>
+                            <th>Server</th>
                         </tr>
-                    `).join('')}
-                </tbody>
-            </table>
-        `;
-        
-        document.getElementById('subdomain-results').innerHTML = resultsHtml;
-        try {
-            localStorage.setItem('tool.subdomain.resultsHtml', resultsHtml);
-            localStorage.setItem('tool.subdomain.count', String(response.subdomains_found));
-        } catch (_) {}
-        hideLoading();
-        showToast('Enumeração concluída', 'success');
+                    </thead>
+                    <tbody>
+                        ${finalResults.map(sub => `
+                            <tr>
+                                <td>${sub.subdomain}</td>
+                                <td>${sub.ip}</td>
+                                <td><span class="badge badge-success">${sub.status}</span></td>
+                                <td>${sub.server}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            `;
+            document.getElementById('subdomain-results').innerHTML = resultsHtml;
+            try {
+                localStorage.setItem('tool.subdomain.resultsHtml', resultsHtml);
+                localStorage.setItem('tool.subdomain.count', String(count));
+            } catch (_) {}
+            hideLoading();
+            showToast('Enumeração concluída', 'success');
+        } else {
+            const response = await apiRequest('/redteam/subdomain/enumerate', {
+                method: 'POST',
+                body: JSON.stringify({ domain, method, wordlist_size: wordlist })
+            });
+            document.getElementById('subdomain-count').textContent = response.subdomains_found;
+            const resultsHtml = `
+                <div class="alert alert-success">
+                    <i class="fas fa-check-circle"></i>
+                    <strong>${response.subdomains_found} subdomínios encontrados</strong>
+                </div>
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Subdomínio</th>
+                            <th>IP</th>
+                            <th>Status</th>
+                            <th>Server</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${response.results.map(sub => `
+                            <tr>
+                                <td>${sub.subdomain}</td>
+                                <td>${sub.ip}</td>
+                                <td><span class="badge badge-success">${sub.status}</span></td>
+                                <td>${sub.server}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            `;
+            document.getElementById('subdomain-results').innerHTML = resultsHtml;
+            try {
+                localStorage.setItem('tool.subdomain.resultsHtml', resultsHtml);
+                localStorage.setItem('tool.subdomain.count', String(response.subdomains_found));
+            } catch (_) {}
+            hideLoading();
+            showToast('Enumeração concluída', 'success');
+        }
     } catch (error) {
         hideLoading();
         showToast('Erro na enumeração', 'error');

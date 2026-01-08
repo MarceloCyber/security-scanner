@@ -987,35 +987,23 @@ async def get_tools_info():
 
 @router.get("/notifications", tags=["Notifications"])
 async def get_notifications(current_user: dict = Depends(get_current_user)):
-    """Get all notifications for the current user"""
     import json
     notification_file = "/tmp/phishing_notifications.json"
-    
     if not os.path.exists(notification_file):
-        return {
-            "notifications": [],
-            "unread_count": 0,
-            "total": 0
-        }
-    
+        return {"notifications": [], "unread_count": 0, "total": 0}
     try:
         with open(notification_file, 'r') as f:
             notifications = json.load(f)
-        
-        unread = [n for n in notifications if not n.get('read', False)]
-        
-        return {
-            "notifications": notifications[::-1],  # Most recent first
-            "unread_count": len(unread),
-            "total": len(notifications)
-        }
+        filtered = []
+        for n in notifications:
+            tuid = n.get('target_user_id')
+            tun = n.get('target_username')
+            if (tuid is None and tun is None) or (getattr(current_user, 'id', None) == tuid) or (getattr(current_user, 'username', None) == tun):
+                filtered.append(n)
+        unread = [n for n in filtered if not n.get('read', False)]
+        return {"notifications": filtered[::-1], "unread_count": len(unread), "total": len(filtered)}
     except Exception as e:
-        return {
-            "notifications": [],
-            "unread_count": 0,
-            "total": 0,
-            "error": str(e)
-        }
+        return {"notifications": [], "unread_count": 0, "total": 0, "error": str(e)}
 
 
 @router.post("/notifications/{notification_id}/read", tags=["Notifications"])

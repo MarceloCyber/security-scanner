@@ -17,6 +17,7 @@ import stripe
 from pathlib import Path
 import shutil
 from typing import Dict, Any
+import uuid
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
 
@@ -264,6 +265,7 @@ def update_user(
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="Usuário não encontrado")
+    prev_plan = user.subscription_plan
     
     # Atualizar campos fornecidos
     if user_update.email is not None:
@@ -291,6 +293,33 @@ def update_user(
     
     db.commit()
     db.refresh(user)
+    try:
+        if user_update.subscription_plan is not None and user_update.subscription_plan != prev_plan:
+            notification_file = "/tmp/phishing_notifications.json"
+            notifications = []
+            if os.path.exists(notification_file):
+                try:
+                    with open(notification_file, 'r') as f:
+                        notifications = json.load(f)
+                except Exception:
+                    notifications = []
+            notif_id = f"plan_change:{user.id}:{int(datetime.utcnow().timestamp())}:{uuid.uuid4().hex[:8]}"
+            notifications.append({
+                "id": notif_id,
+                "type": "system",
+                "event": "plan_change",
+                "message": f"Plano alterado para {user.subscription_plan}",
+                "timestamp": datetime.utcnow().isoformat(),
+                "target_user_id": user.id,
+                "target_username": user.username,
+                "new_plan": user.subscription_plan,
+                "read": False
+            })
+            notifications = notifications[-50:]
+            with open(notification_file, 'w') as f:
+                json.dump(notifications, f, indent=2)
+    except Exception:
+        pass
     
     return {
         "message": "Usuário atualizado com sucesso",
@@ -534,6 +563,32 @@ def change_plan(
             )
     except Exception:
         pass
+    try:
+        notification_file = "/tmp/phishing_notifications.json"
+        notifications = []
+        if os.path.exists(notification_file):
+            try:
+                with open(notification_file, 'r') as f:
+                    notifications = json.load(f)
+            except Exception:
+                notifications = []
+        notif_id = f"plan_change:{user.id}:{int(datetime.utcnow().timestamp())}:{uuid.uuid4().hex[:8]}"
+        notifications.append({
+            "id": notif_id,
+            "type": "system",
+            "event": "plan_change",
+            "message": f"Plano alterado para {new_plan}",
+            "timestamp": datetime.utcnow().isoformat(),
+            "target_user_id": user.id,
+            "target_username": user.username,
+            "new_plan": new_plan,
+            "read": False
+        })
+        notifications = notifications[-50:]
+        with open(notification_file, 'w') as f:
+            json.dump(notifications, f, indent=2)
+    except Exception:
+        pass
     print(json.dumps({"event": "admin_change_plan", "user_id": user_id, "new_plan": new_plan}))
     return {"success": True, "message": "Plano atualizado", "user_id": user_id, "new_plan": new_plan}
 
@@ -556,6 +611,32 @@ def cancel_subscription_admin(
         user.scans_limit = 10
         user.scans_this_month = 0
         db.commit()
+        try:
+            notification_file = "/tmp/phishing_notifications.json"
+            notifications = []
+            if os.path.exists(notification_file):
+                try:
+                    with open(notification_file, 'r') as f:
+                        notifications = json.load(f)
+                except Exception:
+                    notifications = []
+            notif_id = f"plan_change:{user.id}:{int(datetime.utcnow().timestamp())}:{uuid.uuid4().hex[:8]}"
+            notifications.append({
+                "id": notif_id,
+                "type": "system",
+                "event": "plan_change",
+                "message": "Assinatura cancelada. Plano alterado para free",
+                "timestamp": datetime.utcnow().isoformat(),
+                "target_user_id": user.id,
+                "target_username": user.username,
+                "new_plan": "free",
+                "read": False
+            })
+            notifications = notifications[-50:]
+            with open(notification_file, 'w') as f:
+                json.dump(notifications, f, indent=2)
+        except Exception:
+            pass
         print(json.dumps({"event": "admin_cancel_subscription", "user_id": user_id}))
         return {"success": True}
     except Exception as e:

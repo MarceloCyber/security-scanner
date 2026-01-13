@@ -1250,7 +1250,7 @@ async def generate_report(
             
             <div style="margin-top: 40px; padding: 20px; background: #f0f0f0; border-radius: 5px;">
                 <h3>Observações</h3>
-                <p>Este relatório foi gerado automaticamente pela Ades Plataform.</p>
+                <p>Este relatório foi gerado automaticamente pela Iron Net.</p>
                 <p>Revise os resultados cuidadosamente e tome as ações necessárias para corrigir as vulnerabilidades encontradas.</p>
             </div>
         </div>

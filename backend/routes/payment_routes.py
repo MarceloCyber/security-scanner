@@ -187,7 +187,7 @@ async def create_checkout_session(
                         'currency': 'brl',
                         'unit_amount': PLAN_PRICES[plan],
                         'product_data': {
-                            'name': f'Ades Plataform - {plan.title()}',
+                            'name': f'Iron Net - {plan.title()}',
                             'description': f'Assinatura mensal do plano {plan.title()}',
                         },
                         'recurring': {
@@ -230,7 +230,7 @@ async def create_checkout_session(
 
             payload = {
                 "transaction_amount": amount,
-                "description": f"Ades Plataform - Assinatura {plan.title()}",
+                "description": f"Iron Net - Assinatura {plan.title()}",
                 "payment_method_id": "pix" if payment_method == "pix" else "bolbradesco",
                 "payer": {
                     "email": current_user.email,

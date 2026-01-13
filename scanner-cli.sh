@@ -19,7 +19,7 @@ NC='\033[0m' # No Color
 show_banner() {
     echo -e "${BLUE}"
     echo "╔══════════════════════════════════════════════════════════╗"
-    echo "║          🔒 Security Scanner Professional 🔒            ║"
+    echo "║          🔒 Iron Net Professional 🔒            ║"
     echo "║                 Enterprise Edition v1.0                 ║"
     echo "╚══════════════════════════════════════════════════════════╝"
     echo -e "${NC}"
@@ -41,7 +41,7 @@ start_server() {
         exit 0
     fi
     
-    echo -e "${BLUE}🚀 Iniciando Security Scanner...${NC}"
+    echo -e "${BLUE}🚀 Iniciando Iron Net...${NC}"
     echo ""
     
     # Verifica se o ambiente virtual existe
@@ -97,7 +97,7 @@ start_server() {
 
 # Função para parar o servidor
 stop_server() {
-    echo -e "${BLUE}🛑 Parando Security Scanner...${NC}"
+    echo -e "${BLUE}🛑 Parando Iron Net...${NC}"
     
     if ! is_running; then
         echo -e "${YELLOW}⚠️  Servidor não está rodando${NC}"
@@ -119,7 +119,7 @@ stop_server() {
 
 # Função para reiniciar o servidor
 restart_server() {
-    echo -e "${BLUE}🔄 Reiniciando Security Scanner...${NC}"
+    echo -e "${BLUE}🔄 Reiniciando Iron Net...${NC}"
     stop_server
     sleep 2
     start_server

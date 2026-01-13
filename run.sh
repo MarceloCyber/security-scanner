@@ -22,7 +22,7 @@ NC='\033[0m' # No Color
 print_banner() {
     echo -e "${BLUE}"
     echo "╔══════════════════════════════════════════════╗"
-    echo "║     🔒 Security Scanner Professional         ║"
+    echo "║     🔒 Iron Net Professional         ║"
     echo "║           Enterprise Edition                 ║"
     echo "╚══════════════════════════════════════════════╝"
     echo -e "${NC}"

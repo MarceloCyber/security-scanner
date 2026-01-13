@@ -25,7 +25,7 @@ if not inspector.get_table_names():
     Base.metadata.create_all(bind=engine)
 
 app = FastAPI(
-    title="Ades Plataform API",
+    title="Iron Net API",
     description="API para análise de segurança de código e APIs baseada no OWASP Top 10",
     version="1.0.0",
     docs_url="/api/docs",
@@ -160,7 +160,7 @@ async def rate_limit_middleware(request: Request, call_next):
 # Rotas da API (DEVEM VIR ANTES do mount de arquivos estáticos)
 @app.get("/api/health")
 def health_check():
-    return {"status": "healthy", "message": "Ades Plataform API is running"}
+    return {"status": "healthy", "message": "Iron Net API is running"}
 
 @app.get("/api/uptime")
 def uptime():

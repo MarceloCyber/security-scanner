@@ -33,7 +33,7 @@ class CICDIntegration:
         """Configuração para GitHub Actions"""
         
         workflow = """
-name: Security Scanner
+name: Iron Net
 
 on:
   push:
@@ -48,7 +48,7 @@ jobs:
     steps:
     - uses: actions/checkout@v3
     
-    - name: Run Security Scanner
+    - name: Run Iron Net
       run: |
         curl -X POST ${{ secrets.SCANNER_API_URL }}/api/scan/code \\
           -H "Authorization: Bearer ${{ secrets.SCANNER_API_TOKEN }}" \\
@@ -276,7 +276,7 @@ steps:
     
     print('##vso[task.complete result=Succeeded]Security scan passed')
     "
-  displayName: 'Run Security Scanner'
+  displayName: 'Run Iron Net'
   
 - task: PublishBuildArtifacts@1
   inputs:

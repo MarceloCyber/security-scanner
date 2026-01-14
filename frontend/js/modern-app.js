@@ -977,6 +977,7 @@ async function apiRequest(endpoint, options = {}) {
                 if (endpoint === '/tools/ai/assistant') {
                     throw new Error('Não autorizado. Tente novamente ou faça login.');
                 }
+                try { showToast('Sessão expirada. Faça login novamente', 'error'); } catch (_) {}
                 localStorage.removeItem('access_token');
                 localStorage.removeItem('username');
                 window.location.href = '/index.html';
@@ -1845,6 +1846,18 @@ function escapeHtml(text) {
     return text.replace(/[&<>"']/g, m => map[m]);
 }
 
+function isToolAllowed(toolId) {
+    const plan = (localStorage.getItem('userPlan') || 'free').toLowerCase();
+    const toolAccess = {
+        'free': ['port-scan'],
+        'starter': ['port-scan', 'scanner', 'encoder', 'subdomain', 'hash-analyzer', 'password-strength'],
+        'professional': ['port-scan', 'scanner', 'encoder', 'phishing', 'payloads', 'subdomain', 'sql-injection', 'xss-tester', 'brute-force', 'log-analyzer', 'threat-intel', 'hash-analyzer', 'password-strength', 'reports', 'ai-assistant', 'api-scanner', 'dependency-scanner', 'docker-scanner', 'graphql-scanner'],
+        'enterprise': ['port-scan', 'scanner', 'encoder', 'phishing', 'payloads', 'subdomain', 'sql-injection', 'xss-tester', 'brute-force', 'log-analyzer', 'threat-intel', 'hash-analyzer', 'password-strength', 'reports', 'ai-assistant', 'api-scanner', 'dependency-scanner', 'docker-scanner', 'graphql-scanner']
+    };
+    const allowedTools = toolAccess[plan] || [];
+    return allowedTools.includes(toolId);
+}
+
 // Dark mode is now permanent - no theme initialization needed
 // Removed theme toggle functionality
 
@@ -2029,6 +2042,11 @@ function displayScanResults(results) {
 }
 
 async function runApiScan() {
+    if (!isToolAllowed('api-scanner')) {
+        showToast('Esta ferramenta requer upgrade de plano', 'info');
+        setTimeout(() => window.location.href = 'pricing.html', 1500);
+        return;
+    }
     const baseUrl = document.getElementById('api-base-url').value.trim();
     const endpointsText = document.getElementById('api-endpoints').value.trim();
     const headersText = document.getElementById('api-headers').value.trim();
@@ -2077,6 +2095,11 @@ function displayApiScanResults(results) {
 }
 
 async function runDependencyScan() {
+    if (!isToolAllowed('dependency-scanner')) {
+        showToast('Esta ferramenta requer upgrade de plano', 'info');
+        setTimeout(() => window.location.href = 'pricing.html', 1500);
+        return;
+    }
     const fileType = document.getElementById('dep-file-type').value;
     const content = document.getElementById('dep-file-content').value.trim();
     if (!content) { showToast('Cole o conteúdo do arquivo', 'error'); return; }
@@ -2107,6 +2130,11 @@ function displayDependencyScanResults(results) {
 }
 
 async function runDockerScan() {
+    if (!isToolAllowed('docker-scanner')) {
+        showToast('Esta ferramenta requer upgrade de plano', 'info');
+        setTimeout(() => window.location.href = 'pricing.html', 1500);
+        return;
+    }
     const scanType = document.getElementById('docker-scan-type').value;
     const content = document.getElementById('docker-content').value.trim();
     if (!content) { showToast('Informe conteúdo para análise', 'error'); return; }
@@ -2137,6 +2165,11 @@ function displayDockerScanResults(results) {
 }
 
 async function runGraphqlScan() {
+    if (!isToolAllowed('graphql-scanner')) {
+        showToast('Esta ferramenta requer upgrade de plano', 'info');
+        setTimeout(() => window.location.href = 'pricing.html', 1500);
+        return;
+    }
     const url = document.getElementById('graphql-url').value.trim();
     const headersText = document.getElementById('graphql-headers').value.trim();
     if (!url) { showToast('Informe o endpoint GraphQL', 'error'); return; }

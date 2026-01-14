@@ -298,6 +298,65 @@
             to { transform: rotate(360deg); }
         }
 
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.7);
+            z-index: 9999;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(5px);
+        }
+        .modal-content {
+            background: var(--dark-light);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 16px;
+            padding: 24px;
+            width: 92%;
+            max-width: 520px;
+            color: var(--text);
+            box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+        }
+        .modal-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+        .modal-header i {
+            color: var(--success);
+            font-size: 22px;
+        }
+        .modal-title {
+            font-size: 1.2rem;
+            font-weight: 700;
+        }
+        .modal-details {
+            background: var(--dark);
+            border-radius: 10px;
+            padding: 12px;
+            margin: 12px 0;
+            border: 1px solid rgba(255,255,255,0.08);
+        }
+        .modal-actions {
+            display: flex;
+            justify-content: flex-end;
+            margin-top: 12px;
+        }
+        .btn-ok {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: #fff;
+            border: none;
+            border-radius: 10px;
+            padding: 10px 16px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
         @media (max-width: 600px) {
             .register-container {
                 padding: 2rem 1.5rem;
@@ -314,7 +373,7 @@
         <div class="spinner"></div>
     </div>
 
-    <div class="register-container">
+        <div class="register-container">
         <div class="register-header">
             <div class="logo">
                 <i class="fas fa-shield-alt"></i>
@@ -329,6 +388,24 @@
                 <button type="button" class="btn-select" data-plan="starter" style="padding:8px 12px; border-radius:8px; border:1px solid #374151; background:#1f2937; color:#e5e7eb; cursor:pointer;">Starter</button>
                 <button type="button" class="btn-select" data-plan="professional" style="padding:8px 12px; border-radius:8px; border:1px solid #374151; background:#1f2937; color:#e5e7eb; cursor:pointer;">Professional</button>
                 <button type="button" class="btn-select" data-plan="enterprise" style="padding:8px 12px; border-radius:8px; border:1px solid #374151; background:#1f2937; color:#e5e7eb; cursor:pointer;">Enterprise</button>
+            </div>
+        </div>
+
+        <div id="successModal" class="modal-overlay">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <i class="fas fa-check-circle"></i>
+                    <div class="modal-title">Conta Free criada com sucesso</div>
+                </div>
+                <p style="color: var(--text-dark);">Enviamos um email com suas credenciais de acesso.</p>
+                <div class="modal-details">
+                    <p><strong>Usuário:</strong> <span id="successUsernameText"></span></p>
+                    <p><strong>Plano:</strong> <span id="successPlanText">Free</span></p>
+                    <p><strong>Email:</strong> <span id="successEmailText"></span></p>
+                </div>
+                <div class="modal-actions">
+                    <button id="successOkBtn" class="btn-ok">OK</button>
+                </div>
             </div>
         </div>
 
@@ -667,11 +744,10 @@
                     });
                     const data = await response.json();
                     if (response.ok) {
-                        localStorage.setItem('registeredEmail', inputs.email.value);
-                        localStorage.setItem('registeredUsername', inputs.username.value);
-                        localStorage.setItem('selectedPlan', selectedPlan);
-                        localStorage.setItem('token', data.access_token);
-                        window.location.href = 'dashboard.html?welcome=true';
+                        document.getElementById('successUsernameText').textContent = inputs.username.value.trim();
+                        document.getElementById('successEmailText').textContent = inputs.email.value.trim();
+                        document.getElementById('successPlanText').textContent = 'Free';
+                        document.getElementById('successModal').style.display = 'flex';
                     } else {
                         throw new Error(data.detail || 'Erro ao criar conta');
                     }
@@ -725,6 +801,9 @@
                 const icon = btn.querySelector('i');
                 if (icon) icon.className = isPassword ? 'fas fa-eye-slash' : 'fas fa-eye';
             });
+        });
+        document.getElementById('successOkBtn').addEventListener('click', function(){
+            window.location.href = 'index.html';
         });
     </script>
     <script>

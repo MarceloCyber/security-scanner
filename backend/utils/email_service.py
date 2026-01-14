@@ -121,7 +121,7 @@ class EmailService:
                         <p><strong>Usuário:</strong> {username}</p>
                         <p><strong>Email:</strong> {to_email}</p>
                         <p><strong>Plano:</strong> {plan_names.get(plan, 'Free')}</p>
-                    </p>
+                    </div>
                     
                     <div style="margin: 30px 0;">
                         <h3>🚀 Próximos Passos:</h3>

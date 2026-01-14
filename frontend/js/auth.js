@@ -128,6 +128,17 @@ if (localStorage.getItem('access_token')) {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+    const params = new URLSearchParams(window.location.search);
+    const flash = localStorage.getItem('flash_success');
+    const msg = params.get('registered') === 'free_success' ? 'Conta Free criada com sucesso! Faça login para acessar.' : flash;
+    if (msg) {
+        const messageEl = document.getElementById('message');
+        if (messageEl) {
+            messageEl.textContent = msg;
+            messageEl.className = 'message success';
+        }
+        localStorage.removeItem('flash_success');
+    }
     document.querySelectorAll('.toggle-password').forEach(btn => {
         btn.addEventListener('click', () => {
             const targetId = btn.getAttribute('data-target');

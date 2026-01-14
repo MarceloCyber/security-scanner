@@ -141,6 +141,19 @@
                             <li><i class="fas fa-check-circle"></i> Nível de risco de cada porta</li>
                         </ul>
 
+                        <h4>Exemplo de uso (API)</h4>
+                        <div class="api-example">
+                            <div class="endpoint-header">
+                                <span class="http-method post">POST</span>
+                                <code>/api/scan/ports</code>
+                            </div>
+                            <h5>curl</h5>
+                            <pre><code>curl -X POST http://localhost:8000/api/scan/ports \
+ -H 'Authorization: Bearer TOKEN' \
+ -H 'Content-Type: application/json' \
+ -d '{"target":"example.com","ports":[80,443,22]}'</code></pre>
+                        </div>
+
                         <div class="info-box warning">
                             <i class="fas fa-exclamation-triangle"></i>
                             <div>
@@ -211,6 +224,20 @@
                             <li><i class="fas fa-bug"></i> E muitas outras...</li>
                         </ul>
 
+                        <h4>Exemplo de uso (API)</h4>
+                        <div class="api-example">
+                            <div class="endpoint-header">
+                                <span class="http-method post">POST</span>
+                                <code>/api/scan/code</code>
+                            </div>
+                            <h5>curl</h5>
+                            <pre><code>curl -X POST http://localhost:8000/api/scan/code \
+ -H 'Authorization: Bearer TOKEN' \
+ -H 'Content-Type: application/json' \
+ -d '{"code":"print(\"Hello\")","filename":"example.py","language":"python"}'</code></pre>
+                            <p style="margin-top:8px; font-size:0.9em; color:#a0aec0;">Para upload de arquivo use <code>POST /api/scan/upload</code> com <code>multipart/form-data</code>.</p>
+                        </div>
+
                         <div class="info-box success">
                             <i class="fas fa-lightbulb"></i>
                             <div>
@@ -271,6 +298,19 @@
                             <li><i class="fas fa-shield-alt"></i> Information Disclosure</li>
                             <li><i class="fas fa-shield-alt"></i> Mass Assignment</li>
                         </ul>
+
+                        <h4>Exemplo de uso (API)</h4>
+                        <div class="api-example">
+                            <div class="endpoint-header">
+                                <span class="http-method post">POST</span>
+                                <code>/api/scan/api</code>
+                            </div>
+                            <h5>curl</h5>
+                            <pre><code>curl -X POST http://localhost:8000/api/scan/api \
+ -H 'Authorization: Bearer TOKEN' \
+ -H 'Content-Type: application/json' \
+ -d '{"base_url":"https://api.example.com/","endpoints":["/v1/users","/v1/orders/{id}"],"headers":{"Authorization":"Bearer TOKEN"}}'</code></pre>
+                        </div>
                     </div>
                 </div>
 
@@ -322,6 +362,19 @@
                             <li><i class="fas fa-exclamation-circle"></i> Versões seguras recomendadas</li>
                             <li><i class="fas fa-exclamation-circle"></i> Dependências transitivas vulneráveis</li>
                         </ul>
+
+                        <h4>Exemplo de uso (API)</h4>
+                        <div class="api-example">
+                            <div class="endpoint-header">
+                                <span class="http-method post">POST</span>
+                                <code>/api/scan/dependencies</code>
+                            </div>
+                            <h5>curl</h5>
+                            <pre><code>curl -X POST http://localhost:8000/api/scan/dependencies \
+ -H 'Authorization: Bearer TOKEN' \
+ -H 'Content-Type: application/json' \
+ -d '{"file_type":"requirements.txt","content":"flask==0.12\nrequests==2.19"}'</code></pre>
+                        </div>
                     </div>
                 </div>
 
@@ -374,6 +427,20 @@
                             <li><i class="fas fa-container-storage"></i> Permissões inadequadas</li>
                             <li><i class="fas fa-container-storage"></i> Imagens base desatualizadas</li>
                         </ul>
+
+                        <h4>Exemplo de uso (API)</h4>
+                        <div class="api-example">
+                            <div class="endpoint-header">
+                                <span class="http-method post">POST</span>
+                                <code>/api/scan/docker</code>
+                            </div>
+                            <h5>curl</h5>
+                            <pre><code>curl -X POST http://localhost:8000/api/scan/docker \
+ -H 'Authorization: Bearer TOKEN' \
+ -H 'Content-Type: application/json' \
+ -d '{"scan_type":"dockerfile","content":"FROM alpine:3.19\nRUN apk add curl\nUSER root"}'</code></pre>
+                            <p style="margin-top:8px; font-size:0.9em; color:#a0aec0;">Para <code>docker-compose</code> use <code>scan_type</code> = <code>docker-compose</code>.</p>
+                        </div>
                     </div>
                 </div>
 
@@ -427,8 +494,680 @@
                             <li><i class="fas fa-search"></i> Injection vulnerabilities</li>
                             <li><i class="fas fa-search"></i> Authorization bypass</li>
                         </ul>
+
+                        <h4>Exemplo de uso (API)</h4>
+                        <div class="api-example">
+                            <div class="endpoint-header">
+                                <span class="http-method post">POST</span>
+                                <code>/api/scan/graphql</code>
+                            </div>
+                            <h5>curl</h5>
+                            <pre><code>curl -X POST http://localhost:8000/api/scan/graphql \
+ -H 'Authorization: Bearer TOKEN' \
+ -H 'Content-Type: application/json' \
+ -d '{"url":"https://api.example.com/graphql","headers":{"Authorization":"Bearer TOKEN"}}'</code></pre>
+                        </div>
                     </div>
                 </div>
+
+                <div class="tool-card">
+                    <div class="tool-header">
+                        <div class="tool-icon">
+                            <i class="fas fa-fish"></i>
+                        </div>
+                        <div>
+                            <h3>Phishing Generator</h3>
+                            <span class="badge badge-premium">Premium</span>
+                        </div>
+                    </div>
+                    <div class="tool-content">
+                        <h4>O que faz?</h4>
+                        <p>Cria páginas de phishing realistas para testes de conscientização e simulações controladas.</p>
+                        <h4>Como usar?</h4>
+                        <div class="steps">
+                            <div class="step">
+                                <span class="step-number">1</span>
+                                <div class="step-content">
+                                    <strong>Escolha um template</strong>
+                                    <p>Selecione o modelo desejado na ferramenta do dashboard</p>
+                                </div>
+                            </div>
+                            <div class="step">
+                                <span class="step-number">2</span>
+                                <div class="step-content">
+                                    <strong>Configure redirecionamento</strong>
+                                    <p>Defina a URL de destino e webhook de captura (opcional)</p>
+                                </div>
+                            </div>
+                            <div class="step">
+                                <span class="step-number">3</span>
+                                <div class="step-content">
+                                    <strong>Defina expiração</strong>
+                                    <p>Escolha por quanto tempo o link ficará ativo</p>
+                                </div>
+                            </div>
+                            <div class="step">
+                                <span class="step-number">4</span>
+                                <div class="step-content">
+                                    <strong>Gerar página</strong>
+                                    <p>Clique em "Gerar" e use os links fornecidos</p>
+                                </div>
+                            </div>
+                        </div>
+                        <h4>Informações fornecidas:</h4>
+                        <ul class="feature-list">
+                            <li><i class="fas fa-check-circle"></i> Link curto e QR Code</li>
+                            <li><i class="fas fa-check-circle"></i> Expiração automática configurável</li>
+                            <li><i class="fas fa-check-circle"></i> Captura via webhook (opcional)</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="tool-card">
+                    <div class="tool-header">
+                        <div class="tool-icon">
+                            <i class="fas fa-bomb"></i>
+                        </div>
+                        <div>
+                            <h3>Payload Generator</h3>
+                            <span class="badge badge-premium">Premium</span>
+                        </div>
+                    </div>
+                    <div class="tool-content">
+                        <h4>O que faz?</h4>
+                        <p>Gera payloads para XSS, SQL Injection, Path Traversal e outros vetores de ataque.</p>
+                        <h4>Como usar?</h4>
+                        <div class="steps">
+                            <div class="step">
+                                <span class="step-number">1</span>
+                                <div class="step-content">
+                                    <strong>Selecione a categoria</strong>
+                                    <p>Escolha o tipo de payload desejado</p>
+                                </div>
+                            </div>
+                            <div class="step">
+                                <span class="step-number">2</span>
+                                <div class="step-content">
+                                    <strong>Ajuste o payload</strong>
+                                    <p>Personalize parâmetros e placeholders</p>
+                                </div>
+                            </div>
+                            <div class="step">
+                                <span class="step-number">3</span>
+                                <div class="step-content">
+                                    <strong>Copie e use</strong>
+                                    <p>Utilize apenas em ambientes autorizados</p>
+                                </div>
+                            </div>
+                        </div>
+                        <h4>Dicas:</h4>
+                        <ul class="feature-list">
+                            <li><i class="fas fa-check-circle"></i> Combine com Encoder/Decoder para obfuscação</li>
+                            <li><i class="fas fa-check-circle"></i> Valide sempre o escopo do teste</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="tool-card">
+                    <div class="tool-header">
+                        <div class="tool-icon">
+                            <i class="fas fa-code"></i>
+                        </div>
+                        <div>
+                            <h3>Encoder/Decoder</h3>
+                            <span class="badge badge-premium">Premium</span>
+                        </div>
+                    </div>
+                    <div class="tool-content">
+                        <h4>O que faz?</h4>
+                        <p>Codifica e decodifica textos em diversos formatos (Base64, URL, HTML) e gera hashes comuns.</p>
+                        <h4>Como usar?</h4>
+                        <div class="steps">
+                            <div class="step">
+                                <span class="step-number">1</span>
+                                <div class="step-content">
+                                    <strong>Informe o texto</strong>
+                                    <p>Cole o conteúdo que deseja processar</p>
+                                </div>
+                            </div>
+                            <div class="step">
+                                <span class="step-number">2</span>
+                                <div class="step-content">
+                                    <strong>Escolha o método</strong>
+                                    <p>Selecione o tipo de codificação/decodificação</p>
+                                </div>
+                            </div>
+                            <div class="step">
+                                <span class="step-number">3</span>
+                                <div class="step-content">
+                                    <strong>Copie o resultado</strong>
+                                    <p>Utilize conforme necessidade do teste</p>
+                                </div>
+                            </div>
+                        </div>
+                        <h4>Recursos:</h4>
+                        <ul class="feature-list">
+                            <li><i class="fas fa-check-circle"></i> Base64, URL e HTML encode/decode</li>
+                            <li><i class="fas fa-check-circle"></i> Hashes MD5/SHA (para verificação)</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="tool-card">
+                    <div class="tool-header">
+                        <div class="tool-icon">
+                            <i class="fas fa-database"></i>
+                        </div>
+                        <div>
+                            <h3>SQL Injection Tester</h3>
+                            <span class="badge badge-premium">Premium</span>
+                        </div>
+                    </div>
+                    <div class="tool-content">
+                        <h4>O que faz?</h4>
+                        <p>Testa endpoints e parâmetros suspeitos com payloads de SQL Injection.</p>
+                        <h4>Como usar?</h4>
+                        <div class="steps">
+                            <div class="step">
+                                <span class="step-number">1</span>
+                                <div class="step-content">
+                                    <strong>Informe o endpoint</strong>
+                                    <p>Defina URL e parâmetros alvo</p>
+                                </div>
+                            </div>
+                            <div class="step">
+                                <span class="step-number">2</span>
+                                <div class="step-content">
+                                    <strong>Selecione payloads</strong>
+                                    <p>Escolha testes boolean/union/error-based</p>
+                                </div>
+                            </div>
+                            <div class="step">
+                                <span class="step-number">3</span>
+                                <div class="step-content">
+                                    <strong>Execute com cautela</strong>
+                                    <p>Somente em ambientes autorizados</p>
+                                </div>
+                            </div>
+                        </div>
+                        <h4>Testes:</h4>
+                        <ul class="feature-list">
+                            <li><i class="fas fa-check-circle"></i> Boolean-based</li>
+                            <li><i class="fas fa-check-circle"></i> Union-based</li>
+                            <li><i class="fas fa-check-circle"></i> Error-based</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="tool-card">
+                    <div class="tool-header">
+                        <div class="tool-icon">
+                            <i class="fas fa-code-branch"></i>
+                        </div>
+                        <div>
+                            <h3>XSS Vulnerability Tester</h3>
+                            <span class="badge badge-premium">Premium</span>
+                        </div>
+                    </div>
+                    <div class="tool-content">
+                        <h4>O que faz?</h4>
+                        <p>Verifica aplicações web contra XSS refletido e armazenado com payloads seguros.</p>
+                        <h4>Como usar?</h4>
+                        <div class="steps">
+                            <div class="step">
+                                <span class="step-number">1</span>
+                                <div class="step-content">
+                                    <strong>Defina a URL</strong>
+                                    <p>Informe o parâmetro a ser testado</p>
+                                </div>
+                            </div>
+                            <div class="step">
+                                <span class="step-number">2</span>
+                                <div class="step-content">
+                                    <strong>Escolha payloads</strong>
+                                    <p>Selecione categorias (DOM, Reflected, Stored)</p>
+                                </div>
+                            </div>
+                            <div class="step">
+                                <span class="step-number">3</span>
+                                <div class="step-content">
+                                    <strong>Execute e revise</strong>
+                                    <p>Analise respostas e sanitização</p>
+                                </div>
+                            </div>
+                        </div>
+                        <h4>Verificações:</h4>
+                        <ul class="feature-list">
+                            <li><i class="fas fa-check-circle"></i> Escapagem e CSP</li>
+                            <li><i class="fas fa-check-circle"></i> Filtragem de entrada</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="tool-card">
+                    <div class="tool-header">
+                        <div class="tool-icon">
+                            <i class="fas fa-key"></i>
+                        </div>
+                        <div>
+                            <h3>Brute Force Tool</h3>
+                            <span class="badge badge-premium">Premium</span>
+                        </div>
+                    </div>
+                    <div class="tool-content">
+                        <h4>O que faz?</h4>
+                        <p>Simula tentativas controladas de autenticação para avaliar proteções de rate limiting e lockout.</p>
+                        <h4>Como usar?</h4>
+                        <div class="steps">
+                            <div class="step">
+                                <span class="step-number">1</span>
+                                <div class="step-content">
+                                    <strong>Informe o endpoint</strong>
+                                    <p>Defina URL de login e formato de credenciais</p>
+                                </div>
+                            </div>
+                            <div class="step">
+                                <span class="step-number">2</span>
+                                <div class="step-content">
+                                    <strong>Carregue listas</strong>
+                                    <p>Usuários e senhas para teste (autorizado)</p>
+                                </div>
+                            </div>
+                            <div class="step">
+                                <span class="step-number">3</span>
+                                <div class="step-content">
+                                    <strong>Configure limites</strong>
+                                    <p>Ajuste taxa e pausas para evitar danos</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="info-box warning">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            <div>
+                                <strong>Atenção</strong>
+                                <p>Use apenas com autorização explícita e em ambientes de teste.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="tool-card">
+                    <div class="tool-header">
+                        <div class="tool-icon">
+                            <i class="fas fa-sitemap"></i>
+                        </div>
+                        <div>
+                            <h3>Subdomain Enumeration</h3>
+                            <span class="badge badge-premium">Premium</span>
+                        </div>
+                    </div>
+                    <div class="tool-content">
+                        <h4>O que faz?</h4>
+                        <p>Enumera subdomínios de um domínio alvo usando dicionários e consultas DNS.</p>
+                        <h4>Como usar?</h4>
+                        <div class="steps">
+                            <div class="step">
+                                <span class="step-number">1</span>
+                                <div class="step-content">
+                                    <strong>Informe o domínio</strong>
+                                    <p>Ex: exemplo.com</p>
+                                </div>
+                            </div>
+                            <div class="step">
+                                <span class="step-number">2</span>
+                                <div class="step-content">
+                                    <strong>Escolha wordlist</strong>
+                                    <p>Selecione ou utilize lista padrão</p>
+                                </div>
+                            </div>
+                            <div class="step">
+                                <span class="step-number">3</span>
+                                <div class="step-content">
+                                    <strong>Executar enumeração</strong>
+                                    <p>Revise resultados e registros</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="tool-card">
+                    <div class="tool-header">
+                        <div class="tool-icon">
+                            <i class="fas fa-folder-open"></i>
+                        </div>
+                        <div>
+                            <h3>Directory Enumerator</h3>
+                            <span class="badge badge-premium">Premium</span>
+                        </div>
+                    </div>
+                    <div class="tool-content">
+                        <h4>O que faz?</h4>
+                        <p>Descobre diretórios e caminhos ocultos em aplicações web.</p>
+                        <h4>Como usar?</h4>
+                        <div class="steps">
+                            <div class="step">
+                                <span class="step-number">1</span>
+                                <div class="step-content">
+                                    <strong>Informe a base URL</strong>
+                                    <p>Ex: https://site.com/</p>
+                                </div>
+                            </div>
+                            <div class="step">
+                                <span class="step-number">2</span>
+                                <div class="step-content">
+                                    <strong>Selecione wordlist</strong>
+                                    <p>Paths comuns e específicos</p>
+                                </div>
+                            </div>
+                            <div class="step">
+                                <span class="step-number">3</span>
+                                <div class="step-content">
+                                    <strong>Execute</strong>
+                                    <p>Revise status e respostas</p>
+                                </div>
+                            </div>
+                        </div>
+                        <h4>Informações:</h4>
+                        <ul class="feature-list">
+                            <li><i class="fas fa-check-circle"></i> Status HTTP e tamanho da resposta</li>
+                            <li><i class="fas fa-check-circle"></i> Possíveis exposições de arquivos</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="tool-card">
+                    <div class="tool-header">
+                        <div class="tool-icon">
+                            <i class="fas fa-file-alt"></i>
+                        </div>
+                        <div>
+                            <h3>Log Analyzer</h3>
+                            <span class="badge badge-premium">Premium</span>
+                        </div>
+                    </div>
+                    <div class="tool-content">
+                        <h4>O que faz?</h4>
+                        <p>Analisa arquivos de log em busca de padrões suspeitos, erros e tentativas de ataque.</p>
+                        <h4>Como usar?</h4>
+                        <div class="steps">
+                            <div class="step">
+                                <span class="step-number">1</span>
+                                <div class="step-content">
+                                    <strong>Envie ou cole o log</strong>
+                                    <p>Apache, Nginx, app logs, etc.</p>
+                                </div>
+                            </div>
+                            <div class="step">
+                                <span class="step-number">2</span>
+                                <div class="step-content">
+                                    <strong>Selecione filtros</strong>
+                                    <p>IPs, códigos, endpoints, palavras-chave</p>
+                                </div>
+                            </div>
+                            <div class="step">
+                                <span class="step-number">3</span>
+                                <div class="step-content">
+                                    <strong>Revise o relatório</strong>
+                                    <p>Veja picos, erros e anomalias</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="tool-card">
+                    <div class="tool-header">
+                        <div class="tool-icon">
+                            <i class="fas fa-shield-virus"></i>
+                        </div>
+                        <div>
+                            <h3>Threat Intelligence</h3>
+                            <span class="badge badge-premium">Premium</span>
+                        </div>
+                    </div>
+                    <div class="tool-content">
+                        <h4>O que faz?</h4>
+                        <p>Consulta fontes de inteligência para avaliar reputação de IPs, domínios e URLs.</p>
+                        <h4>Como usar?</h4>
+                        <div class="steps">
+                            <div class="step">
+                                <span class="step-number">1</span>
+                                <div class="step-content">
+                                    <strong>Informe indicadores</strong>
+                                    <p>IPs, domínios ou URLs</p>
+                                </div>
+                            </div>
+                            <div class="step">
+                                <span class="step-number">2</span>
+                                <div class="step-content">
+                                    <strong>Consultar fontes</strong>
+                                    <p>Integrações e bases públicas</p>
+                                </div>
+                            </div>
+                            <div class="step">
+                                <span class="step-number">3</span>
+                                <div class="step-content">
+                                    <strong>Interpretar resultados</strong>
+                                    <p>Use para tomada de decisão</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="tool-card">
+                    <div class="tool-header">
+                        <div class="tool-icon">
+                            <i class="fas fa-fingerprint"></i>
+                        </div>
+                        <div>
+                            <h3>Hash Analyzer</h3>
+                            <span class="badge badge-premium">Premium</span>
+                        </div>
+                    </div>
+                    <div class="tool-content">
+                        <h4>O que faz?</h4>
+                        <p>Identifica tipos de hash e auxilia em verificações de integridade e análise forense.</p>
+                        <h4>Como usar?</h4>
+                        <div class="steps">
+                            <div class="step">
+                                <span class="step-number">1</span>
+                                <div class="step-content">
+                                    <strong>Cole o hash</strong>
+                                    <p>MD5, SHA1/256/512, etc.</p>
+                                </div>
+                            </div>
+                            <div class="step">
+                                <span class="step-number">2</span>
+                                <div class="step-content">
+                                    <strong>Detectar tipo</strong>
+                                    <p>O sistema identifica o formato</p>
+                                </div>
+                            </div>
+                            <div class="step">
+                                <span class="step-number">3</span>
+                                <div class="step-content">
+                                    <strong>Verificar integridade</strong>
+                                    <p>Compare com hash esperado</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="tool-card">
+                    <div class="tool-header">
+                        <div class="tool-icon">
+                            <i class="fas fa-list-check"></i>
+                        </div>
+                        <div>
+                            <h3>IOC Analyzer</h3>
+                            <span class="badge badge-premium">Premium</span>
+                        </div>
+                    </div>
+                    <div class="tool-content">
+                        <h4>O que faz?</h4>
+                        <p>Extrai e classifica indicadores de comprometimento (IOCs) a partir de textos e logs.</p>
+                        <h4>Como usar?</h4>
+                        <div class="steps">
+                            <div class="step">
+                                <span class="step-number">1</span>
+                                <div class="step-content">
+                                    <strong>Insira o conteúdo</strong>
+                                    <p>Texto, logs ou relatórios</p>
+                                </div>
+                            </div>
+                            <div class="step">
+                                <span class="step-number">2</span>
+                                <div class="step-content">
+                                    <strong>Processar</strong>
+                                    <p>O sistema detecta IPs, domínios, URLs e hashes</p>
+                                </div>
+                            </div>
+                            <div class="step">
+                                <span class="step-number">3</span>
+                                <div class="step-content">
+                                    <strong>Exportar</strong>
+                                    <p>Use os IOCs para bloqueio e investigação</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="tool-card">
+                    <div class="tool-header">
+                        <div class="tool-icon">
+                            <i class="fas fa-lock"></i>
+                        </div>
+                        <div>
+                            <h3>Password Strength Checker</h3>
+                            <span class="badge badge-premium">Premium</span>
+                        </div>
+                    </div>
+                    <div class="tool-content">
+                        <h4>O que faz?</h4>
+                        <p>Avalia a força de senhas e fornece recomendações de melhoria.</p>
+                        <h4>Como usar?</h4>
+                        <div class="steps">
+                            <div class="step">
+                                <span class="step-number">1</span>
+                                <div class="step-content">
+                                    <strong>Digite a senha</strong>
+                                    <p>Processamento local e seguro</p>
+                                </div>
+                            </div>
+                            <div class="step">
+                                <span class="step-number">2</span>
+                                <div class="step-content">
+                                    <strong>Veja a pontuação</strong>
+                                    <p>Comprimento, complexidade e padrões</p>
+                                </div>
+                            </div>
+                            <div class="step">
+                                <span class="step-number">3</span>
+                                <div class="step-content">
+                                    <strong>Aplique recomendações</strong>
+                                    <p>Melhore a segurança da credencial</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="tool-card">
+                    <div class="tool-header">
+                        <div class="tool-icon">
+                            <i class="fas fa-file-pdf"></i>
+                        </div>
+                        <div>
+                            <h3>Reports (PDF)</h3>
+                            <span class="badge badge-premium">Premium</span>
+                        </div>
+                    </div>
+                    <div class="tool-content">
+                        <h4>O que faz?</h4>
+                        <p>Gera relatórios profissionais em PDF com resumo, métricas e recomendações dos seus scans.</p>
+                        <h4>Como usar?</h4>
+                        <div class="steps">
+                            <div class="step">
+                                <span class="step-number">1</span>
+                                <div class="step-content">
+                                    <strong>Acesse "Reports"</strong>
+                                    <p>Abra a página de relatórios no dashboard</p>
+                                </div>
+                            </div>
+                            <div class="step">
+                                <span class="step-number">2</span>
+                                <div class="step-content">
+                                    <strong>Selecione um scan</strong>
+                                    <p>Escolha o item desejado na lista</p>
+                                </div>
+                            </div>
+                            <div class="step">
+                                <span class="step-number">3</span>
+                                <div class="step-content">
+                                    <strong>Gerar PDF</strong>
+                                    <p>Baixe o relatório para compartilhar</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <h4>Exemplo de uso (API)</h4>
+                        <div class="api-example">
+                            <div class="endpoint-header">
+                                <span class="http-method get">GET</span>
+                                <code>/api/scans/{scan_id}/report</code>
+                            </div>
+                            <h5>curl</h5>
+                            <pre><code>curl -X GET http://localhost:8000/api/scans/123/report \
+ -H 'Authorization: Bearer TOKEN' \
+ --output security-report-123.pdf</code></pre>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="tool-card">
+                    <div class="tool-header">
+                        <div class="tool-icon">
+                            <i class="fas fa-robot"></i>
+                        </div>
+                        <div>
+                            <h3>AI Security Assistant</h3>
+                            <span class="badge badge-premium">Premium</span>
+                        </div>
+                    </div>
+                    <div class="tool-content">
+                        <h4>O que faz?</h4>
+                        <p>Auxilia com dicas, explicações e boas práticas de segurança diretamente no dashboard.</p>
+                        <h4>Como usar?</h4>
+                        <div class="steps">
+                            <div class="step">
+                                <span class="step-number">1</span>
+                                <div class="step-content">
+                                    <strong>Abra o Assistente</strong>
+                                    <p>Acesse a página "Assistente de IA"</p>
+                                </div>
+                            </div>
+                            <div class="step">
+                                <span class="step-number">2</span>
+                                <div class="step-content">
+                                    <strong>Faça perguntas</strong>
+                                    <p>Descreva seu problema ou dúvida</p>
+                                </div>
+                            </div>
+                            <div class="step">
+                                <span class="step-number">3</span>
+                                <div class="step-content">
+                                    <strong>Aplique recomendações</strong>
+                                    <p>Use as sugestões para melhorar sua segurança</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
             </section>
 
             <!-- Planos -->

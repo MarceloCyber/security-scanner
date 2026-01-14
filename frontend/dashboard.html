@@ -135,6 +135,22 @@
                 <i class="fas fa-network-wired"></i>
                 <span>Port Scanner</span>
             </a>
+            <a href="#api-scanner" class="nav-item" data-page="api-scanner">
+                <i class="fas fa-plug"></i>
+                <span>API Scanner</span>
+            </a>
+            <a href="#dependency-scanner" class="nav-item" data-page="dependency-scanner">
+                <i class="fas fa-cubes"></i>
+                <span>Dependency Scanner</span>
+            </a>
+            <a href="#docker-scanner" class="nav-item" data-page="docker-scanner">
+                <i class="fab fa-docker"></i>
+                <span>Docker Scanner</span>
+            </a>
+            <a href="#graphql-scanner" class="nav-item" data-page="graphql-scanner">
+                <i class="fas fa-project-diagram"></i>
+                <span>GraphQL Scanner</span>
+            </a>
             
             <!-- Manual de Uso -->
             <a href="/manual.html" class="nav-item nav-item-manual nav-external" target="_blank" rel="noopener">
@@ -828,6 +844,167 @@
             <div class="alert alert-warning">
                 <i class="fas fa-exclamation-triangle"></i>
                 <strong>Aviso Legal:</strong> Escaneie apenas sistemas que você tem autorização para testar. Scans não autorizados podem ser ilegais.
+            </div>
+        </div>
+
+        <div class="page" id="api-scanner-page">
+            <div class="page-header">
+                <h1><i class="fas fa-plug"></i> API Scanner</h1>
+                <p>Teste segurança de APIs REST</p>
+            </div>
+            <div class="content-grid">
+                <div class="card">
+                    <div class="card-header">
+                        <h2>Configuração</h2>
+                    </div>
+                    <div class="card-body">
+                        <div class="form-group">
+                            <label>Base URL</label>
+                            <input type="url" id="api-base-url" class="form-control" placeholder="https://api.example.com/">
+                        </div>
+                        <div class="form-group">
+                            <label>Endpoints (um por linha)</label>
+                            <textarea id="api-endpoints" class="form-control" rows="5" placeholder="/v1/users\n/v1/orders/{id}"></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label>Headers (JSON opcional)</label>
+                            <textarea id="api-headers" class="form-control" rows="3" placeholder='{"Authorization":"Bearer TOKEN"}'></textarea>
+                        </div>
+                        <button class="btn-primary btn-block" onclick="runApiScan()">
+                            <i class="fas fa-search"></i>
+                            Executar Scan
+                        </button>
+                    </div>
+                </div>
+                <div class="card card-full">
+                    <div class="card-header">
+                        <h2>Resultados</h2>
+                        <span id="api-vuln-total" class="badge">0</span>
+                    </div>
+                    <div class="card-body">
+                        <div id="api-scan-results"><p class="text-muted">Preencha os campos e execute o scan</p></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="page" id="dependency-scanner-page">
+            <div class="page-header">
+                <h1><i class="fas fa-cubes"></i> Dependency Scanner</h1>
+                <p>Analise dependências e CVEs</p>
+            </div>
+            <div class="content-grid">
+                <div class="card">
+                    <div class="card-header">
+                        <h2>Entrada</h2>
+                    </div>
+                    <div class="card-body">
+                        <div class="form-group">
+                            <label>Tipo de Arquivo</label>
+                            <select id="dep-file-type" class="form-control">
+                                <option value="requirements.txt">requirements.txt (Python)</option>
+                                <option value="package.json">package.json (Node)</option>
+                                <option value="composer.json">composer.json (PHP)</option>
+                                <option value="Gemfile">Gemfile (Ruby)</option>
+                                <option value="pom.xml">pom.xml (Java)</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Conteúdo</label>
+                            <textarea id="dep-file-content" class="form-control" rows="10" placeholder="Cole o conteúdo do arquivo"></textarea>
+                        </div>
+                        <button class="btn-primary btn-block" onclick="runDependencyScan()">
+                            <i class="fas fa-search"></i>
+                            Escanear Dependências
+                        </button>
+                    </div>
+                </div>
+                <div class="card card-full">
+                    <div class="card-header">
+                        <h2>Resultados</h2>
+                        <span id="dep-vuln-total" class="badge">0</span>
+                    </div>
+                    <div class="card-body">
+                        <div id="dependency-scan-results"><p class="text-muted">Cole o conteúdo e execute o scan</p></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="page" id="docker-scanner-page">
+            <div class="page-header">
+                <h1><i class="fab fa-docker"></i> Docker Scanner</h1>
+                <p>Analise Dockerfile e docker-compose</p>
+            </div>
+            <div class="content-grid">
+                <div class="card">
+                    <div class="card-header">
+                        <h2>Entrada</h2>
+                    </div>
+                    <div class="card-body">
+                        <div class="form-group">
+                            <label>Tipo de Scan</label>
+                            <select id="docker-scan-type" class="form-control">
+                                <option value="dockerfile">Dockerfile</option>
+                                <option value="docker-compose">docker-compose.yml</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Conteúdo</label>
+                            <textarea id="docker-content" class="form-control" rows="10" placeholder="Cole o conteúdo"></textarea>
+                        </div>
+                        <button class="btn-primary btn-block" onclick="runDockerScan()">
+                            <i class="fas fa-search"></i>
+                            Escanear Docker
+                        </button>
+                    </div>
+                </div>
+                <div class="card card-full">
+                    <div class="card-header">
+                        <h2>Resultados</h2>
+                        <span id="docker-vuln-total" class="badge">0</span>
+                    </div>
+                    <div class="card-body">
+                        <div id="docker-scan-results"><p class="text-muted">Informe o conteúdo e execute o scan</p></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="page" id="graphql-scanner-page">
+            <div class="page-header">
+                <h1><i class="fas fa-project-diagram"></i> GraphQL Scanner</h1>
+                <p>Teste segurança de APIs GraphQL</p>
+            </div>
+            <div class="content-grid">
+                <div class="card">
+                    <div class="card-header">
+                        <h2>Configuração</h2>
+                    </div>
+                    <div class="card-body">
+                        <div class="form-group">
+                            <label>Endpoint GraphQL</label>
+                            <input type="url" id="graphql-url" class="form-control" placeholder="https://api.example.com/graphql">
+                        </div>
+                        <div class="form-group">
+                            <label>Headers (JSON opcional)</label>
+                            <textarea id="graphql-headers" class="form-control" rows="3" placeholder='{"Authorization":"Bearer TOKEN"}'></textarea>
+                        </div>
+                        <button class="btn-primary btn-block" onclick="runGraphqlScan()">
+                            <i class="fas fa-search"></i>
+                            Executar Scan
+                        </button>
+                    </div>
+                </div>
+                <div class="card card-full">
+                    <div class="card-header">
+                        <h2>Resultados</h2>
+                        <span id="graphql-vuln-total" class="badge">0</span>
+                    </div>
+                    <div class="card-body">
+                        <div id="graphql-scan-results"><p class="text-muted">Preencha os campos e execute o scan</p></div>
+                    </div>
+                </div>
             </div>
         </div>
 

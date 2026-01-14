@@ -141,18 +141,16 @@ async function checkSubscription() {
 
         // Lock Tools - Define quais ferramentas cada plano pode acessar
         const toolAccess = {
-            'free': ['port-scan'], // Free só tem Port Scanner (10 scans/mês)
+            'free': ['port-scan'],
             'starter': ['port-scan', 'scanner', 'encoder', 'subdomain', 'hash-analyzer', 'password-strength'],
-            'professional': ['port-scan', 'scanner', 'encoder', 'phishing', 'payloads', 'subdomain', 'sql-injection', 'xss-tester', 'brute-force', 'log-analyzer', 'threat-intel', 'hash-analyzer', 'password-strength', 'reports', 'ai-assistant'],
-            'enterprise': ['port-scan', 'scanner', 'encoder', 'phishing', 'payloads', 'subdomain', 'sql-injection', 'xss-tester', 'brute-force', 'log-analyzer', 'threat-intel', 'hash-analyzer', 'password-strength', 'reports', 'ai-assistant']
+            'professional': ['port-scan', 'scanner', 'encoder', 'phishing', 'payloads', 'subdomain', 'sql-injection', 'xss-tester', 'brute-force', 'log-analyzer', 'threat-intel', 'hash-analyzer', 'password-strength', 'reports', 'ai-assistant', 'api-scanner', 'dependency-scanner', 'docker-scanner', 'graphql-scanner'],
+            'enterprise': ['port-scan', 'scanner', 'encoder', 'phishing', 'payloads', 'subdomain', 'sql-injection', 'xss-tester', 'brute-force', 'log-analyzer', 'threat-intel', 'hash-analyzer', 'password-strength', 'reports', 'ai-assistant', 'api-scanner', 'dependency-scanner', 'docker-scanner', 'graphql-scanner']
         };
 
         const allowedTools = toolAccess[plan] || [];
         
         // Bloquear todas as ferramentas que não estão na lista permitida
-        const allTools = ['dashboard', 'phishing', 'payloads', 'encoder', 'scanner', 'port-scan', 
-                         'sql-injection', 'xss-tester', 'brute-force', 'subdomain', 
-                         'log-analyzer', 'threat-intel', 'hash-analyzer', 'password-strength', 'reports', 'ai-assistant'];
+    const allTools = ['dashboard', 'phishing', 'payloads', 'encoder', 'scanner', 'port-scan', 'api-scanner', 'dependency-scanner', 'docker-scanner', 'graphql-scanner', 'sql-injection', 'xss-tester', 'brute-force', 'subdomain', 'log-analyzer', 'threat-intel', 'hash-analyzer', 'password-strength', 'reports', 'ai-assistant'];
         
         allTools.forEach(toolId => {
             if (toolId === 'dashboard') return; // Dashboard sempre acessível
@@ -336,11 +334,11 @@ function prelockTools() {
     const toolAccess = {
         'free': ['port-scan'],
         'starter': ['port-scan', 'scanner', 'encoder', 'subdomain', 'hash-analyzer', 'password-strength'],
-        'professional': ['port-scan', 'scanner', 'encoder', 'phishing', 'payloads', 'subdomain', 'directory-enum', 'sql-injection', 'xss-tester', 'brute-force', 'log-analyzer', 'ioc-analyzer', 'threat-intel', 'hash-analyzer', 'password-strength', 'reports', 'ai-assistant'],
-        'enterprise': ['port-scan', 'scanner', 'encoder', 'phishing', 'payloads', 'subdomain', 'directory-enum', 'sql-injection', 'xss-tester', 'brute-force', 'log-analyzer', 'ioc-analyzer', 'threat-intel', 'hash-analyzer', 'password-strength', 'reports', 'ai-assistant']
+        'professional': ['port-scan', 'scanner', 'encoder', 'phishing', 'payloads', 'subdomain', 'directory-enum', 'sql-injection', 'xss-tester', 'brute-force', 'log-analyzer', 'ioc-analyzer', 'threat-intel', 'hash-analyzer', 'password-strength', 'reports', 'ai-assistant', 'api-scanner', 'dependency-scanner', 'docker-scanner', 'graphql-scanner'],
+        'enterprise': ['port-scan', 'scanner', 'encoder', 'phishing', 'payloads', 'subdomain', 'directory-enum', 'sql-injection', 'xss-tester', 'brute-force', 'log-analyzer', 'ioc-analyzer', 'threat-intel', 'hash-analyzer', 'password-strength', 'reports', 'ai-assistant', 'api-scanner', 'dependency-scanner', 'docker-scanner', 'graphql-scanner']
     };
     const allowedTools = toolAccess[plan] || [];
-    const allTools = ['dashboard', 'phishing', 'payloads', 'encoder', 'scanner', 'port-scan', 'sql-injection', 'xss-tester', 'brute-force', 'subdomain', 'directory-enum', 'log-analyzer', 'ioc-analyzer', 'threat-intel', 'hash-analyzer', 'password-strength', 'reports', 'ai-assistant'];
+    const allTools = ['dashboard', 'phishing', 'payloads', 'encoder', 'scanner', 'port-scan', 'api-scanner', 'dependency-scanner', 'docker-scanner', 'graphql-scanner', 'sql-injection', 'xss-tester', 'brute-force', 'subdomain', 'directory-enum', 'log-analyzer', 'ioc-analyzer', 'threat-intel', 'hash-analyzer', 'password-strength', 'reports', 'ai-assistant'];
     allTools.forEach(toolId => {
         if (toolId === 'dashboard') return;
         if (!allowedTools.includes(toolId)) {
@@ -358,8 +356,8 @@ function prelockToolCards() {
     const toolAccess = {
         'free': ['port-scan'],
         'starter': ['port-scan', 'scanner', 'encoder', 'subdomain', 'hash-analyzer', 'password-strength'],
-        'professional': ['port-scan', 'scanner', 'encoder', 'phishing', 'payloads', 'subdomain', 'sql-injection', 'xss-tester', 'brute-force', 'log-analyzer', 'threat-intel', 'hash-analyzer', 'password-strength', 'reports', 'ai-assistant'],
-        'enterprise': ['port-scan', 'scanner', 'encoder', 'phishing', 'payloads', 'subdomain', 'sql-injection', 'xss-tester', 'brute-force', 'log-analyzer', 'threat-intel', 'hash-analyzer', 'password-strength', 'reports', 'ai-assistant']
+        'professional': ['port-scan', 'scanner', 'encoder', 'phishing', 'payloads', 'subdomain', 'sql-injection', 'xss-tester', 'brute-force', 'log-analyzer', 'threat-intel', 'hash-analyzer', 'password-strength', 'reports', 'ai-assistant', 'api-scanner', 'dependency-scanner', 'docker-scanner', 'graphql-scanner'],
+        'enterprise': ['port-scan', 'scanner', 'encoder', 'phishing', 'payloads', 'subdomain', 'sql-injection', 'xss-tester', 'brute-force', 'log-analyzer', 'threat-intel', 'hash-analyzer', 'password-strength', 'reports', 'ai-assistant', 'api-scanner', 'dependency-scanner', 'docker-scanner', 'graphql-scanner']
     };
     const allowedTools = toolAccess[plan] || [];
     const toolCards = document.querySelectorAll('.tool-card');
@@ -2030,6 +2028,145 @@ function displayScanResults(results) {
     container.innerHTML = html;
 }
 
+async function runApiScan() {
+    const baseUrl = document.getElementById('api-base-url').value.trim();
+    const endpointsText = document.getElementById('api-endpoints').value.trim();
+    const headersText = document.getElementById('api-headers').value.trim();
+    if (!baseUrl || !endpointsText) {
+        showToast('Informe Base URL e endpoints', 'error');
+        return;
+    }
+    let endpoints = endpointsText.split('\n').map(s => s.trim()).filter(s => s);
+    let headers = {};
+    if (headersText) {
+        try { headers = JSON.parse(headersText); } catch (e) { showToast('Headers inválidos', 'error'); return; }
+    }
+    try {
+        showLoading('Executando API Scanner...');
+        const response = await apiRequest('/scan/api', { method: 'POST', body: JSON.stringify({ base_url: baseUrl, endpoints, headers }) });
+        displayApiScanResults(response.results);
+        showToast('Scan de API concluído', 'success');
+        loadDashboardStats();
+    } catch (error) {
+        showToast('Erro no API Scanner: ' + error.message, 'error');
+    } finally { hideLoading(); }
+}
+
+function displayApiScanResults(results) {
+    const container = document.getElementById('api-scan-results');
+    const badge = document.getElementById('api-vuln-total');
+    if (!results || !results.endpoint_results) { container.innerHTML = '<div class="alert alert-info">Sem resultados</div>'; badge.textContent = '0'; return; }
+    const total = results.total_vulnerabilities || 0;
+    badge.textContent = String(total);
+    const s = results.severity_count || { CRITICAL: 0, HIGH: 0, MEDIUM: 0, LOW: 0 };
+    let html = '<div class="scan-summary"><div class="severity-stats">';
+    if (s.CRITICAL) html += `<span class="severity-badge critical">${s.CRITICAL} Críticas</span>`;
+    if (s.HIGH) html += `<span class="severity-badge high">${s.HIGH} Altas</span>`;
+    if (s.MEDIUM) html += `<span class="severity-badge medium">${s.MEDIUM} Médias</span>`;
+    if (s.LOW) html += `<span class="severity-badge low">${s.LOW} Baixas</span>`;
+    html += '</div></div><div class="vulnerabilities-list">';
+    results.endpoint_results.forEach(er => {
+        if (er.vulnerabilities && er.vulnerabilities.length) {
+            er.vulnerabilities.forEach(v => {
+                html += `<div class="vulnerability-item severity-${(v.severity||'MEDIUM').toLowerCase()}"><div class="vuln-header"><span class="vuln-severity ${(v.severity||'MEDIUM').toLowerCase()}">${v.severity||'MEDIUM'}</span><h4>${v.type||'Vulnerabilidade'}</h4></div><div class="vuln-body"><p><strong>Endpoint:</strong> ${er.endpoint}</p><p><strong>Descrição:</strong> ${v.description||''}</p>${v.recommendation?`<p><strong>Recomendação:</strong> ${v.recommendation}</p>`:''}</div></div>`;
+            });
+        }
+    });
+    html += '</div>';
+    container.innerHTML = html;
+}
+
+async function runDependencyScan() {
+    const fileType = document.getElementById('dep-file-type').value;
+    const content = document.getElementById('dep-file-content').value.trim();
+    if (!content) { showToast('Cole o conteúdo do arquivo', 'error'); return; }
+    try {
+        showLoading('Analisando dependências...');
+        const response = await apiRequest('/scan/dependencies', { method: 'POST', body: JSON.stringify({ content, file_type: fileType }) });
+        displayDependencyScanResults(response.results);
+        showToast('Análise concluída', 'success');
+        loadDashboardStats();
+    } catch (error) {
+        showToast('Erro ao analisar dependências: ' + error.message, 'error');
+    } finally { hideLoading(); }
+}
+
+function displayDependencyScanResults(results) {
+    const container = document.getElementById('dependency-scan-results');
+    const badge = document.getElementById('dep-vuln-total');
+    if (!results || !results.vulnerabilities) { container.innerHTML = '<div class="alert alert-info">Sem resultados</div>'; badge.textContent = '0'; return; }
+    const vulns = results.vulnerabilities;
+    badge.textContent = String(vulns.length || 0);
+    let html = '<div class="vulnerabilities-list">';
+    vulns.forEach(v => {
+        const sev = (v.severity||'MEDIUM').toLowerCase();
+        html += `<div class="vulnerability-item severity-${sev}"><div class="vuln-header"><span class="vuln-severity ${sev}">${v.severity||'MEDIUM'}</span><h4>${v.package||'Pacote'}</h4></div><div class="vuln-body"><p><strong>Versão:</strong> ${v.version||''}</p>${v.cves&&v.cves.length?`<p><strong>CVEs:</strong> ${v.cves.join(', ')}</p>`:''}${v.description?`<p><strong>Descrição:</strong> ${v.description}</p>`:''}${v.recommendation?`<p><strong>Recomendação:</strong> ${v.recommendation}</p>`:''}</div></div>`;
+    });
+    html += '</div>';
+    container.innerHTML = html;
+}
+
+async function runDockerScan() {
+    const scanType = document.getElementById('docker-scan-type').value;
+    const content = document.getElementById('docker-content').value.trim();
+    if (!content) { showToast('Informe conteúdo para análise', 'error'); return; }
+    try {
+        showLoading('Analisando Docker...');
+        const response = await apiRequest('/scan/docker', { method: 'POST', body: JSON.stringify({ content, scan_type: scanType }) });
+        displayDockerScanResults(response.results);
+        showToast('Scan de Docker concluído', 'success');
+        loadDashboardStats();
+    } catch (error) {
+        showToast('Erro no Docker Scanner: ' + error.message, 'error');
+    } finally { hideLoading(); }
+}
+
+function displayDockerScanResults(results) {
+    const container = document.getElementById('docker-scan-results');
+    const badge = document.getElementById('docker-vuln-total');
+    const vulns = (results && results.vulnerabilities) || [];
+    badge.textContent = String(vulns.length || 0);
+    if (vulns.length === 0) { container.innerHTML = '<div class="alert alert-success"><strong>Nenhum problema encontrado</strong></div>'; return; }
+    let html = '<div class="vulnerabilities-list">';
+    vulns.forEach(v => {
+        const sev = (v.severity||'MEDIUM').toLowerCase();
+        html += `<div class="vulnerability-item severity-${sev}"><div class="vuln-header"><span class="vuln-severity ${sev}">${v.severity||'MEDIUM'}</span><h4>${v.type||'Issue'}</h4></div><div class="vuln-body"><p><strong>Descrição:</strong> ${v.description||''}</p>${v.line?`<p><strong>Linha:</strong> ${v.line}</p>`:''}${v.code?`<pre><code>${escapeHtml(v.code)}</code></pre>`:''}${v.recommendation?`<p><strong>Recomendação:</strong> ${v.recommendation}</p>`:''}</div></div>`;
+    });
+    html += '</div>';
+    container.innerHTML = html;
+}
+
+async function runGraphqlScan() {
+    const url = document.getElementById('graphql-url').value.trim();
+    const headersText = document.getElementById('graphql-headers').value.trim();
+    if (!url) { showToast('Informe o endpoint GraphQL', 'error'); return; }
+    let headers = {};
+    if (headersText) { try { headers = JSON.parse(headersText); } catch (e) { showToast('Headers inválidos', 'error'); return; } }
+    try {
+        showLoading('Executando GraphQL Scanner...');
+        const response = await apiRequest('/scan/graphql', { method: 'POST', body: JSON.stringify({ url, headers }) });
+        displayGraphqlScanResults(response.results);
+        showToast('Scan de GraphQL concluído', 'success');
+        loadDashboardStats();
+    } catch (error) {
+        showToast('Erro no GraphQL Scanner: ' + error.message, 'error');
+    } finally { hideLoading(); }
+}
+
+function displayGraphqlScanResults(results) {
+    const container = document.getElementById('graphql-scan-results');
+    const badge = document.getElementById('graphql-vuln-total');
+    const vulns = (results && results.vulnerabilities) || [];
+    badge.textContent = String(vulns.length || 0);
+    if (vulns.length === 0) { container.innerHTML = '<div class="alert alert-info"><strong>Nenhuma vulnerabilidade encontrada</strong></div>'; return; }
+    let html = '<div class="vulnerabilities-list">';
+    vulns.forEach(v => {
+        const sev = (v.severity||'MEDIUM').toLowerCase();
+        html += `<div class="vulnerability-item severity-${sev}"><div class="vuln-header"><span class="vuln-severity ${sev}">${v.severity||'MEDIUM'}</span><h4>${v.type||'Issue'}</h4></div><div class="vuln-body"><p><strong>Descrição:</strong> ${v.description||''}</p>${v.recommendation?`<p><strong>Recomendação:</strong> ${v.recommendation}</p>`:''}</div></div>`;
+    });
+    html += '</div>';
+    container.innerHTML = html;
+}
 // Setup file input handler
 document.addEventListener('DOMContentLoaded', function() {
     const fileInput = document.getElementById('code-file');
@@ -2332,6 +2469,7 @@ function getScanIcon(scanType) {
         'network': 'network-wired',
         'api': 'plug',
         'dependency': 'cube',
+        'dependencies': 'cube',
         'docker': 'docker',
         'graphql': 'project-diagram'
     };

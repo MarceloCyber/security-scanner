@@ -220,6 +220,19 @@
             }
 
             try {
+                const token = localStorage.getItem('token');
+                if (!token) {
+                    document.getElementById('loading-state').classList.add('hidden');
+                    document.getElementById('success-state').classList.remove('hidden');
+                    document.getElementById('plan-details').innerHTML = `
+                        <h3><i class="fas fa-crown"></i> Assinatura Ativada</h3>
+                        <p>Seu pagamento foi confirmado. Verifique seu email para instruções de acesso e o manual da plataforma.</p>
+                    `;
+                    const email = localStorage.getItem('registeredEmail') || 'seu email';
+                    document.getElementById('user-email').textContent = email;
+                    return;
+                }
+
                 await new Promise(resolve => setTimeout(resolve, 1500));
 
                 const verify = await apiRequest(`/payments/verify-session?session_id=${sessionId}`);

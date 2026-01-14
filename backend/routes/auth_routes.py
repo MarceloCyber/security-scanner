@@ -151,10 +151,6 @@ def forgot_password(request: ForgotPasswordRequest, background_tasks: Background
         if not user:
             return {"message": "Se o email existir no sistema, você receberá instruções para resetar sua senha"}
         
-        # Verifica se é admin
-        if not user.is_admin:
-            return {"message": "Se o email existir no sistema, você receberá instruções para resetar sua senha"}
-        
         # Gera token único
         reset_token = secrets.token_urlsafe(32)
         
@@ -163,14 +159,23 @@ def forgot_password(request: ForgotPasswordRequest, background_tasks: Background
         user.reset_token_expires = datetime.utcnow() + timedelta(hours=1)
         db.commit()
         
-        # Envia email com link de reset
-        reset_link = f"http://localhost:8000/admin-reset-password.html?token={reset_token}"
-        background_tasks.add_task(
-            email_service.send_password_reset_email,
-            user.email,
-            user.username,
-            reset_link
-        )
+        # Envia email com link de reset (admin e usuário comum)
+        if user.is_admin:
+            reset_link = f"http://localhost:8000/admin-reset-password.html?token={reset_token}"
+            background_tasks.add_task(
+                email_service.send_password_reset_email,
+                user.email,
+                user.username,
+                reset_link
+            )
+        else:
+            reset_link = f"http://localhost:8000/reset-password.html?token={reset_token}"
+            background_tasks.add_task(
+                email_service.send_user_password_reset_email,
+                user.email,
+                user.username,
+                reset_link
+            )
         
         return {"message": "Se o email existir no sistema, você receberá instruções para resetar sua senha"}
     

@@ -23,6 +23,12 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
     const username = document.getElementById('username').value;
     const password = document.getElementById('password').value;
     const messageEl = document.getElementById('message');
+    const submitBtn = document.querySelector('#loginForm button[type="submit"]');
+    const originalBtnHTML = submitBtn ? submitBtn.innerHTML : '';
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Entrando...';
+    }
     
     try {
         // Create form data for OAuth2
@@ -62,6 +68,12 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
         console.error('Error:', error);
         messageEl.textContent = 'Erro ao conectar com o servidor';
         messageEl.className = 'message error';
+    }
+    finally {
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = originalBtnHTML;
+        }
     }
 });
 
@@ -114,3 +126,19 @@ if (localStorage.getItem('access_token')) {
     console.log('Already logged in, redirecting to dashboard.html');
     window.location.href = 'dashboard.html';
 }
+
+document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('.toggle-password').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const targetId = btn.getAttribute('data-target');
+            const input = document.getElementById(targetId);
+            if (!input) return;
+            const isPassword = input.type === 'password';
+            input.type = isPassword ? 'text' : 'password';
+            const icon = btn.querySelector('i');
+            if (icon) {
+                icon.className = isPassword ? 'fas fa-eye-slash' : 'fas fa-eye';
+            }
+        });
+    });
+});

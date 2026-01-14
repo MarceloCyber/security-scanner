@@ -178,6 +178,81 @@ class EmailService:
 
         return self.send_email(to_email, subject, html_content, text_content)
 
+    def send_paid_welcome_email(self, to_email: str, username: str, plan: str, manual_url: str):
+        plan_names = {
+            'starter': 'Starter',
+            'professional': 'Professional',
+            'enterprise': 'Enterprise'
+        }
+
+        subject = f'Bem-vindo à Iron Net - Plano {plan_names.get(plan, "")} Ativado'
+
+        html_content = f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <style>
+                body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
+                .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
+                .header {{ background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }}
+                .content {{ background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }}
+                .details {{ background: white; padding: 20px; border-radius: 5px; margin: 20px 0; border-left: 4px solid #667eea; }}
+                .button {{ display: inline-block; padding: 12px 30px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; text-decoration: none; border-radius: 5px; margin: 20px 0; }}
+                .footer {{ text-align: center; padding: 20px; color: #666; font-size: 12px; }}
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <div class="header">
+                    <h1>🛡️ Bem-vindo à Iron Net!</h1>
+                </div>
+                <div class="content">
+                    <h2>Olá, {username}!</h2>
+                    <p>Seu pagamento foi confirmado e sua conta foi ativada no plano {plan_names.get(plan, '')}.</p>
+                    <div class="details">
+                        <h3>📋 Detalhes:</h3>
+                        <p><strong>Usuário:</strong> {username}</p>
+                        <p><strong>Email:</strong> {to_email}</p>
+                        <p><strong>Plano:</strong> {plan_names.get(plan, '')}</p>
+                    </div>
+                    <p>Para começar, acesse o manual da plataforma com guias e melhores práticas:</p>
+                    <div style="text-align: center;">
+                        <a href="{manual_url}" class="button">Acessar Manual</a>
+                    </div>
+                    <p style="margin-top: 24px; color: #666; font-size: 14px;">Você também pode fazer login e explorar o dashboard.</p>
+                    <div style="text-align: center;">
+                        <a href="{os.getenv('FRONTEND_URL', 'http://localhost:8000')}/index.html" class="button">Entrar na Plataforma</a>
+                    </div>
+                </div>
+                <div class="footer">
+                    <p>Iron Net - Proteção Profissional para Suas Aplicações</p>
+                    <p>Este é um email automático, por favor não responda.</p>
+                </div>
+            </div>
+        </body>
+        </html>
+        """
+
+        text_content = f"""
+        Bem-vindo à Iron Net!
+
+        Olá, {username}!
+
+        Seu pagamento foi confirmado e sua conta foi ativada no plano {plan_names.get(plan, '')}.
+
+        Detalhes:
+        - Usuário: {username}
+        - Email: {to_email}
+        - Plano: {plan_names.get(plan, '')}
+
+        Manual da plataforma: {manual_url}
+        Login: {os.getenv('FRONTEND_URL', 'http://localhost:8000')}/index.html
+
+        Iron Net - Proteção Profissional para Suas Aplicações
+        """
+
+        return self.send_email(to_email, subject, html_content, text_content)
+
     def send_subscription_confirmation(self, to_email: str, username: str, plan: str, amount: float):
         """Send subscription confirmation email"""
         plan_names = {
@@ -428,6 +503,106 @@ class EmailService:
         Iron Net - Painel Administrativo
         """
 
+        return self.send_email(to_email, subject, html_content, text_content)
+
+    def send_user_password_reset_email(self, to_email: str, username: str, reset_link: str):
+        subject = 'Reset de Senha - Iron Net'
+        html_content = f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <style>
+                body {{
+                    font-family: Arial, sans-serif;
+                    line-height: 1.6;
+                    color: #333;
+                }}
+                .container {{
+                    max-width: 600px;
+                    margin: 0 auto;
+                    padding: 20px;
+                }}
+                .header {{
+                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                    color: white;
+                    padding: 30px;
+                    text-align: center;
+                    border-radius: 10px 10px 0 0;
+                }}
+                .content {{
+                    background: #f9f9f9;
+                    padding: 30px;
+                    border-radius: 0 0 10px 10px;
+                }}
+                .button {{
+                    display: inline-block;
+                    padding: 12px 30px;
+                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                    color: white;
+                    text-decoration: none;
+                    border-radius: 5px;
+                    margin: 20px 0;
+                }}
+                .warning {{
+                    background: #fff3cd;
+                    border: 1px solid #ffc107;
+                    padding: 15px;
+                    border-radius: 5px;
+                    margin: 20px 0;
+                }}
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <div class="header">
+                    <h1>🔒 Reset de Senha</h1>
+                </div>
+                <div class="content">
+                    <p>Olá, <strong>{username}</strong>!</p>
+                    <p>Você solicitou o reset de senha para sua conta na Iron Net.</p>
+                    <p>Clique no botão abaixo para criar uma nova senha:</p>
+                    <center>
+                        <a href="{reset_link}" class="button">Resetar Senha</a>
+                    </center>
+                    <div class="warning">
+                        <strong>⚠️ Importante:</strong>
+                        <ul>
+                            <li>Este link é válido por apenas 1 hora</li>
+                            <li>Se você não solicitou este reset, ignore este email</li>
+                            <li>Nunca compartilhe este link com ninguém</li>
+                        </ul>
+                    </div>
+                    <p>Se o botão não funcionar, copie e cole este link no navegador:</p>
+                    <p style="word-break: break-all; background: #e9ecef; padding: 10px; border-radius: 5px;">
+                        {reset_link}
+                    </p>
+                    <hr style="margin: 30px 0; border: none; border-top: 1px solid #ddd;">
+                    <p style="color: #666; font-size: 12px;">
+                        Iron Net - Plataforma<br>
+                        Este é um email automático, não responda.
+                    </p>
+                </div>
+            </div>
+        </body>
+        </html>
+        """
+        text_content = f"""
+        Reset de Senha - Iron Net
+
+        Olá, {username}!
+
+        Você solicitou o reset de senha para sua conta.
+
+        Acesse o link abaixo para criar uma nova senha:
+        {reset_link}
+
+        ⚠️ IMPORTANTE:
+        - Este link é válido por apenas 1 hora
+        - Se você não solicitou este reset, ignore este email
+        - Nunca compartilhe este link com ninguém
+
+        Iron Net - Plataforma
+        """
         return self.send_email(to_email, subject, html_content, text_content)
 
 # Create singleton instance

@@ -596,6 +596,22 @@ body {
     transition: var(--transition);
 }
 
+.password-wrapper { position: relative; }
+.password-wrapper .toggle-password {
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: transparent;
+    border: none;
+    color: var(--text);
+    font-size: 18px;
+    cursor: pointer;
+    padding: 6px;
+    border-radius: 8px;
+}
+.password-wrapper input { padding-right: 44px; }
+
 .search-input {
     width: 300px;
 }

@@ -204,6 +204,32 @@ body {
     color: var(--text-primary);
 }
 
+.password-wrapper {
+    position: relative;
+}
+
+.password-wrapper input {
+    padding-right: 44px;
+}
+
+.toggle-password {
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 18px;
+    cursor: pointer;
+    padding: 6px;
+    border-radius: 8px;
+}
+
+.toggle-password:active {
+    transform: translateY(-50%) scale(0.95);
+}
+
 .form-group input::placeholder,
 .form-group textarea::placeholder {
     color: var(--text-secondary);

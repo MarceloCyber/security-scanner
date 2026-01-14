@@ -37,6 +37,7 @@ class UserUpdate(BaseModel):
     subscription_status: str = None
     scans_limit: int = None
     is_admin: bool = None
+    new_password: str = None
 
 class UserResponse(BaseModel):
     id: int
@@ -290,6 +291,10 @@ def update_user(
     
     if user_update.is_admin is not None:
         user.is_admin = user_update.is_admin
+    if user_update.new_password is not None and user_update.new_password.strip():
+        if len(user_update.new_password.strip()) < 6:
+            raise HTTPException(status_code=400, detail="Senha muito curta")
+        user.hashed_password = get_password_hash(user_update.new_password.strip())
     
     db.commit()
     db.refresh(user)

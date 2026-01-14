@@ -14,7 +14,7 @@ import time
 
 from database import get_db
 from models.user import User
-from auth import get_current_user
+from auth import get_current_user, get_password_hash
 from middleware.subscription import (
     check_subscription_status,
     get_plan_info,
@@ -294,6 +294,86 @@ async def create_checkout_session(
             detail = f"Erro ao criar sessão de pagamento: {msg}"
         raise HTTPException(status_code=500, detail=detail)
 
+@router.post("/create-checkout-registration")
+async def create_checkout_registration(request: Request, db: Session = Depends(get_db)):
+    data = await request.json()
+    username = (data.get("username") or "").strip()
+    email = (data.get("email") or "").strip()
+    password = data.get("password") or ""
+    full_name = (data.get("full_name") or "").strip()
+    plan = data.get("selected_plan") or "starter"
+
+    if plan == "free" or plan not in PLAN_PRICES:
+        raise HTTPException(status_code=400, detail="Plano inválido para checkout")
+    if not STRIPE_CONFIGURED:
+        raise HTTPException(status_code=500, detail="Stripe não configurado")
+    if not username or not email or not password:
+        raise HTTPException(status_code=400, detail="Dados de cadastro incompletos")
+
+    existing = db.query(User).filter((User.username == username) | (User.email == email)).first()
+    if existing:
+        raise HTTPException(status_code=400, detail="Usuário já existente. Faça login para assinar")
+
+    try:
+        password_hash = get_password_hash(password)
+
+        customer = stripe.Customer.create(
+            email=email,
+            metadata={
+                "username": username,
+                "pre_register": "true"
+            }
+        )
+
+        price_id = os.getenv(f"STRIPE_PRICE_ID_{plan.upper()}")
+        if price_id:
+            line_items = [{
+                'price': price_id,
+                'quantity': 1,
+            }]
+        else:
+            line_items = [{
+                'price_data': {
+                    'currency': 'brl',
+                    'unit_amount': PLAN_PRICES[plan],
+                    'product_data': {
+                        'name': f'Iron Net - {plan.title()}',
+                        'description': f'Assinatura mensal do plano {plan.title()}',
+                    },
+                    'recurring': {
+                        'interval': 'month',
+                        'interval_count': 1,
+                    },
+                },
+                'quantity': 1,
+            }]
+
+        checkout_session = stripe.checkout.Session.create(
+            customer=customer.id,
+            payment_method_types=['card'],
+            line_items=line_items,
+            mode='subscription',
+            success_url=f"{FRONTEND_ORIGIN}/payment-success.html?session_id={{CHECKOUT_SESSION_ID}}",
+            cancel_url=f"{FRONTEND_ORIGIN}/register.html?plan={plan}&canceled=true",
+            metadata={
+                "pre_register": "true",
+                "username": username,
+                "email": email,
+                "password_hash": password_hash,
+                "full_name": full_name,
+                "plan": plan
+            }
+        )
+
+        return {
+            "checkout_url": checkout_session.url,
+            "session_id": checkout_session.id
+        }
+    except stripe.error.StripeError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 @router.get("/verify-session")
 async def verify_checkout_session(
     session_id: str,
@@ -350,30 +430,71 @@ async def stripe_webhook(request: Request, background_tasks: BackgroundTasks, db
     # Processar evento
     if event['type'] == 'checkout.session.completed':
         session = event['data']['object']
-        
-        # Recuperar informações do metadata
-        user_id = int(session['metadata']['user_id'])
-        plan = session['metadata']['plan']
+        meta = session.get('metadata', {}) or {}
+        plan = meta.get('plan')
         subscription_id = session.get('subscription')
-        
-        # Atualizar usuário
-        user = db.query(User).filter(User.id == user_id).first()
-        if user:
-            upgrade_user_plan(user, plan, 1, db)
+        customer_id = session.get('customer')
+
+        pre_register = meta.get('pre_register') == 'true'
+        if pre_register:
+            username = meta.get('username')
+            email = meta.get('email')
+            password_hash = meta.get('password_hash')
+
+            user = None
+            if email:
+                user = db.query(User).filter(User.email == email).first()
+            if not user and username:
+                user = db.query(User).filter(User.username == username).first()
+
+            if not user:
+                user = User(
+                    username=username,
+                    email=email,
+                    hashed_password=password_hash,
+                    subscription_plan='free',
+                    subscription_status='active',
+                    scans_limit=10,
+                    scans_this_month=0
+                )
+                db.add(user)
+                db.commit()
+                db.refresh(user)
+
+            if plan:
+                upgrade_user_plan(user, plan, 1, db)
+            user.subscription_status = 'active'
             user.stripe_subscription_id = subscription_id
+            user.stripe_customer_id = customer_id
             db.commit()
-            
-            # Enviar email de confirmação em background
-            plan_prices = {'starter': 49.90, 'professional': 149.90, 'enterprise': 499.90}
+
+            manual_url = f"{FRONTEND_ORIGIN}/documentation.html"
             background_tasks.add_task(
-                email_service.send_subscription_confirmation,
+                email_service.send_paid_welcome_email,
                 user.email,
                 user.username,
                 plan,
-                plan_prices.get(plan, 0)
+                manual_url
             )
-            
-            print(f"✅ Assinatura ativada para usuário {user.username} - Plano: {plan}")
+            print(f"✅ Cadastro pós-pagamento ativado para usuário {user.username} - Plano: {plan}")
+        else:
+            user_id = meta.get('user_id')
+            if user_id:
+                user = db.query(User).filter(User.id == int(user_id)).first()
+                if user:
+                    if plan:
+                        upgrade_user_plan(user, plan, 1, db)
+                    user.stripe_subscription_id = subscription_id
+                    db.commit()
+                    plan_prices = {'starter': 49.90, 'professional': 149.90, 'enterprise': 499.90}
+                    background_tasks.add_task(
+                        email_service.send_subscription_confirmation,
+                        user.email,
+                        user.username,
+                        plan,
+                        plan_prices.get(plan, 0)
+                    )
+                    print(f"✅ Assinatura ativada para usuário {user.username} - Plano: {plan}")
     
     elif event['type'] == 'customer.subscription.deleted':
         # Assinatura cancelada

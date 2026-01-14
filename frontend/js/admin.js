@@ -43,6 +43,19 @@ document.addEventListener('DOMContentLoaded', () => {
     // Nota: refreshActivity, saveUserBtn e confirmDeleteBtn usam onclick direto no HTML
 });
 
+document.addEventListener('click', (e) => {
+    const btn = e.target.closest('.toggle-password');
+    if (!btn) return;
+    const targetId = btn.getAttribute('data-target');
+    if (!targetId) return;
+    const input = document.getElementById(targetId);
+    if (!input) return;
+    const isPassword = input.type === 'password';
+    input.type = isPassword ? 'text' : 'password';
+    const icon = btn.querySelector('i');
+    if (icon) icon.className = isPassword ? 'fas fa-eye-slash' : 'fas fa-eye';
+});
+
 // ============ Autenticação ============
 async function checkAdminAuth() {
     const token = localStorage.getItem('token') || sessionStorage.getItem('token');
@@ -342,6 +355,8 @@ async function openEditModal(userId) {
         
         const editIsAdmin = document.getElementById('editUserIsAdmin');
         if (editIsAdmin) editIsAdmin.checked = user.is_admin || false;
+        const newPasswordElem = document.getElementById('editUserNewPassword');
+        if (newPasswordElem) newPasswordElem.value = '';
         
         const modal = document.getElementById('editUserModal');
         if (modal) modal.classList.add('active');
@@ -364,6 +379,7 @@ async function saveUserChanges() {
     const statusElem = document.getElementById('editUserStatus');
     const scansLimitElem = document.getElementById('editUserScansLimit');
     const isAdminElem = document.getElementById('editUserIsAdmin');
+    const newPasswordElem = document.getElementById('editUserNewPassword');
     
     if (!emailElem || !planElem || !statusElem || !scansLimitElem || !isAdminElem) {
         console.error('Elementos do formulário não encontrados');
@@ -377,6 +393,9 @@ async function saveUserChanges() {
         scans_limit: parseInt(scansLimitElem.value) || 0,
         is_admin: isAdminElem.checked
     };
+    if (newPasswordElem && newPasswordElem.value.trim()) {
+        updateData.new_password = newPasswordElem.value.trim();
+    }
     
     try {
         await fetchAPI(`/api/admin/users/${currentUserId}`, {

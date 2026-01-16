@@ -1,5 +1,5 @@
-from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import JSONResponse
+from fastapi import FastAPI, HTTPException, Request, Response
+from fastapi.responses import JSONResponse, HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
@@ -19,6 +19,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from database import engine, Base
 from sqlalchemy import inspect, text
 from routes import auth_routes, scan_routes, extended_scan_routes, tools_routes, redteam_routes, blueteam_routes, payment_routes, user_routes, admin_routes
+from utils.email_service import email_service
 
 inspector = inspect(engine)
 if not inspector.get_table_names():
@@ -271,6 +272,46 @@ async def serve_phishing_page_direct(filename: str):
     if not os.path.exists(filepath):
         raise HTTPException(status_code=404, detail="Page not found")
     return FileResponse(filepath, media_type="text/html")
+
+# Página pública do contrato LGPD
+@app.get("/contrato/lgpd", response_class=HTMLResponse)
+async def contract_lgpd(plan: str = "Free"):
+    html_content, _ = email_service.generate_lgpd_contract_content(plan)
+    base = os.getenv('FRONTEND_URL', 'http://localhost:8000')
+    page = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="utf-8" />
+        <title>Contrato LGPD - Iron Net</title>
+        <style>
+            body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; background: #f4f6f8; }}
+            .container {{ max-width: 860px; margin: 40px auto; background: #fff; padding: 24px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.06); }}
+            .actions {{ display: flex; gap: 12px; margin-bottom: 16px; }}
+            .btn {{ display: inline-block; padding: 10px 18px; border-radius: 6px; text-decoration: none; color: #fff; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }}
+            .btn.secondary {{ background: #2c3e50; }}
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="actions">
+                <a class="btn" href="{base}/contrato/lgpd.pdf?plan={plan}">Baixar PDF</a>
+                <a class="btn secondary" href="{base}/index.html">Voltar à Plataforma</a>
+            </div>
+            {html_content}
+            <div class="actions" style="margin-top:24px;">
+                <a class="btn" href="{base}/contrato/lgpd.pdf?plan={plan}">Baixar PDF</a>
+            </div>
+        </div>
+    </body>
+    </html>
+    """
+    return page
+
+@app.get("/contrato/lgpd.pdf")
+async def contract_lgpd_pdf(plan: str = "Free"):
+    pdf_bytes = email_service.generate_lgpd_contract_pdf(plan)
+    return Response(content=pdf_bytes, media_type="application/pdf")
 
 # Serve arquivos estáticos do frontend (DEVE SER O ÚLTIMO)
 frontend_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "frontend")

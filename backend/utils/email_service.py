@@ -1,9 +1,16 @@
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+from email.mime.application import MIMEApplication
+from email.mime.base import MIMEBase
+from email import encoders
 from typing import List
 import os
 from dotenv import load_dotenv
+from io import BytesIO
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
+from reportlab.lib.styles import getSampleStyleSheet
+from reportlab.lib.pagesizes import A4
 
 load_dotenv()
 
@@ -16,23 +23,37 @@ class EmailService:
         self.from_email = os.getenv('FROM_EMAIL', self.smtp_user)
         self.from_name = os.getenv('FROM_NAME', 'Iron Net')
 
-    def send_email(self, to_email: str, subject: str, html_content: str, text_content: str = None):
+    def send_email(self, to_email: str, subject: str, html_content: str, text_content: str = None, attachments: List[tuple] = None):
         """Send an email"""
         try:
-            # Create message
-            message = MIMEMultipart('alternative')
+            message = MIMEMultipart('mixed')
             message['Subject'] = subject
             message['From'] = f'{self.from_name} <{self.from_email}>'
             message['To'] = to_email
 
-            # Add plain text version if provided
+            alt = MIMEMultipart('alternative')
             if text_content:
                 part1 = MIMEText(text_content, 'plain')
-                message.attach(part1)
-
-            # Add HTML version
+                alt.attach(part1)
             part2 = MIMEText(html_content, 'html')
-            message.attach(part2)
+            alt.attach(part2)
+            message.attach(alt)
+
+            if attachments:
+                for filename, content_bytes, subtype in attachments:
+                    try:
+                        maintype = 'application'
+                        sub = subtype or 'octet-stream'
+                        part = MIMEBase(maintype, sub)
+                        part.set_payload(content_bytes)
+                        encoders.encode_base64(part)
+                        part.add_header('Content-Disposition', f'attachment; filename="{filename}"')
+                        message.attach(part)
+                    except Exception:
+                        # Fallback using MIMEApplication
+                        part = MIMEApplication(content_bytes, _subtype=subtype or 'octet-stream')
+                        part.add_header('Content-Disposition', 'attachment', filename=filename)
+                        message.attach(part)
 
             # Send email
             with smtplib.SMTP(self.smtp_host, self.smtp_port) as server:
@@ -45,6 +66,111 @@ class EmailService:
             print(f"Error sending email: {str(e)}")
             return False
 
+    def generate_lgpd_contract_pdf(self, plan: str) -> bytes:
+        html, text = self.generate_lgpd_contract_content(plan)
+        buffer = BytesIO()
+        doc = SimpleDocTemplate(buffer, pagesize=A4)
+        styles = getSampleStyleSheet()
+        elements = []
+        elements.append(Paragraph("Contrato de Prestação de Serviços e Tratamento de Dados (LGPD)", styles['Title']))
+        elements.append(Spacer(1, 12))
+        for line in text.splitlines():
+            if line.strip() == "":
+                elements.append(Spacer(1, 10))
+            else:
+                elements.append(Paragraph(line, styles['Normal']))
+        doc.build(elements)
+        return buffer.getvalue()
+
+    def generate_lgpd_contract_content(self, plan: str):
+        dpo_email = os.getenv('DPO_EMAIL', self.from_email)
+        company_name = os.getenv('COMPANY_NAME', 'Iron Net')
+        forum_city = os.getenv('FORUM_CITY', 'São Paulo')
+        forum_state = os.getenv('FORUM_STATE', 'SP')
+        html = f"""
+        <div style="margin-top: 30px; background: #ffffff; padding: 20px; border-radius: 8px; border-left: 4px solid #667eea;">
+            <h3 style="margin-top: 0;">📄 Contrato de Prestação de Serviços e Tratamento de Dados (LGPD)</h3>
+            <p>Este instrumento estabelece os termos da prestação de serviços de segurança e análise oferecidos por {company_name} ao Usuário/Contratante, nos termos da Lei nº 13.709/2018 (LGPD) e demais legislação aplicável.</p>
+
+            <h4>1. Partes e Objeto</h4>
+            <p>{company_name} fornece ferramentas para avaliação de segurança, varreduras e relatórios. O Usuário/Contratante declara utilizar os serviços exclusivamente em ativos próprios ou para os quais possua autorização expressa.</p>
+
+            <h4>2. Definições</h4>
+            <p>Controlador, Operador, Titular, Dados Pessoais, Dados Sensíveis, Tratamento, Incidente de Segurança, conforme LGPD.</p>
+
+            <h4>3. Aceitação</h4>
+            <p>Ao concluir o cadastro ou adquirir o plano {plan}, o Usuário/Contratante concorda integralmente com este contrato e com a Política de Privacidade.</p>
+
+            <h4>4. Tratamento de Dados</h4>
+            <p>Coleta e uso de dados estritamente necessários para: criação e gestão de conta, autenticação, faturamento, suporte, geração de relatórios, melhoria de produto e cumprimento de obrigações legais.</p>
+
+            <h4>5. Bases Legais</h4>
+            <p>Execução de contrato, cumprimento de obrigação legal/regulatória, legítimo interesse, consentimento quando exigido e proteção ao crédito, conforme aplicável.</p>
+
+            <h4>6. Direitos do Titular</h4>
+            <p>Acesso, correção, anonimização, portabilidade, eliminação, revogação de consentimento, informação sobre compartilhamentos e revisão de decisões automatizadas, mediante requisição e comprovação de identidade.</p>
+
+            <h4>7. Compartilhamento</h4>
+            <p>Prestadores de serviços estritamente necessários (infraestrutura, email, pagamento), sempre com cláusulas de proteção de dados. Transferências internacionais obedecem aos requisitos da LGPD.</p>
+
+            <h4>8. Retenção</h4>
+            <p>Dados mantidos pelo tempo necessário ao cumprimento das finalidades, prazos legais e defesa de direitos. Após esse período, serão eliminados ou anonimizados.</p>
+
+            <h4>9. Segurança</h4>
+            <p>Medidas técnicas e administrativas proporcionais ao risco, inclusive controle de acesso, criptografia em repouso/Trânsito quando aplicável, registros de auditoria e resposta a incidentes.</p>
+
+            <h4>10. Registros e Auditoria</h4>
+            <p>Logs de uso e de eventos podem ser coletados para segurança, integridade dos serviços e investigação de abusos.</p>
+
+            <h4>11. Uso das Ferramentas</h4>
+            <p>É proibida a utilização em sistemas de terceiros sem autorização. O Usuário/Contratante assume responsabilidade integral por cada operação realizada, resultados obtidos e seus efeitos.</p>
+
+            <h4>12. Responsabilidades</h4>
+            <p>O Usuário/Contratante é exclusivamente responsável por: licitude das atividades, autorizações, escopo dos testes, impactos gerados e comunicação a terceiros. {company_name} não se responsabiliza por uso indevido, danos diretos, indiretos, lucros cessantes, perdas de dados ou interrupções decorrentes da utilização inadequada das ferramentas.</p>
+
+            <h4>13. Limitação de Responsabilidade</h4>
+            <p>Responsabilidade de {company_name} limita-se aos valores efetivamente pagos pelo Usuário/Contratante nos últimos 12 meses, exceto quando vedado pela legislação. Não há garantias de adequação para fins específicos.</p>
+
+            <h4>14. Suporte e Disponibilidade</h4>
+            <p>Disponibilidade e níveis de suporte conforme plano contratado. Janelas de manutenção podem ocorrer.</p>
+
+            <h4>15. Rescisão</h4>
+            <p>Qualquer parte pode rescindir mediante aviso. Em caso de violação, {company_name} poderá suspender ou encerrar imediatamente.</p>
+
+            <h4>16. Atualizações</h4>
+            <p>Este contrato pode ser atualizado. Alterações materiais serão comunicadas. O uso continuado implica concordância.</p>
+
+            <h4>17. Foro</h4>
+            <p>Fica eleito o foro da Comarca de {forum_city}/{forum_state}, Brasil, para dirimir controvérsias, com renúncia a qualquer outro, por mais privilegiado que seja.</p>
+
+            <h4>18. Encarregado</h4>
+            <p>Contato do Encarregado de Proteção de Dados: {dpo_email}.</p>
+        </div>
+        """
+        text = (
+            "CONTRATO DE PRESTAÇÃO DE SERVIÇOS E TRATAMENTO DE DADOS (LGPD)\n"
+            f"Este instrumento estabelece os termos da prestação de serviços de segurança oferecidos por {company_name}.\n\n"
+            f"1. Partes e Objeto: {company_name} fornece ferramentas para avaliação de segurança. Uso apenas em ativos próprios ou autorizados.\n"
+            f"2. Definições: Controlador, Operador, Titular, Dados Pessoais, Sensíveis, Tratamento, Incidente.\n"
+            f"3. Aceitação: Ao concluir o cadastro ou adquirir o plano {plan}, você concorda integralmente.\n"
+            "4. Tratamento de Dados: Coleta e uso necessários para conta, autenticação, faturamento, suporte, relatórios e obrigações legais.\n"
+            "5. Bases Legais: Execução de contrato, obrigação legal, legítimo interesse, consentimento, proteção ao crédito.\n"
+            "6. Direitos do Titular: acesso, correção, anonimização, portabilidade, eliminação, revogação de consentimento, informação e revisão de decisões automatizadas.\n"
+            "7. Compartilhamento: Prestadores essenciais, com cláusulas de proteção. Transferência internacional conforme LGPD.\n"
+            "8. Retenção: Pelo tempo necessário às finalidades, prazos legais e defesa de direitos; após, eliminação ou anonimização.\n"
+            "9. Segurança: Medidas técnicas/administrativas proporcionais ao risco; controle de acesso, criptografia, auditoria, resposta a incidentes.\n"
+            "10. Registros/Auditoria: Coleta de logs para segurança e investigação de abusos.\n"
+            "11. Uso das Ferramentas: Proibido uso sem autorização em sistemas de terceiros; responsabilidade integral do usuário.\n"
+            f"12. Responsabilidades: Licitude, autorizações, escopo e impactos são do usuário; {company_name} não responde por uso indevido, danos diretos/indiretos, lucros cessantes, perdas de dados ou interrupções.\n"
+            f"13. Limitação de Responsabilidade: Limitada aos valores pagos nos últimos 12 meses, salvo vedação legal; sem garantias de adequação.\n"
+            "14. Suporte/Disponibilidade: Conforme plano; janelas de manutenção podem ocorrer.\n"
+            "15. Rescisão: Aviso por qualquer parte; violação pode gerar suspensão ou encerramento imediato.\n"
+            "16. Atualizações: Contrato pode ser atualizado; uso continuado implica concordância.\n"
+            f"17. Foro: Comarca de {forum_city}/{forum_state}, Brasil.\n"
+            f"18. Encarregado: {dpo_email}.\n"
+        )
+        return html, text
+
     def send_welcome_email(self, to_email: str, username: str, plan: str = 'free'):
         """Send welcome email to new user"""
         plan_names = {
@@ -55,6 +181,8 @@ class EmailService:
         }
 
         subject = f'Bem-vindo à Iron Net - Plano {plan_names.get(plan, "Free")}'
+        base = os.getenv('FRONTEND_URL', 'http://localhost:8000')
+        contract_base = os.getenv('BACKEND_URL', base)
         
         html_content = f"""
         <!DOCTYPE html>
@@ -139,6 +267,16 @@ class EmailService:
                         </a>
                     </div>
 
+                    <div style="text-align: center;">
+                        <a href="{contract_base}/contrato/lgpd?plan={plan_names.get(plan, 'Free')}" class="button">Ver Contrato (LGPD)</a>
+                    </div>
+                    <p style="text-align:center; margin-top: 8px;">
+                        Ver Contrato (LGPD):
+                        <a href="{contract_base}/contrato/lgpd?plan={plan_names.get(plan, 'Free')}" style="text-decoration: underline; color: #2c3e50;">
+                            {contract_base}/contrato/lgpd?plan={plan_names.get(plan, 'Free')}
+                        </a>
+                    </p>
+
                     <p style="margin-top: 30px; color: #666; font-size: 14px;">
                         <strong>💡 Dica:</strong> Mantenha suas credenciais em local seguro. 
                         Nunca compartilhe sua senha com terceiros.
@@ -176,6 +314,7 @@ class EmailService:
         Iron Net - Proteção Profissional para Suas Aplicações
         """
 
+        text_content = f"{text_content}\n\nContrato (LGPD): {contract_base}/contrato/lgpd?plan={plan_names.get(plan, 'Free')}\nBaixar PDF no link acima."
         return self.send_email(to_email, subject, html_content, text_content)
 
     def send_paid_welcome_email(self, to_email: str, username: str, plan: str, manual_url: str):
@@ -186,6 +325,8 @@ class EmailService:
         }
 
         subject = f'Bem-vindo à Iron Net - Plano {plan_names.get(plan, "")} Ativado'
+        base = os.getenv('FRONTEND_URL', 'http://localhost:8000')
+        contract_base = os.getenv('BACKEND_URL', base)
 
         html_content = f"""
         <!DOCTYPE html>
@@ -223,6 +364,15 @@ class EmailService:
                     <div style="text-align: center;">
                         <a href="{os.getenv('FRONTEND_URL', 'http://localhost:8000')}/index.html" class="button">Entrar na Plataforma</a>
                     </div>
+                    <div style="text-align: center;">
+                        <a href="{contract_base}/contrato/lgpd?plan={plan_names.get(plan, '')}" class="button">Ver Contrato (LGPD)</a>
+                    </div>
+                    <p style="text-align:center; margin-top: 8px;">
+                        Ver Contrato (LGPD):
+                        <a href="{contract_base}/contrato/lgpd?plan={plan_names.get(plan, '')}" style="text-decoration: underline; color: #2c3e50;">
+                            {contract_base}/contrato/lgpd?plan={plan_names.get(plan, '')}
+                        </a>
+                    </p>
                 </div>
                 <div class="footer">
                     <p>Iron Net - Proteção Profissional para Suas Aplicações</p>
@@ -251,6 +401,7 @@ class EmailService:
         Iron Net - Proteção Profissional para Suas Aplicações
         """
 
+        text_content = f"{text_content}\n\nContrato (LGPD): {contract_base}/contrato/lgpd?plan={plan_names.get(plan, '')}\nBaixar PDF no link acima."
         return self.send_email(to_email, subject, html_content, text_content)
 
     def send_subscription_confirmation(self, to_email: str, username: str, plan: str, amount: float):

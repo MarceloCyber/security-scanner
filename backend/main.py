@@ -12,6 +12,8 @@ from pathlib import Path
 import shutil
 import asyncio
 from starlette.middleware.base import BaseHTTPMiddleware
+from fastapi.exceptions import RequestValidationError
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
 # Adiciona o diretório pai ao path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -322,3 +324,64 @@ if __name__ == "__main__":
     import uvicorn
     port = int(os.environ.get("PORT", 8000))
     uvicorn.run(app, host="0.0.0.0", port=port)
+# Páginas de erro customizadas (HTML para não-API)
+def _error_page(title: str, message: str, status_code: int = 404):
+    base = os.getenv('FRONTEND_URL', 'http://localhost:8000')
+    return f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset='utf-8' />
+        <title>{title}</title>
+        <style>
+            body {{ font-family: Arial, sans-serif; background: #f4f6f8; color: #2c3e50; }}
+            .wrap {{ max-width: 860px; margin: 60px auto; background: #fff; padding: 28px; border-radius: 10px; box-shadow: 0 2px 12px rgba(0,0,0,0.08); }}
+            h1 {{ margin: 0 0 12px; font-size: 24px; }}
+            p {{ margin: 10px 0; line-height: 1.6; }}
+            .actions {{ margin-top: 20px; display: flex; gap: 12px; }}
+            .btn {{ display: inline-block; padding: 10px 18px; border-radius: 6px; text-decoration: none; color: #fff; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }}
+            .btn.secondary {{ background: #2c3e50; }}
+        </style>
+    </head>
+    <body>
+        <div class='wrap'>
+            <h1>{title}</h1>
+            <p>{message}</p>
+            <div class='actions'>
+                <a class='btn' href='{base}/index.html'>Voltar ao Início</a>
+                <a class='btn secondary' id='supportLink' href='mailto:thomaz2523@gmail.com'>Suporte</a>
+            </div>
+        </div>
+        <script>
+            (function(){{
+                try {{
+                    var plan = (localStorage.getItem('userPlan') || 'Free');
+                    var user = (localStorage.getItem('username') || 'Usuário');
+                    var subject = 'Suporte Iron Net - Plano ' + String(plan);
+                    var body = 'Usuário: ' + String(user) + '\nPlano: ' + String(plan) + '\nURL: ' + window.location.href + '\nMensagem: ';
+                    var mailto = 'mailto:thomaz2523@gmail.com?subject=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(body);
+                    var el = document.getElementById('supportLink');
+                    if (el) {{
+                        el.setAttribute('href', mailto);
+                        el.addEventListener('click', function(ev){{
+                            try {{ ev.preventDefault(); window.location.href = mailto; }} catch(e) {{}}
+                        }});
+                    }}
+                }} catch (e) {{}}
+            }})();
+        </script>
+    </body>
+    </html>
+    """
+
+@app.exception_handler(404)
+async def not_found_handler(request: Request, exc: StarletteHTTPException):
+    if request.url.path.startswith('/api'):
+        return JSONResponse(status_code=404, content={'detail': 'Not Found'})
+    return HTMLResponse(_error_page('Página não encontrada (404)', 'A URL que você tentou acessar não existe ou foi movida.'), status_code=404)
+
+@app.exception_handler(503)
+async def service_unavailable_handler(request: Request, exc: StarletteHTTPException):
+    if request.url.path.startswith('/api'):
+        return JSONResponse(status_code=503, content={'detail': 'Service Unavailable'})
+    return HTMLResponse(_error_page('Serviço indisponível (503)', 'Estamos reestabelecendo o serviço. Em breve tudo voltará ao normal.'), status_code=503)

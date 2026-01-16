@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Contato - Iron Net</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        :root { --primary:#667eea; --secondary:#764ba2; --dark:#1a1d29; --dark-light:#2d3748; --text:#e2e8f0; --text-dark:#a0aec0; }
+        body { font-family:'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background:var(--dark); color:var(--text); }
+        .navbar { position:sticky; top:0; background:rgba(26,29,41,0.95); padding:1rem 5%; display:flex; justify-content:space-between; align-items:center; }
+        .logo { font-weight:700; letter-spacing:.5px; }
+        .logo i { color:var(--primary); margin-right:.5rem; }
+        .container { max-width:1000px; margin:40px auto; padding:0 24px; }
+        .hero { padding:60px 0 20px; text-align:center; }
+        .hero h1 { font-size:2.4rem; margin-bottom:10px; }
+        .hero p { color:var(--text-dark); font-size:1.1rem; }
+        .card { background:var(--dark-light); border:1px solid #374151; border-radius:12px; padding:20px; }
+        .form { display:grid; gap:12px; margin-top:16px; }
+        input, textarea { background:#111827; border:1px solid #374151; color:#e5e7eb; padding:10px 12px; border-radius:8px; }
+        button { background:linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%); color:#fff; border:none; padding:12px 16px; border-radius:8px; cursor:pointer; font-weight:600; }
+        .footer { margin:50px 0 20px; text-align:center; color:var(--text-dark); font-size:.9rem; }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="logo"><i class="fas fa-shield-alt"></i> Iron Net</div>
+        <div><a href="landing.html" style="color:#fff;text-decoration:none;">Voltar</a></div>
+    </nav>
+    <div class="container">
+        <section class="hero">
+            <h1>Contato</h1>
+            <p>Fale com nosso time. Retornamos o mais rápido possível.</p>
+        </section>
+        <div class="card">
+            <h3>Entre em contato</h3>
+            <p>Email de suporte: <a href="mailto:thomaz2523@gmail.com" style="color:#e5e7eb;text-decoration:underline;">thomaz2523@gmail.com</a></p>
+            <form class="form" id="contactForm">
+                <input type="text" id="nome" placeholder="Seu nome" required>
+                <input type="email" id="email" placeholder="Seu e-mail" required>
+                <textarea id="msg" rows="6" placeholder="Sua mensagem" required></textarea>
+                <button type="submit"><i class="fas fa-paper-plane"></i> Enviar</button>
+            </form>
+            <div id="successModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.6); align-items:center; justify-content:center;">
+                <div style="background:#111827; border:1px solid #374151; color:#e5e7eb; padding:20px; border-radius:12px; max-width:420px; text-align:center;">
+                    <h3 style="margin-bottom:8px;">Mensagem enviada</h3>
+                    <p style="color:#a0aec0;">Obrigado por entrar em contato. Redirecionando para a página inicial...</p>
+                </div>
+            </div>
+        </div>
+        <div class="footer">&copy; 2025 Iron Net</div>
+    </div>
+    <script>
+        document.getElementById('contactForm').addEventListener('submit', async function(e){
+            e.preventDefault();
+            const payload = {
+                name: document.getElementById('nome').value.trim(),
+                email: document.getElementById('email').value.trim(),
+                message: document.getElementById('msg').value.trim(),
+                plan: (localStorage.getItem('userPlan') || 'Free')
+            };
+            try {
+                const res = await fetch('/api/contact', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+                if (res.ok && data.ok) {
+                    const modal = document.getElementById('successModal');
+                    modal.style.display = 'flex';
+                    setTimeout(() => { window.location.href = 'landing.html'; }, 1600);
+                } else {
+                    alert('Falha ao enviar. Tente novamente.');
+                }
+            } catch (err) {
+                alert('Erro de conexão. Tente novamente.');
+            }
+        });
+    </script>
+</body>
+</html>

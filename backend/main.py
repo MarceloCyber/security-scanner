@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Request, Response
+from fastapi import FastAPI, HTTPException, Request, Response, Body
 from fastapi.responses import JSONResponse, HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -314,6 +314,45 @@ async def contract_lgpd(plan: str = "Free"):
 async def contract_lgpd_pdf(plan: str = "Free"):
     pdf_bytes = email_service.generate_lgpd_contract_pdf(plan)
     return Response(content=pdf_bytes, media_type="application/pdf")
+
+# Endpoint público de contato (precisa vir antes do mount de estáticos)
+@app.post("/api/contact")
+async def contact_form(payload: dict = Body(...)):
+    try:
+        name = (payload.get("name") or "").strip()
+        email = (payload.get("email") or "").strip()
+        message = (payload.get("message") or "").strip()
+        plan = (payload.get("plan") or "Free").strip()
+        support_email = os.getenv("SUPPORT_EMAIL", "thomaz2523@gmail.com")
+        subject = f"Contato - {name or 'Usuário'} (Plano {plan})"
+        html = f"""
+        <!DOCTYPE html>
+        <html><body style='font-family:Arial,sans-serif;'>
+        <h2>Nova mensagem de contato</h2>
+        <p><strong>Nome:</strong> {name or 'N/A'}</p>
+        <p><strong>Email:</strong> {email or 'N/A'}</p>
+        <p><strong>Plano:</strong> {plan}</p>
+        <p><strong>Mensagem:</strong></p>
+        <div style='background:#f4f6f8;padding:10px;border-radius:6px;border:1px solid #e1e4e8;color:#2c3e50;'>
+        {message or 'N/A'}
+        </div>
+        </body></html>
+        """
+        text = (
+            "Nova mensagem de contato\n\n" +
+            f"Nome: {name or 'N/A'}\n" +
+            f"Email: {email or 'N/A'}\n" +
+            f"Plano: {plan}\n\n" +
+            f"Mensagem:\n{message or 'N/A'}\n"
+        )
+        ok = email_service.send_email(support_email, subject, html, text)
+        if not ok:
+            raise HTTPException(status_code=500, detail="Falha ao enviar email")
+        return {"ok": True}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erro ao processar contato: {str(e)}")
 
 # Serve arquivos estáticos do frontend (DEVE SER O ÚLTIMO)
 frontend_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "frontend")

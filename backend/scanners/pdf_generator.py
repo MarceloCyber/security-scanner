@@ -9,7 +9,7 @@ from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import inch
 from reportlab.platypus import (
     SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle,
-    PageBreak, Image, KeepTogether
+    PageBreak, Image, KeepTogether, Preformatted, XPreformatted
 )
 from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT, TA_JUSTIFY
 from reportlab.graphics.shapes import Drawing
@@ -92,6 +92,15 @@ class PDFReportGenerator:
             spaceAfter=6,
             alignment=TA_JUSTIFY
         ))
+        # Bloco monoespaçado para respostas
+        self.styles.add(ParagraphStyle(
+            name='MonospaceBlock',
+            parent=self.styles['Normal'],
+            fontSize=9,
+            textColor=colors.HexColor('#2c3e50'),
+            spaceAfter=6,
+            fontName='Courier'
+        ))
     
     def generate_scan_report(self, scan_data: Dict[str, Any], output_path: str = None) -> bytes:
         """Gera relatório completo de scan"""
@@ -117,19 +126,30 @@ class PDFReportGenerator:
         
         # Cabeçalho
         story.extend(self._create_header(scan_data))
-        story.append(Spacer(1, 0.3 * inch))
+        story.append(Spacer(1, 0.2 * inch))
+
+        if scan_data.get('user_overview'):
+            story.extend(self._create_user_overview(scan_data['user_overview']))
+            story.append(Spacer(1, 0.15 * inch))
+        if scan_data.get('tools_summary'):
+            story.extend(self._create_tools_overview(scan_data['tools_summary']))
+            story.append(Spacer(1, 0.15 * inch))
+        if scan_data.get('scans_details'):
+            story.extend(self._create_scan_list_section(scan_data['scans_details']))
+            story.append(Spacer(1, 0.2 * inch))
         
         # Sumário Executivo
         story.extend(self._create_executive_summary(scan_data))
-        story.append(PageBreak())
         
         # Gráficos e Estatísticas
         story.extend(self._create_statistics_section(scan_data))
-        story.append(PageBreak())
         
         # Detalhes das Vulnerabilidades
         story.extend(self._create_vulnerabilities_section(scan_data))
-        story.append(PageBreak())
+
+        # Respostas das Ferramentas
+        if scan_data.get('scans_details'):
+            story.extend(self._create_tools_responses_section(scan_data['scans_details']))
         
         # Recomendações
         story.extend(self._create_recommendations_section(scan_data))
@@ -145,6 +165,71 @@ class PDFReportGenerator:
             return buffer.getvalue()
         
         return None
+
+    def _create_user_overview(self, overview: Dict) -> List:
+        elements = []
+        elements.append(Paragraph("Visão Geral do Usuário", self.styles['CustomSubtitle']))
+        total_scans = overview.get('total_scans', 0)
+        total_vulns = overview.get('total_vulnerabilities', 0)
+        sc = overview.get('severity_count', {'CRITICAL':0,'HIGH':0,'MEDIUM':0,'LOW':0})
+        data = [
+            ['Total de Scans', str(total_scans)],
+            ['Total de Vulnerabilidades', str(total_vulns)],
+            ['Críticas', str(sc.get('CRITICAL', 0))],
+            ['Altas', str(sc.get('HIGH', 0))],
+            ['Médias', str(sc.get('MEDIUM', 0))],
+            ['Baixas', str(sc.get('LOW', 0))]
+        ]
+        table = Table(data, colWidths=[3*inch, 2*inch])
+        table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#34495e')),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('GRID', (0, 0), (-1, -1), 0.5, colors.black),
+        ]))
+        elements.append(table)
+        return elements
+
+    def _create_tools_overview(self, tools: List[Dict[str, Any]]) -> List:
+        elements = []
+        elements.append(Paragraph("Ferramentas Utilizadas", self.styles['CustomSubtitle']))
+        data = [['Ferramenta', 'Scans', 'Vulnerabilidades']]
+        for t in tools:
+            data.append([t.get('tool', ''), str(t.get('scans', 0)), str(t.get('vulnerabilities', 0))])
+        table = Table(data, colWidths=[3*inch, 1.25*inch, 1.75*inch])
+        table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#34495e')),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('GRID', (0, 0), (-1, -1), 0.5, colors.black),
+        ]))
+        elements.append(table)
+        return elements
+
+    def _create_scan_list_section(self, scans: List[Dict[str, Any]]) -> List:
+        elements = []
+        elements.append(Paragraph("Linha do Tempo dos Scans", self.styles['CustomSubtitle']))
+        data = [['ID', 'Tipo', 'Target', 'Data', 'Vulnerabilidades']]
+        for s in scans[:30]:
+            data.append([
+                str(s.get('id', '')),
+                str(s.get('scan_type', '')).upper(),
+                s.get('target', ''),
+                s.get('created_at', ''),
+                str(s.get('total_vulnerabilities', 0))
+            ])
+        table = Table(data, colWidths=[0.8*inch, 1.2*inch, 2.2*inch, 1.6*inch, 1.2*inch])
+        table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#34495e')),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('GRID', (0, 0), (-1, -1), 0.5, colors.black),
+        ]))
+        elements.append(table)
+        return elements
     
     def _create_header(self, scan_data: Dict) -> List:
         """Cria cabeçalho do relatório"""
@@ -152,7 +237,7 @@ class PDFReportGenerator:
         
         # Título
         title = Paragraph(
-            "🔒 Security Scan Report",
+            "Security Scan Report",
             self.styles['CustomTitle']
         )
         elements.append(title)
@@ -215,10 +300,10 @@ class PDFReportGenerator:
         # Tabela de resumo
         data = [
             ['Severidade', 'Quantidade', 'Percentual'],
-            ['🔴 Crítica', str(critical), f'{(critical/total*100) if total > 0 else 0:.1f}%'],
-            ['🟠 Alta', str(high), f'{(high/total*100) if total > 0 else 0:.1f}%'],
-            ['🟡 Média', str(medium), f'{(medium/total*100) if total > 0 else 0:.1f}%'],
-            ['🟢 Baixa', str(low), f'{(low/total*100) if total > 0 else 0:.1f}%'],
+            ['Crítica', str(critical), f'{(critical/total*100) if total > 0 else 0:.1f}%'],
+            ['Alta', str(high), f'{(high/total*100) if total > 0 else 0:.1f}%'],
+            ['Média', str(medium), f'{(medium/total*100) if total > 0 else 0:.1f}%'],
+            ['Baixa', str(low), f'{(low/total*100) if total > 0 else 0:.1f}%'],
             ['', f'Total: {total}', '100%']
         ]
         
@@ -249,29 +334,32 @@ class PDFReportGenerator:
         
         summary = scan_data.get('summary', {})
         
-        # Gráfico de pizza
-        drawing = Drawing(400, 200)
-        pie = Pie()
-        pie.x = 150
-        pie.y = 50
-        pie.width = 100
-        pie.height = 100
-        
-        pie.data = [
+        # Gráfico de pizza (com proteção para total = 0)
+        data_values = [
             summary.get('critical', 0),
             summary.get('high', 0),
             summary.get('medium', 0),
             summary.get('low', 0)
         ]
-        pie.labels = ['Crítica', 'Alta', 'Média', 'Baixa']
-        pie.slices.strokeWidth = 0.5
-        pie.slices[0].fillColor = colors.HexColor('#c0392b')
-        pie.slices[1].fillColor = colors.HexColor('#e67e22')
-        pie.slices[2].fillColor = colors.HexColor('#f39c12')
-        pie.slices[3].fillColor = colors.HexColor('#27ae60')
-        
-        drawing.add(pie)
-        elements.append(drawing)
+        total_values = sum(data_values)
+        if total_values > 0:
+            drawing = Drawing(400, 200)
+            pie = Pie()
+            pie.x = 150
+            pie.y = 50
+            pie.width = 100
+            pie.height = 100
+            pie.data = data_values
+            pie.labels = ['Crítica', 'Alta', 'Média', 'Baixa']
+            pie.slices.strokeWidth = 0.5
+            pie.slices[0].fillColor = colors.HexColor('#c0392b')
+            pie.slices[1].fillColor = colors.HexColor('#e67e22')
+            pie.slices[2].fillColor = colors.HexColor('#f39c12')
+            pie.slices[3].fillColor = colors.HexColor('#27ae60')
+            drawing.add(pie)
+            elements.append(drawing)
+        else:
+            elements.append(Paragraph("Sem dados estatísticos disponíveis", self.styles['InfoText']))
         
         return elements
     
@@ -292,19 +380,19 @@ class PDFReportGenerator:
         
         # Vulnerabilidades críticas
         if critical_vulns:
-            elements.append(Paragraph("🔴 Vulnerabilidades Críticas", self.styles['CustomSection']))
+            elements.append(Paragraph("Vulnerabilidades Críticas", self.styles['CustomSection']))
             for vuln in critical_vulns[:10]:  # Limitar a 10
                 elements.extend(self._create_vulnerability_detail(vuln, 'CRITICAL'))
         
         # Vulnerabilidades altas
         if high_vulns:
-            elements.append(Paragraph("🟠 Vulnerabilidades Altas", self.styles['CustomSection']))
+            elements.append(Paragraph("Vulnerabilidades Altas", self.styles['CustomSection']))
             for vuln in high_vulns[:10]:
                 elements.extend(self._create_vulnerability_detail(vuln, 'HIGH'))
         
         # Vulnerabilidades médias (resumo)
         if medium_vulns:
-            elements.append(Paragraph(f"🟡 Vulnerabilidades Médias ({len(medium_vulns)})", self.styles['CustomSection']))
+            elements.append(Paragraph(f"Vulnerabilidades Médias ({len(medium_vulns)})", self.styles['CustomSection']))
             elements.append(Paragraph(
                 f"Foram encontradas {len(medium_vulns)} vulnerabilidades de severidade média. Recomenda-se revisar e corrigir.",
                 self.styles['InfoText']
@@ -312,7 +400,7 @@ class PDFReportGenerator:
         
         # Vulnerabilidades baixas (resumo)
         if low_vulns:
-            elements.append(Paragraph(f"🟢 Vulnerabilidades Baixas ({len(low_vulns)})", self.styles['CustomSection']))
+            elements.append(Paragraph(f"Vulnerabilidades Baixas ({len(low_vulns)})", self.styles['CustomSection']))
             elements.append(Paragraph(
                 f"Foram encontradas {len(low_vulns)} vulnerabilidades de severidade baixa.",
                 self.styles['InfoText']
@@ -366,6 +454,109 @@ class PDFReportGenerator:
             elements.append(Paragraph(f"{i}. {rec}", self.styles['InfoText']))
         
         return elements
+
+    def _create_tools_responses_section(self, scans: List[Dict[str, Any]]) -> List:
+        elements = []
+        elements.append(Paragraph("Respostas das Ferramentas", self.styles['CustomSubtitle']))
+        elements.append(Spacer(1, 0.1 * inch))
+
+        groups: Dict[str, List[Dict[str, Any]]] = {}
+        for s in scans:
+            t = s.get('tool', str(s.get('scan_type', '')).upper())
+            groups.setdefault(t, []).append(s)
+
+        for tool, items in groups.items():
+            banner = Table([[tool]], colWidths=[6*inch])
+            banner.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor('#7c3aed')),
+                ('TEXTCOLOR', (0, 0), (-1, -1), colors.whitesmoke),
+                ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+                ('FONTNAME', (0, 0), (-1, -1), 'Helvetica-Bold'),
+                ('FONTSIZE', (0, 0), (-1, -1), 12),
+                ('LEFTPADDING', (0, 0), (-1, -1), 8),
+                ('RIGHTPADDING', (0, 0), (-1, -1), 8),
+                ('TOPPADDING', (0, 0), (-1, -1), 6),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
+            ]))
+            elements.append(banner)
+            elements.append(Spacer(1, 0.08 * inch))
+
+            total_scans = len(items)
+            total_vulns = sum(int(i.get('total_vulnerabilities', 0)) for i in items)
+            summary_table = Table(
+                [["Scans", str(total_scans)], ["Vulnerabilidades", str(total_vulns)]],
+                colWidths=[2.5*inch, 3.5*inch]
+            )
+            summary_table.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#ecf0f1')),
+                ('TEXTCOLOR', (0, 0), (-1, -1), colors.HexColor('#2c3e50')),
+                ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#bdc3c7')),
+                ('LEFTPADDING', (0, 0), (-1, -1), 6),
+                ('RIGHTPADDING', (0, 0), (-1, -1), 6),
+                ('TOPPADDING', (0, 0), (-1, -1), 4),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
+            ]))
+            elements.append(summary_table)
+            elements.append(Spacer(1, 0.12 * inch))
+
+            for s in items:
+                sc = s.get('severity_count', {'CRITICAL': 0, 'HIGH': 0, 'MEDIUM': 0, 'LOW': 0})
+                meta_table = Table(
+                    [
+                        [f"Scan {s.get('id', '')}", s.get('created_at', '')],
+                        [f"Target: {s.get('target', '')}", ""],
+                    ],
+                    colWidths=[3.2*inch, 2.8*inch]
+                )
+                meta_table.setStyle(TableStyle([
+                    ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#f7f9fc')),
+                    ('TEXTCOLOR', (0, 0), (-1, -1), colors.HexColor('#2c3e50')),
+                    ('ALIGN', (0, 0), (0, 0), 'LEFT'),
+                    ('ALIGN', (1, 0), (1, 0), 'RIGHT'),
+                    ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                    ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#bdc3c7')),
+                    ('SPAN', (0, 1), (1, 1)),
+                    ('LEFTPADDING', (0, 0), (-1, -1), 6),
+                    ('RIGHTPADDING', (0, 0), (-1, -1), 6),
+                    ('TOPPADDING', (0, 0), (-1, -1), 4),
+                    ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
+                ]))
+                elements.append(meta_table)
+                elements.append(Spacer(1, 0.06 * inch))
+
+                severity_table = Table(
+                    [
+                        ["Críticas", str(sc.get('CRITICAL', 0))],
+                        ["Altas", str(sc.get('HIGH', 0))],
+                        ["Médias", str(sc.get('MEDIUM', 0))],
+                        ["Baixas", str(sc.get('LOW', 0))],
+                    ],
+                    colWidths=[2.2*inch, 1.0*inch]
+                )
+                severity_table.setStyle(TableStyle([
+                    ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#ecf0f1')),
+                    ('TEXTCOLOR', (0, 0), (-1, -1), colors.HexColor('#2c3e50')),
+                    ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+                    ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
+                    ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#bdc3c7')),
+                    ('LEFTPADDING', (0, 0), (-1, -1), 6),
+                    ('RIGHTPADDING', (0, 0), (-1, -1), 6),
+                    ('TOPPADDING', (0, 0), (-1, -1), 4),
+                    ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
+                ]))
+                elements.append(severity_table)
+                elements.append(Spacer(1, 0.06 * inch))
+
+                raw = s.get('raw_excerpt', '')
+                if raw:
+                    text_str = str(raw)
+                    elements.append(XPreformatted(text_str, self.styles['MonospaceBlock']))
+                    elements.append(Spacer(1, 0.06 * inch))
+                elements.append(Spacer(1, 0.12 * inch))
+
+        return elements
     
     def _create_footer(self) -> List:
         """Cria rodapé do relatório"""
@@ -377,8 +568,8 @@ class PDFReportGenerator:
         footer_text = """
         <para alignment='center'>
         <font size=8 color='#95a5a6'>
-        Este relatório foi gerado automaticamente pela plataforma Security Scanner<br/>
-        © 2025 Security Scanner - Professional Security Analysis Tool<br/>
+        Este relatório foi gerado automaticamente pela plataforma Iron Net<br/>
+        © 2025 Iron Net - Professional Security Analysis Tool<br/>
         <b>⚠️ CONFIDENCIAL - Para uso interno apenas</b>
         </font>
         </para>

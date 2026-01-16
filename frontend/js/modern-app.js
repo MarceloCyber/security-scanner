@@ -2513,16 +2513,24 @@ async function generateReport(scanId) {
     try {
         showLoading();
         showToast('Gerando relatório PDF...', 'info');
+        const token = getToken();
+        if (!token) {
+            showToast('Faça login para gerar relatório PDF', 'info');
+            window.location.href = 'index.html';
+            return;
+        }
         
         // Download PDF
         const response = await fetch(`${API_URL}/scans/${scanId}/report`, {
             headers: {
-                'Authorization': `Bearer ${getToken()}`
+                'Authorization': `Bearer ${token}`
             }
         });
         
         if (!response.ok) {
-            throw new Error('Erro ao gerar relatório');
+            let msg = 'Erro ao gerar relatório';
+            try { const e = await response.json(); msg = e.detail || msg; } catch (_) {}
+            throw new Error(msg);
         }
         
         const blob = await response.blob();
@@ -2539,6 +2547,245 @@ async function generateReport(scanId) {
         
     } catch (error) {
         showToast('Erro ao gerar relatório: ' + error.message, 'error');
+    } finally {
+        hideLoading();
+    }
+}
+
+async function generateFullReport() {
+    try {
+        showLoading();
+        showToast('Gerando relatório completo...', 'info');
+        const token = getToken();
+        if (!token) {
+            showToast('Faça login para gerar relatório', 'info');
+            window.location.href = 'index.html';
+            return;
+        }
+        const response = await fetch(`${API_URL}/scans/report/full`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (!response.ok) {
+            let msg = 'Erro ao gerar relatório completo';
+            try { const e = await response.json(); msg = e.detail || msg; } catch (_) {}
+            throw new Error(msg);
+        }
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `security-report-full.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+        showToast('Relatório completo gerado com sucesso!', 'success');
+    } catch (error) {
+        showToast('Erro ao gerar relatório completo: ' + error.message, 'error');
+    } finally {
+        hideLoading();
+    }
+}
+
+async function showFullReportPreview() {
+    try {
+        showLoading();
+        showToast('Preparando visualização do relatório completo...', 'info');
+        const token = getToken();
+        if (!token) {
+            showToast('Faça login para visualizar relatório', 'info');
+            window.location.href = 'index.html';
+            return;
+        }
+
+        const scansResp = await apiRequest('/scans');
+        const scans = scansResp.scans || [];
+
+        const toolsMap = {
+            'code': 'Code Scanner',
+            'api': 'API Scanner',
+            'dependencies': 'Dependency Scanner',
+            'dependency': 'Dependency Scanner',
+            'docker': 'Docker Scanner',
+            'graphql': 'GraphQL Scanner',
+            'network': 'Port Scanner'
+        };
+
+        function extractVulns(res) {
+            const vulns = [];
+            if (res && typeof res === 'object') {
+                if (Array.isArray(res.vulnerabilities)) {
+                    return res.vulnerabilities;
+                }
+                if (Array.isArray(res.endpoint_results)) {
+                    res.endpoint_results.forEach(er => {
+                        (er.vulnerabilities || []).forEach(v => vulns.push(v));
+                    });
+                }
+            }
+            return vulns;
+        }
+
+        function extractSummary(res) {
+            if (!res || typeof res !== 'object') {
+                return { total: 0, critical: 0, high: 0, medium: 0, low: 0 };
+            }
+            if (res.summary) return res.summary;
+            if (res.severity_count) {
+                const sc = res.severity_count;
+                const total = res.total_vulnerabilities || (sc.CRITICAL || 0) + (sc.HIGH || 0) + (sc.MEDIUM || 0) + (sc.LOW || 0);
+                return {
+                    total,
+                    critical: sc.CRITICAL || 0,
+                    high: sc.HIGH || 0,
+                    medium: sc.MEDIUM || 0,
+                    low: sc.LOW || 0
+                };
+            }
+            const vulns = extractVulns(res);
+            return {
+                total: vulns.length,
+                critical: vulns.filter(v => v.severity === 'CRITICAL').length,
+                high: vulns.filter(v => v.severity === 'HIGH').length,
+                medium: vulns.filter(v => v.severity === 'MEDIUM').length,
+                low: vulns.filter(v => v.severity === 'LOW').length
+            };
+        }
+
+        const groups = {};
+        scans.forEach(s => {
+            const res = s.results || {};
+            const tname = toolsMap[s.scan_type] || s.scan_type;
+            if (!groups[tname]) groups[tname] = [];
+            let rawJson;
+            try { rawJson = JSON.stringify(res, null, 2); } catch (_) { rawJson = String(res); }
+            const maxLen = 3000;
+            const excerpt = rawJson.length > maxLen ? (rawJson.slice(0, maxLen) + '\n... (conteúdo truncado)') : rawJson;
+            const summ = extractSummary(res);
+            groups[tname].push({
+                id: s.id,
+                target: s.target,
+                created_at: s.created_at,
+                severity_count: {
+                    CRITICAL: summ.critical,
+                    HIGH: summ.high,
+                    MEDIUM: summ.medium,
+                    LOW: summ.low
+                },
+                raw_excerpt: excerpt
+            });
+        });
+
+        // Add non-scan tools: phishing captures and pages
+        try {
+            const capResp = await apiRequest('/tools/phishing/captures');
+            const caps = capResp.captures || [];
+            if (!groups['Phishing Generator']) groups['Phishing Generator'] = [];
+            caps.forEach(c => {
+                let rawJson;
+                try { rawJson = JSON.stringify(c, null, 2); } catch (_) { rawJson = String(c); }
+                const maxLen = 3000;
+                const excerpt = rawJson.length > maxLen ? (rawJson.slice(0, maxLen) + '\n... (conteúdo truncado)') : rawJson;
+                groups['Phishing Generator'].push({
+                    id: c.capture_id || 'N/A',
+                    target: c.page_id || 'N/A',
+                    created_at: c.timestamp || 'N/A',
+                    severity_count: { CRITICAL: 0, HIGH: 0, MEDIUM: 0, LOW: 0 },
+                    raw_excerpt: excerpt
+                });
+            });
+        } catch (_) {}
+
+        try {
+            const pagesResp = await apiRequest('/tools/phishing/pages');
+            const pages = pagesResp.pages || [];
+            if (!groups['Phishing Generator']) groups['Phishing Generator'] = [];
+            pages.forEach(p => {
+                let rawJson;
+                try { rawJson = JSON.stringify(p, null, 2); } catch (_) { rawJson = String(p); }
+                const maxLen = 3000;
+                const excerpt = rawJson.length > maxLen ? (rawJson.slice(0, maxLen) + '\n... (conteúdo truncado)') : rawJson;
+                groups['Phishing Generator'].push({
+                    id: p.filename || 'N/A',
+                    target: p.short_url || p.url || 'N/A',
+                    created_at: p.created_at || 'N/A',
+                    severity_count: { CRITICAL: 0, HIGH: 0, MEDIUM: 0, LOW: 0 },
+                    raw_excerpt: excerpt
+                });
+            });
+        } catch (_) {}
+
+        // Build HTML with dashboard card aesthetics
+        let html = `<div style="font-family: inherit; color: var(--text);">
+            <header style="margin-bottom: 16px;">
+              <h1 style="margin:0; color: var(--text); border-bottom:3px solid var(--primary); padding-bottom:10px;">Relatório Completo - Visualização</h1>
+              <div style="display:flex; gap:16px; flex-wrap:wrap; background: var(--bg-tertiary); color: var(--text); padding:12px; margin-top:12px; border-radius: var(--border-radius); border: 1px solid var(--border);">
+                <div><strong>Data:</strong> ${new Date().toLocaleString('pt-BR')}</div>
+                <div><strong>Analista:</strong> ${localStorage.getItem('username') || 'Usuário'}</div>
+              </div>
+            </header>`;
+
+        const toolNames = Object.keys(groups);
+        toolNames.forEach(tool => {
+            const items = groups[tool];
+            const totalScans = items.length;
+            const totalVulns = items.reduce((acc, it) => acc + (it.severity_count.CRITICAL + it.severity_count.HIGH + it.severity_count.MEDIUM + it.severity_count.LOW), 0);
+            html += `
+            <section style="margin-top:12px; background: var(--bg-secondary); padding: 25px; border-radius: var(--border-radius); border: 1px solid var(--border);">
+              <table style="width:100%; border-collapse:collapse;">
+                <tr style="background: var(--primary); color:#fff;"><td style="padding:10px; font-weight:bold;">${tool}</td></tr>
+              </table>
+              <table style="width:100%; border-collapse:collapse; margin-top:8px; border:1px solid var(--border);">
+                <tr style="background: var(--bg-tertiary); color: var(--text);">
+                  <th style="padding:10px; text-align:left;">Scans</th>
+                  <th style="padding:10px; text-align:left;">Vulnerabilidades</th>
+                </tr>
+                <tr style="color: var(--text);">
+                  <td style="padding:10px;">${totalScans}</td>
+                  <td style="padding:10px;">${totalVulns}</td>
+                </tr>
+              </table>
+            </section>`;
+
+            items.forEach(s => {
+                html += `
+                <section style="margin-top:12px; background: var(--bg-secondary); padding: 25px; border-radius: var(--border-radius); border: 1px solid var(--border); color: var(--text);">
+                  <table style="width:100%; border-collapse:collapse;">
+                    <tr style="background: var(--bg-tertiary); color: var(--text);">
+                      <td style="padding:10px; font-weight:bold;">Scan ${s.id}</td>
+                      <td style="padding:10px; text-align:right;">${s.created_at || ''}</td>
+                    </tr>
+                    <tr>
+                      <td style="padding:10px;" colspan="2">Target: ${s.target || ''}</td>
+                    </tr>
+                  </table>
+                  <table style="width:100%; border-collapse:collapse; margin-top:8px; border:1px solid var(--border);">
+                    <tr style="background: var(--bg-tertiary); color: var(--text);">
+                      <th style="padding:8px 10px;">Críticas</th>
+                      <th style="padding:8px 10px;">Altas</th>
+                      <th style="padding:8px 10px;">Médias</th>
+                      <th style="padding:8px 10px;">Baixas</th>
+                    </tr>
+                    <tr style="color: var(--text);">
+                      <td style="padding:8px 10px;">${s.severity_count.CRITICAL}</td>
+                      <td style="padding:8px 10px;">${s.severity_count.HIGH}</td>
+                      <td style="padding:8px 10px;">${s.severity_count.MEDIUM}</td>
+                      <td style="padding:8px 10px;">${s.severity_count.LOW}</td>
+                    </tr>
+                  </table>
+                  ${s.raw_excerpt ? `
+                  <div style="border:1px solid var(--border); background: var(--bg-tertiary); padding:15px; margin-top:10px; border-radius: var(--border-radius); color: var(--text);">
+                    <pre style="margin:0; white-space:pre-wrap; word-wrap:break-word; font-family: Courier, monospace; font-size: 12px;">${s.raw_excerpt.replace(/[<>&]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;'}[c]))}</pre>
+                  </div>` : ''}
+                </section>`;
+            });
+        });
+
+        html += `</div>`;
+        createReportPreviewModal(html, 'Relatório Completo');
+        showToast('Visualização pronta!', 'success');
+    } catch (error) {
+        showToast('Erro ao montar visualização: ' + error.message, 'error');
     } finally {
         hideLoading();
     }
@@ -2629,7 +2876,7 @@ function createReportPreviewModal(reportHtml, toolName) {
                         <i class="fas fa-copy"></i> Copiar HTML
                     </button>
                 </div>
-                <div id="report-content" class="report-preview" style="background: white; color: #000; padding: 30px; border-radius: 8px;">
+                <div id="report-content" class="report-preview" style="background: var(--bg-secondary); color: var(--text); padding: 25px; border-radius: var(--border-radius); border: 1px solid var(--border);">
                     ${reportHtml}
                 </div>
             </div>
@@ -2637,6 +2884,7 @@ function createReportPreviewModal(reportHtml, toolName) {
     `;
     
     document.body.appendChild(modal);
+    modal.classList.add('active');
     
     // Fechar ao clicar fora
     modal.addEventListener('click', (e) => {
@@ -3101,22 +3349,11 @@ async function showNotificationsPanel() {
         return;
     }
     
-    // Se não houver notificações carregadas, tenta carregar
     if (!window.currentNotifications) {
         await loadNotifications();
     }
-    
-    // Filtrar apenas não lidas para exibição, conforme solicitado
-    // "depois que eu clicar e ver elas podem sumir"
-    // Mostraremos todas agora, mas ao fechar e abrir de novo, as lidas sumirão se filtrarmos aqui?
-    // Melhor: mostrar todas aqui, mas o comportamento de "sumir" será natural se filtrarmos as lidas.
-    // Vamos filtrar para mostrar apenas as não lidas OU as que acabaram de chegar.
-    // Mas se o usuário quiser ver o histórico? O pedido foi "podem sumir".
-    // Então vamos mostrar apenas as não lidas.
-    
     const allNotifications = window.currentNotifications || [];
-    // Mostra apenas notificações não lidas
-    const notifications = allNotifications.filter(n => !n.read);
+    const notifications = allNotifications;
     
     // Se não houver não lidas, mas houver notificações recentes (ex: últimas 5), mostramos para não ficar vazio?
     // O usuário disse "podem sumir", então se não tiver não lidas, mostra vazio.
@@ -3138,6 +3375,7 @@ async function showNotificationsPanel() {
                         <i class="fas fa-${getNotificationIcon(n.type)}"></i>
                     </div>
                     <div class="notification-content">
+                        <div class="notification-title">${getNotificationTitle(n)}</div>
                         <div class="notification-message">${n.message}</div>
                         <div class="notification-time">${formatTime(n.timestamp)}</div>
                     </div>
@@ -3175,6 +3413,17 @@ function getNotificationIcon(type) {
         'system': 'info-circle'
     };
     return icons[type] || 'bell';
+}
+
+function getNotificationTitle(n) {
+    if (n && n.event === 'plan_change') return 'Alteração de Plano';
+    const titles = {
+        'phishing_capture': 'Captura de Phishing',
+        'scan_complete': 'Scan Concluído',
+        'vulnerability_found': 'Vulnerabilidade Detectada',
+        'system': 'Sistema'
+    };
+    return titles[n && n.type] || 'Notificação';
 }
 
 function formatTime(timestamp) {

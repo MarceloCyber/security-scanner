@@ -4,7 +4,7 @@ Extended Scan Routes - Rotas adicionais com novas funcionalidades
 
 from fastapi import APIRouter, Depends, HTTPException, Response
 from sqlalchemy.orm import Session
-from typing import Optional
+from typing import Optional, List
 import json
 from datetime import datetime
 from database import get_db
@@ -22,6 +22,7 @@ from scanners.port_scanner import scan_ports
 from scanners.docker_graphql_scanner import scan_dockerfile, scan_docker_compose, scan_graphql
 from scanners.ml_scanner import analyze_with_ml, get_security_metrics
 from integrations.cicd import get_cicd_config
+from routes.tools_routes import list_phishing_captures, list_generated_pages
 
 router = APIRouter()
 
@@ -304,16 +305,202 @@ async def generate_report_endpoint(
         if not scan:
             raise HTTPException(status_code=404, detail="Scan not found")
         
-        # Preparar dados para o relatório
+        selected = json.loads(scan.results) if scan.results else {}
+
+        def extract_vulns(res: dict) -> List[dict]:
+            vulns = []
+            if isinstance(res, dict):
+                if res.get('vulnerabilities'):
+                    vulns = res['vulnerabilities']
+                elif res.get('endpoint_results'):
+                    for er in res['endpoint_results']:
+                        for v in er.get('vulnerabilities', []):
+                            vulns.append(v)
+            return vulns
+
+        def extract_summary(res: dict) -> dict:
+            def to_int(x):
+                try:
+                    return int(x)
+                except Exception:
+                    return 0
+            if not isinstance(res, dict):
+                return {'total': 0, 'critical': 0, 'high': 0, 'medium': 0, 'low': 0}
+            if res.get('summary'):
+                s = res['summary']
+                return {
+                    'total': to_int(s.get('total', s.get('total_vulnerabilities', 0))),
+                    'critical': to_int(s.get('critical', 0)),
+                    'high': to_int(s.get('high', 0)),
+                    'medium': to_int(s.get('medium', 0)),
+                    'low': to_int(s.get('low', 0))
+                }
+            if res.get('severity_count'):
+                sc = res['severity_count']
+                return {
+                    'total': to_int(res.get('total_vulnerabilities', sum(to_int(v) for v in sc.values()))),
+                    'critical': to_int(sc.get('CRITICAL', 0)),
+                    'high': to_int(sc.get('HIGH', 0)),
+                    'medium': to_int(sc.get('MEDIUM', 0)),
+                    'low': to_int(sc.get('LOW', 0))
+                }
+            vulns = extract_vulns(res)
+            return {
+                'total': to_int(len(vulns)),
+                'critical': to_int(sum(1 for v in vulns if v.get('severity') == 'CRITICAL')),
+                'high': to_int(sum(1 for v in vulns if v.get('severity') == 'HIGH')),
+                'medium': to_int(sum(1 for v in vulns if v.get('severity') == 'MEDIUM')),
+                'low': to_int(sum(1 for v in vulns if v.get('severity') == 'LOW'))
+            }
+
+        selected_vulns = extract_vulns(selected)
+        selected_summary = extract_summary(selected)
+
         scan_data = {
             "scan_id": scan.id,
             "scan_type": scan.scan_type,
             "target": scan.target,
             "created_at": scan.created_at.isoformat(),
-            **json.loads(scan.results)
+            "summary": selected_summary,
+            "vulnerabilities": selected_vulns
         }
+
+        scans_all = db.query(Scan).filter(Scan.user_id == current_user.id).order_by(Scan.created_at.desc()).all()
+        agg_sc = {'CRITICAL': 0, 'HIGH': 0, 'MEDIUM': 0, 'LOW': 0}
+        agg_total = 0
+        tools_map = {
+            'code': 'Code Scanner',
+            'api': 'API Scanner',
+            'dependencies': 'Dependency Scanner',
+            'docker': 'Docker Scanner',
+            'graphql': 'GraphQL Scanner',
+            'network': 'Port Scanner'
+        }
+        tools_summary = {}
+        scans_details = []
+        for s in scans_all:
+            res = {}
+            try:
+                res = json.loads(s.results) if s.results else {}
+            except Exception:
+                res = {}
+            vulns = extract_vulns(res)
+            summ = extract_summary(res)
+            agg_total += summ.get('total', 0)
+            agg_sc['CRITICAL'] += summ.get('critical', 0)
+            agg_sc['HIGH'] += summ.get('high', 0)
+            agg_sc['MEDIUM'] += summ.get('medium', 0)
+            agg_sc['LOW'] += summ.get('low', 0)
+            tname = tools_map.get(s.scan_type, s.scan_type)
+            if tname not in tools_summary:
+                tools_summary[tname] = {'tool': tname, 'scans': 0, 'vulnerabilities': 0}
+            tools_summary[tname]['scans'] += 1
+            tools_summary[tname]['vulnerabilities'] += summ.get('total', 0)
+            try:
+                raw_json = json.dumps(res, ensure_ascii=False, indent=2)
+            except Exception:
+                raw_json = str(res)
+            lines_limit = 40
+            max_len = 800
+            lines = raw_json.splitlines()
+            if len(lines) > lines_limit:
+                raw_excerpt = "\n".join(lines[:lines_limit]) + "\n... (conteúdo truncado)"
+            else:
+                raw_excerpt = raw_json[:max_len] + ("\n... (conteúdo truncado)" if len(raw_json) > max_len else "")
+            scans_details.append({
+                'id': s.id,
+                'tool': tname,
+                'scan_type': s.scan_type,
+                'target': s.target,
+                'created_at': s.created_at.isoformat(),
+                'total_vulnerabilities': summ.get('total', 0),
+                'severity_count': {
+                    'CRITICAL': summ.get('critical', 0),
+                    'HIGH': summ.get('high', 0),
+                    'MEDIUM': summ.get('medium', 0),
+                    'LOW': summ.get('low', 0)
+                },
+                'raw_excerpt': raw_excerpt
+            })
+
+        try:
+            phishing_captures = await list_phishing_captures(current_user)
+        except Exception:
+            phishing_captures = {"captures": []}
+        for capture in phishing_captures.get('captures', []):
+            try:
+                raw_json = json.dumps(capture, ensure_ascii=False, indent=2)
+            except Exception:
+                raw_json = str(capture)
+            lines_limit = 40
+            max_len = 800
+            lines = raw_json.splitlines()
+            if len(lines) > lines_limit:
+                raw_excerpt = "\n".join(lines[:lines_limit]) + "\n... (conteúdo truncado)"
+            else:
+                raw_excerpt = raw_json[:max_len] + ("\n... (conteúdo truncado)" if len(raw_json) > max_len else "")
+            if 'Phishing Generator' not in tools_summary:
+                tools_summary['Phishing Generator'] = {'tool': 'Phishing Generator', 'scans': 0, 'vulnerabilities': 0}
+            tools_summary['Phishing Generator']['scans'] += 1
+            scans_details.append({
+                'id': capture.get('capture_id', 'N/A'),
+                'tool': 'Phishing Generator',
+                'scan_type': 'phishing_capture',
+                'target': capture.get('page_id', 'N/A'),
+                'created_at': capture.get('timestamp', 'N/A'),
+                'total_vulnerabilities': 0,
+                'severity_count': {
+                    'CRITICAL': 0,
+                    'HIGH': 0,
+                    'MEDIUM': 0,
+                    'LOW': 0
+                },
+                'raw_excerpt': raw_excerpt
+            })
+
+        try:
+            generated_pages = await list_generated_pages(current_user)
+        except Exception:
+            generated_pages = {"pages": []}
+        for page in generated_pages.get('pages', []):
+            try:
+                raw_json = json.dumps(page, ensure_ascii=False, indent=2)
+            except Exception:
+                raw_json = str(page)
+            lines_limit = 40
+            max_len = 800
+            lines = raw_json.splitlines()
+            if len(lines) > lines_limit:
+                raw_excerpt = "\n".join(lines[:lines_limit]) + "\n... (conteúdo truncado)"
+            else:
+                raw_excerpt = raw_json[:max_len] + ("\n... (conteúdo truncado)" if len(raw_json) > max_len else "")
+            if 'Phishing Generator' not in tools_summary:
+                tools_summary['Phishing Generator'] = {'tool': 'Phishing Generator', 'scans': 0, 'vulnerabilities': 0}
+            tools_summary['Phishing Generator']['scans'] += 1
+            scans_details.append({
+                'id': page.get('filename', 'N/A'),
+                'tool': 'Phishing Generator',
+                'scan_type': 'phishing_page',
+                'target': page.get('short_url') or page.get('url') or 'N/A',
+                'created_at': page.get('created_at', 'N/A'),
+                'total_vulnerabilities': 0,
+                'severity_count': {
+                    'CRITICAL': 0,
+                    'HIGH': 0,
+                    'MEDIUM': 0,
+                    'LOW': 0
+                },
+                'raw_excerpt': raw_excerpt
+            })
+
+        scan_data['user_overview'] = {
+            'total_scans': len(scans_all),
+            'total_vulnerabilities': agg_total,
+            'severity_count': agg_sc
+        }
+        scan_data['tools_summary'] = list(tools_summary.values())
+        scan_data['scans_details'] = scans_details
         
-        # Gerar PDF
         pdf_bytes = generate_pdf_report(scan_data)
         
         return Response(
@@ -321,6 +508,208 @@ async def generate_report_endpoint(
             media_type="application/pdf",
             headers={
                 "Content-Disposition": f"attachment; filename=security-report-{scan_id}.pdf"
+            }
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/scans/report/full")
+async def generate_full_report(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    try:
+        def extract_vulns(res: dict) -> List[dict]:
+            vulns = []
+            if isinstance(res, dict):
+                if res.get('vulnerabilities'):
+                    vulns = res['vulnerabilities']
+                elif res.get('endpoint_results'):
+                    for er in res['endpoint_results']:
+                        for v in er.get('vulnerabilities', []):
+                            vulns.append(v)
+            return vulns
+
+        def extract_summary(res: dict) -> dict:
+            def to_int(x):
+                try:
+                    return int(x)
+                except Exception:
+                    return 0
+            if not isinstance(res, dict):
+                return {'total': 0, 'critical': 0, 'high': 0, 'medium': 0, 'low': 0}
+            if res.get('summary'):
+                s = res['summary']
+                return {
+                    'total': to_int(s.get('total', s.get('total_vulnerabilities', 0))),
+                    'critical': to_int(s.get('critical', 0)),
+                    'high': to_int(s.get('high', 0)),
+                    'medium': to_int(s.get('medium', 0)),
+                    'low': to_int(s.get('low', 0))
+                }
+            if res.get('severity_count'):
+                sc = res['severity_count']
+                return {
+                    'total': to_int(res.get('total_vulnerabilities', sum(to_int(v) for v in sc.values()))),
+                    'critical': to_int(sc.get('CRITICAL', 0)),
+                    'high': to_int(sc.get('HIGH', 0)),
+                    'medium': to_int(sc.get('MEDIUM', 0)),
+                    'low': to_int(sc.get('LOW', 0))
+                }
+            vulns = extract_vulns(res)
+            return {
+                'total': to_int(len(vulns)),
+                'critical': to_int(sum(1 for v in vulns if v.get('severity') == 'CRITICAL')),
+                'high': to_int(sum(1 for v in vulns if v.get('severity') == 'HIGH')),
+                'medium': to_int(sum(1 for v in vulns if v.get('severity') == 'MEDIUM')),
+                'low': to_int(sum(1 for v in vulns if v.get('severity') == 'LOW'))
+            }
+
+        scans_all = db.query(Scan).filter(Scan.user_id == current_user.id).order_by(Scan.created_at.desc()).all()
+        agg_sc = {'CRITICAL': 0, 'HIGH': 0, 'MEDIUM': 0, 'LOW': 0}
+        agg_total = 0
+        tools_map = {
+            'code': 'Code Scanner',
+            'api': 'API Scanner',
+            'dependencies': 'Dependency Scanner',
+            'docker': 'Docker Scanner',
+            'graphql': 'GraphQL Scanner',
+            'network': 'Port Scanner'
+        }
+        tools_summary = {}
+        scans_details = []
+
+        for s in scans_all:
+            res = {}
+            try:
+                res = json.loads(s.results) if s.results else {}
+            except Exception:
+                res = {}
+            vulns = extract_vulns(res)
+            summ = extract_summary(res)
+            agg_total += summ.get('total', 0)
+            agg_sc['CRITICAL'] += summ.get('critical', 0)
+            agg_sc['HIGH'] += summ.get('high', 0)
+            agg_sc['MEDIUM'] += summ.get('medium', 0)
+            agg_sc['LOW'] += summ.get('low', 0)
+            tname = tools_map.get(s.scan_type, s.scan_type)
+            if tname not in tools_summary:
+                tools_summary[tname] = {'tool': tname, 'scans': 0, 'vulnerabilities': 0}
+            tools_summary[tname]['scans'] += 1
+            tools_summary[tname]['vulnerabilities'] += summ.get('total', 0)
+            try:
+                raw_json = json.dumps(res, ensure_ascii=False, indent=2)
+            except Exception:
+                raw_json = str(res)
+            max_len = 3000
+            raw_excerpt = (raw_json[:max_len] + ('\n... (conteúdo truncado)' if len(raw_json) > max_len else ''))
+            scans_details.append({
+                'id': s.id,
+                'tool': tname,
+                'scan_type': s.scan_type,
+                'target': s.target,
+                'created_at': s.created_at.isoformat(),
+                'total_vulnerabilities': summ.get('total', 0),
+                'severity_count': {
+                    'CRITICAL': summ.get('critical', 0),
+                    'HIGH': summ.get('high', 0),
+                    'MEDIUM': summ.get('medium', 0),
+                    'LOW': summ.get('low', 0)
+                },
+                'raw_excerpt': raw_excerpt
+            })
+
+        try:
+            phishing_captures = await list_phishing_captures(current_user)
+        except Exception:
+            phishing_captures = {"captures": []}
+        for capture in phishing_captures.get('captures', []):
+            try:
+                raw_json = json.dumps(capture, ensure_ascii=False, indent=2)
+            except Exception:
+                raw_json = str(capture)
+            max_len = 3000
+            raw_excerpt = (raw_json[:max_len] + ('\n... (conteúdo truncado)' if len(raw_json) > max_len else ''))
+            if 'Phishing Generator' not in tools_summary:
+                tools_summary['Phishing Generator'] = {'tool': 'Phishing Generator', 'scans': 0, 'vulnerabilities': 0}
+            tools_summary['Phishing Generator']['scans'] += 1
+            scans_details.append({
+                'id': capture.get('capture_id', 'N/A'),
+                'tool': 'Phishing Generator',
+                'scan_type': 'phishing_capture',
+                'target': capture.get('page_id', 'N/A'),
+                'created_at': capture.get('timestamp', 'N/A'),
+                'total_vulnerabilities': 0,
+                'severity_count': {
+                    'CRITICAL': 0,
+                    'HIGH': 0,
+                    'MEDIUM': 0,
+                    'LOW': 0
+                },
+                'raw_excerpt': raw_excerpt
+            })
+
+        try:
+            generated_pages = await list_generated_pages(current_user)
+        except Exception:
+            generated_pages = {"pages": []}
+        for page in generated_pages.get('pages', []):
+            try:
+                raw_json = json.dumps(page, ensure_ascii=False, indent=2)
+            except Exception:
+                raw_json = str(page)
+            max_len = 3000
+            raw_excerpt = (raw_json[:max_len] + ('\n... (conteúdo truncado)' if len(raw_json) > max_len else ''))
+            if 'Phishing Generator' not in tools_summary:
+                tools_summary['Phishing Generator'] = {'tool': 'Phishing Generator', 'scans': 0, 'vulnerabilities': 0}
+            tools_summary['Phishing Generator']['scans'] += 1
+            scans_details.append({
+                'id': page.get('filename', 'N/A'),
+                'tool': 'Phishing Generator',
+                'scan_type': 'phishing_page',
+                'target': page.get('short_url') or page.get('url') or 'N/A',
+                'created_at': page.get('created_at', 'N/A'),
+                'total_vulnerabilities': 0,
+                'severity_count': {
+                    'CRITICAL': 0,
+                    'HIGH': 0,
+                    'MEDIUM': 0,
+                    'LOW': 0
+                },
+                'raw_excerpt': raw_excerpt
+            })
+
+        overall_summary = {
+            'total': agg_total,
+            'critical': agg_sc['CRITICAL'],
+            'high': agg_sc['HIGH'],
+            'medium': agg_sc['MEDIUM'],
+            'low': agg_sc['LOW']
+        }
+
+        scan_data = {
+            'scan_id': 'ALL',
+            'scan_type': 'full',
+            'target': 'Todos',
+            'created_at': datetime.utcnow().isoformat(),
+            'summary': overall_summary,
+            'vulnerabilities': [],
+            'user_overview': {
+                'total_scans': len(scans_all),
+                'total_vulnerabilities': agg_total,
+                'severity_count': agg_sc
+            },
+            'tools_summary': list(tools_summary.values()),
+            'scans_details': scans_details
+        }
+
+        pdf_bytes = generate_pdf_report(scan_data)
+        return Response(
+            content=pdf_bytes,
+            media_type="application/pdf",
+            headers={
+                "Content-Disposition": "attachment; filename=security-report-full.pdf"
             }
         )
     except Exception as e:

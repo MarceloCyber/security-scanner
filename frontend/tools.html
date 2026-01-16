@@ -76,7 +76,7 @@
                 <input type="text" placeholder="Pesquisar ferramentas...">
             </div>
             <div class="header-actions">
-                <button class="btn-icon">
+                <button class="btn-icon" id="notification-icon" title="Notificações">
                     <i class="fas fa-bell"></i>
                     <span class="badge">3</span>
                 </button>
@@ -440,8 +440,36 @@
 
         <div class="page" id="reports-page">
             <div class="page-header">
-                <h1><i class="fas fa-file-pdf"></i> Reports</h1>
-                <p>Em breve - Geração de relatórios PDF</p>
+                <h1><i class="fas fa-file-pdf"></i> Relatórios</h1>
+                <p>Gere relatórios profissionais em PDF e visualize o relatório completo agrupado por ferramenta</p>
+            </div>
+            <div class="content-grid">
+                <div class="card card-full">
+                    <div class="card-header">
+                        <h2>Scans Disponíveis</h2>
+                        <button class="btn-sm" onclick="loadAvailableScans()">
+                            <i class="fas fa-sync"></i>
+                            Atualizar
+                        </button>
+                        <button class="btn-sm" onclick="generateFullReport()" style="margin-left:8px;">
+                            <i class="fas fa-file-pdf"></i>
+                            Gerar Relatório Completo
+                        </button>
+                        <button class="btn-sm" onclick="showFullReportPreview()" style="margin-left:8px;">
+                            <i class="fas fa-eye"></i>
+                            Visualizar Relatório Completo
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <div id="available-scans">
+                            <p class="text-muted">Carregando scans...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle"></i>
+                <strong>Dica:</strong> A visualização agrupa as respostas por ferramenta, com cartões organizados e sem sobreposições.
             </div>
         </div>
     </div>
@@ -454,6 +482,7 @@
         <div class="spinner"></div>
     </div>
 
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.9.2/html2pdf.bundle.min.js" integrity="sha512-pdCVFUWsxl1A4g0uV6fyJ3nrnTGeWnZN2Tl/56j45UvZ1OMdm9CIbctuIHj+yBIRTUUyv6I9+OivXj4i0LPEYA==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
     <script src="/js/modern-app.js"></script>
 </body>
 </html>

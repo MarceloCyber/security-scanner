@@ -100,9 +100,9 @@
         }
         .input-wrapper .toggle-password {
             position: absolute;
-            right: 12px;
-            top: 50%;
-            transform: translateY(-50%);
+            right: 35px;
+            top: 0;
+            bottom: 0;
             background: transparent;
             border: none;
             color: var(--text-dark);
@@ -110,8 +110,11 @@
             cursor: pointer;
             padding: 6px;
             border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
-        .input-wrapper .toggle-password:active { transform: translateY(-50%) scale(0.95); }
+        .input-wrapper .toggle-password:active { transform: scale(0.95); }
         .input-wrapper .form-control { padding-right: 44px; }
 
         .form-control {

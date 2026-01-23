@@ -17,6 +17,11 @@ def _normalize_db_url(url: str) -> str:
     if url.startswith("postgres://"):
         url = url.replace("postgres://", "postgresql://", 1)
     url = _with_sslmode(url)
+    if url.startswith("postgresql") and "connect_timeout=" not in url:
+        if "?" in url:
+            url = url + "&connect_timeout=5"
+        else:
+            url = url + "?connect_timeout=5"
     try:
         if url.startswith("postgresql") and "hostaddr=" not in url:
             p = urlparse(url)

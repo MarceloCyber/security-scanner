@@ -12,6 +12,9 @@ def _make_engine(url: str):
             url,
             connect_args={"check_same_thread": False} if _is_sqlite(url) else {},
             pool_pre_ping=True,
+            pool_size=5,
+            max_overflow=10,
+            pool_timeout=30,
         )
     except Exception:
         if _is_sqlite(url) or "<" in url or ">" in url:
@@ -19,18 +22,13 @@ def _make_engine(url: str):
                 "sqlite:///./security_scanner.db",
                 connect_args={"check_same_thread": False},
                 pool_pre_ping=True,
+                pool_size=5,
+                max_overflow=10,
+                pool_timeout=30,
             )
         raise
 
 engine = _make_engine(settings.DATABASE_URL)
-try:
-    conn = engine.connect()
-    conn.close()
-except Exception:
-    if _is_sqlite(settings.DATABASE_URL):
-        engine = _make_engine("sqlite:///./security_scanner.db")
-    else:
-        raise
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 

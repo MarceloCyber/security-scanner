@@ -25,6 +25,20 @@ def _normalize_db_url(url: str) -> str:
         else:
             url = url + "?connect_timeout=5"
     try:
+        if url.startswith("postgresql") and "neon.tech" in url and "endpoint%3D" not in url:
+            p = urlparse(url)
+            host = p.hostname or ""
+            if host:
+                first = host.split(".", 1)[0]
+                endpoint_id = first[:-7] if first.endswith("-pooler") else first
+                if endpoint_id.startswith("ep-"):
+                    if "?" in url:
+                        url = url + ("&options=endpoint%3D" + endpoint_id)
+                    else:
+                        url = url + ("?options=endpoint%3D" + endpoint_id)
+    except Exception:
+        pass
+    try:
         if url.startswith("postgresql") and "hostaddr=" not in url:
             p = urlparse(url)
             host = p.hostname or ""

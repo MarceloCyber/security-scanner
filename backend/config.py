@@ -1,7 +1,9 @@
 import os
 import socket
+import json
 from urllib.parse import urlparse
 from dotenv import load_dotenv
+import requests
 
 load_dotenv()
 
@@ -27,9 +29,31 @@ def _normalize_db_url(url: str) -> str:
             p = urlparse(url)
             host = p.hostname or ""
             if host:
-                infos = socket.getaddrinfo(host, None, family=socket.AF_INET)
-                if infos:
-                    ip = infos[0][4][0]
+                ip = None
+                try:
+                    infos = socket.getaddrinfo(host, None, family=socket.AF_INET)
+                    if infos:
+                        ip = infos[0][4][0]
+                except Exception:
+                    ip = None
+                if not ip:
+                    try:
+                        r = requests.get(
+                            "https://cloudflare-dns.com/dns-query",
+                            params={"name": host, "type": "A"},
+                            headers={"accept": "application/dns-json"},
+                            timeout=3,
+                        )
+                        if r.ok:
+                            data = r.json()
+                            ans = data.get("Answer") or []
+                            for a in ans:
+                                if a.get("type") == 1 and a.get("data"):
+                                    ip = a.get("data")
+                                    break
+                    except Exception:
+                        ip = None
+                if ip:
                     os.environ["PGHOSTADDR"] = ip
                     os.environ["PGHOST"] = host
                     if "?" in url:

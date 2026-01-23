@@ -1,4 +1,6 @@
 import os
+import socket
+from urllib.parse import urlparse
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -14,7 +16,24 @@ def _with_sslmode(url: str) -> str:
 def _normalize_db_url(url: str) -> str:
     if url.startswith("postgres://"):
         url = url.replace("postgres://", "postgresql://", 1)
-    return _with_sslmode(url)
+    url = _with_sslmode(url)
+    try:
+        if url.startswith("postgresql") and "hostaddr=" not in url:
+            p = urlparse(url)
+            host = p.hostname or ""
+            if host:
+                infos = socket.getaddrinfo(host, None, family=socket.AF_INET)
+                if infos:
+                    ip = infos[0][4][0]
+                    os.environ["PGHOSTADDR"] = ip
+                    os.environ["PGHOST"] = host
+                    if "?" in url:
+                        url = url + ("&hostaddr=" + ip)
+                    else:
+                        url = url + ("?hostaddr=" + ip)
+    except Exception:
+        pass
+    return url
 
 class Settings:
     SECRET_KEY: str = os.getenv("SECRET_KEY", "dev-secret-key-change-in-production")

@@ -1,5 +1,6 @@
 from fastapi import FastAPI, HTTPException, Request, Response, Body
 from fastapi.responses import JSONResponse, HTMLResponse
+import psycopg2
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
@@ -432,3 +433,10 @@ async def service_unavailable_handler(request: Request, exc: StarletteHTTPExcept
     if request.url.path.startswith('/api'):
         return JSONResponse(status_code=503, content={'detail': 'Service Unavailable'})
     return HTMLResponse(_error_page('Serviço indisponível (503)', 'Estamos reestabelecendo o serviço. Em breve tudo voltará ao normal.'), status_code=503)
+@app.exception_handler(psycopg2.OperationalError)
+async def db_op_error_handler(request, exc):
+    return JSONResponse(status_code=503, content={"detail": "Database unavailable"})
+
+@app.exception_handler(Exception)
+async def unhandled_error_handler(request, exc):
+    return JSONResponse(status_code=500, content={"detail": "Internal Server Error"})

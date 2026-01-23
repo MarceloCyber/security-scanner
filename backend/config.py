@@ -38,28 +38,58 @@ def _normalize_db_url(url: str) -> str:
                     ip = None
                 if not ip:
                     try:
-                        r = requests.get(
-                            "https://cloudflare-dns.com/dns-query",
-                            params={"name": host, "type": "A"},
-                            headers={"accept": "application/dns-json"},
-                            timeout=3,
-                        )
-                        if r.ok:
-                            data = r.json()
-                            ans = data.get("Answer") or []
-                            for a in ans:
-                                if a.get("type") == 1 and a.get("data"):
-                                    ip = a.get("data")
-                                    break
+                        def doh(url_doh):
+                            r = requests.get(
+                                url_doh,
+                                params={"name": host, "type": "A"},
+                                headers={"accept": "application/dns-json"},
+                                timeout=3,
+                            )
+                            if r.ok:
+                                data = r.json()
+                                ans = data.get("Answer") or []
+                                for a in ans:
+                                    if a.get("type") == 1 and a.get("data"):
+                                        return a.get("data")
+                                cnames = [a.get("data") for a in ans if a.get("type") == 5 and a.get("data")]
+                                for cname in cnames:
+                                    r2 = requests.get(
+                                        url_doh,
+                                        params={"name": cname, "type": "A"},
+                                        headers={"accept": "application/dns-json"},
+                                        timeout=3,
+                                    )
+                                    if r2.ok:
+                                        d2 = r2.json()
+                                        a2 = d2.get("Answer") or []
+                                        for a in a2:
+                                            if a.get("type") == 1 and a.get("data"):
+                                                return a.get("data")
+                            return None
+                        ip = doh("https://cloudflare-dns.com/dns-query") or doh("https://1.1.1.1/dns-query") or doh("https://dns.google/resolve")
                     except Exception:
                         ip = None
                 if ip:
                     os.environ["PGHOSTADDR"] = ip
                     os.environ["PGHOST"] = host
-                    if "?" in url:
-                        url = url + ("&hostaddr=" + ip)
-                    else:
-                        url = url + ("?hostaddr=" + ip)
+                    try:
+                        u = urlparse(url)
+                        user = u.username or ""
+                        pwd = u.password or ""
+                        port = u.port
+                        path = u.path or ""
+                        q = u.query or ""
+                        netloc = f"{user}:{pwd}@{ip}:{port}" if port else f"{user}:{pwd}@{ip}"
+                        base = f"{u.scheme}://{netloc}{path}"
+                        if q:
+                            url = base + "?" + q
+                        else:
+                            url = base
+                    except Exception:
+                        if "?" in url:
+                            url = url + ("&hostaddr=" + ip)
+                        else:
+                            url = url + ("?hostaddr=" + ip)
     except Exception:
         pass
     return url

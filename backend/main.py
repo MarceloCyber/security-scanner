@@ -23,9 +23,17 @@ from sqlalchemy import inspect, text
 from routes import auth_routes, scan_routes, extended_scan_routes, tools_routes, redteam_routes, blueteam_routes, payment_routes, user_routes, admin_routes
 from utils.email_service import email_service
 
-inspector = inspect(engine)
-if not inspector.get_table_names():
-    Base.metadata.create_all(bind=engine)
+tables = []
+try:
+    inspector = inspect(engine)
+    tables = inspector.get_table_names()
+except Exception:
+    tables = []
+if not tables:
+    try:
+        Base.metadata.create_all(bind=engine)
+    except Exception:
+        pass
 
 app = FastAPI(
     title="Iron Net API",

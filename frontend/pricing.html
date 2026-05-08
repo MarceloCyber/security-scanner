@@ -392,10 +392,10 @@
         // Funções locais (sem depender de modern-app.js que verifica autenticação)
         function getToken() {
             return (
-                localStorage.getItem('token') ||
-                sessionStorage.getItem('token') ||
                 localStorage.getItem('access_token') ||
-                sessionStorage.getItem('access_token')
+                sessionStorage.getItem('access_token') ||
+                localStorage.getItem('token') ||
+                sessionStorage.getItem('token')
             );
         }
 
@@ -490,10 +490,34 @@
             });
 
             if (!response.ok) {
-                if (response.status === 401) {
-                    // Sem autenticação, mas não redireciona
-                    throw new Error('Não autenticado');
-    }
+                if (response.status === 401 && token) {
+                    try {
+                        const refreshResp = await fetch(`/api/auth/refresh`, {
+                            method: 'POST',
+                            headers: { 'Authorization': `Bearer ${token}` }
+                        });
+                        const refreshData = await refreshResp.json().catch(() => ({}));
+                        if (refreshResp.ok && refreshData && refreshData.access_token) {
+                            localStorage.setItem('access_token', refreshData.access_token);
+                            try { sessionStorage.removeItem('access_token'); } catch (_) {}
+                            try { localStorage.removeItem('token'); sessionStorage.removeItem('token'); } catch (_) {}
+                            const retryHeaders = {
+                                'Content-Type': 'application/json',
+                                'Authorization': `Bearer ${refreshData.access_token}`,
+                                ...options.headers
+                            };
+                            const retryResp = await fetch(`/api${endpoint}`, {
+                                ...options,
+                                headers: retryHeaders
+                            });
+                            if (!retryResp.ok) {
+                                throw new Error(`HTTP error! status: ${retryResp.status}`);
+                            }
+                            return await retryResp.json();
+                        }
+                    } catch (_) {}
+                    throw new Error('Sessão expirada. Faça login novamente.');
+                }
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
 

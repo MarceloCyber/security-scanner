@@ -221,7 +221,7 @@
             }
 
             try {
-                const token = localStorage.getItem('token');
+                const token = getToken();
                 if (!token) {
                     document.getElementById('loading-state').classList.add('hidden');
                     document.getElementById('success-state').classList.remove('hidden');

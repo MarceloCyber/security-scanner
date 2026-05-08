@@ -93,7 +93,7 @@ app.add_middleware(SecurityHeadersMiddleware)
 
 # Rate limiting por plano (requests/min)
 PLAN_RATE_LIMITS = {
-    "free": 10,
+    "free": 60,
     "starter": 50,
     "professional": 100,
     "enterprise": 500,
@@ -110,6 +110,9 @@ from models.user import User
 async def rate_limit_middleware(request: Request, call_next):
     path = request.url.path
     if not path.startswith("/api"):
+        return await call_next(request)
+
+    if path in ("/api/health", "/api/uptime") or path.startswith("/api/payments/"):
         return await call_next(request)
 
     # Determina chave e plano

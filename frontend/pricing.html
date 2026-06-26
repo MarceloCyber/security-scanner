@@ -704,7 +704,15 @@
 
         // Contato para vendas (plano Enterprise)
         function contactSales() {
-            window.location.href = 'contato.html?plan=enterprise';
+            const message = encodeURIComponent(
+                'Olá! Tenho interesse no plano Enterprise da Iron Net Security Scanner.\n\n' +
+                'Gostaria de receber mais informações sobre:\n' +
+                '- Valores e condições\n' +
+                '- Personalização da solução\n' +
+                '- Suporte dedicado\n\n' +
+                'Aguardo retorno!'
+            );
+            window.open(`https://t.me/+5511999121628?text=${message}`, '_blank');
         }
 
         // Toggle FAQ

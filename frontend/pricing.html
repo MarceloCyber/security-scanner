@@ -593,8 +593,9 @@
                 name: 'Enterprise',
                 icon: 'fas fa-building',
                 iconClass: 'enterprise',
-                price: 499.90,
-                description: 'Solução completa',
+                price: null,
+                priceText: 'Sob Consulta',
+                description: 'Solução completa e personalizada',
                 features: [
                     { text: 'Tudo do Professional', enabled: true },
                     { text: 'Multi-usuário (até 10)', enabled: true },
@@ -635,16 +636,18 @@
                         </li>
                     `).join('');
                     
+                    // Renderizar preço
+                    const priceHTML = plan.priceText 
+                        ? `<div class="plan-price">${plan.priceText}</div>`
+                        : `<div class="plan-price">R$ ${plan.price.toFixed(2)}<span>/mês</span></div>`;
+                    
                     return `
                         <div class="pricing-card ${plan.popular ? 'popular' : ''}">
                             <div class="plan-icon ${plan.iconClass}">
                                 <i class="${plan.icon}"></i>
                             </div>
                             <div class="plan-name">${plan.name}</div>
-                            <div class="plan-price">
-                                R$ ${plan.price.toFixed(2)}
-                                <span>/mês</span>
-                            </div>
+                            ${priceHTML}
                             <div class="plan-description">${plan.description}</div>
                             <ul class="plan-features">
                                 ${featuresHTML}
@@ -652,8 +655,8 @@
                             ${isCurrentPlan ? 
                                 '<div class="current-plan-badge"><i class="fas fa-check"></i> Plano Atual</div>' :
                                 (plan.id === 'enterprise' ? `
-                                    <button class="subscribe-btn enterprise" onclick="subscribeToPlan('enterprise')">
-                                        <i class="fas fa-shopping-cart"></i> Assinar agora
+                                    <button class="subscribe-btn enterprise" onclick="contactSales()">
+                                        <i class="fas fa-phone-alt"></i> ${plan.buttonText}
                                     </button>
                                 ` : `
                                     <button class="subscribe-btn ${plan.buttonClass}" onclick="subscribeToPlan('${plan.id}')" ${isCurrentPlan ? 'disabled' : ''}>
@@ -697,6 +700,11 @@
             } finally {
                 hideLoading();
             }
+        }
+
+        // Contato para vendas (plano Enterprise)
+        function contactSales() {
+            window.location.href = 'contato.html?plan=enterprise';
         }
 
         // Toggle FAQ

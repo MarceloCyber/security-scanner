@@ -1,5 +1,5 @@
 from fastapi import FastAPI, HTTPException, Request, Response, Body
-from fastapi.responses import JSONResponse, HTMLResponse
+from fastapi.responses import JSONResponse, HTMLResponse, RedirectResponse
 import psycopg2
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -65,7 +65,16 @@ app.add_middleware(
 
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request, call_next):
+        forwarded_proto = request.headers.get("x-forwarded-proto", request.url.scheme)
+        forwarded_proto = forwarded_proto.split(",", 1)[0].strip().lower()
+        host = request.headers.get("host", "").split(":", 1)[0].lower()
+        if forwarded_proto == "http" and host not in {"localhost", "127.0.0.1", "0.0.0.0"}:
+            https_url = request.url.replace(scheme="https")
+            return RedirectResponse(url=str(https_url), status_code=308)
+
         response = await call_next(request)
+        response.headers.pop("Server", None)
+        response.headers.pop("X-Powered-By", None)
         response.headers.setdefault("X-Content-Type-Options", "nosniff")
         response.headers.setdefault("X-Frame-Options", "DENY")
         response.headers.setdefault("Referrer-Policy", "no-referrer")

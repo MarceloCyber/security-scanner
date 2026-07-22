@@ -7,6 +7,7 @@ from fastapi.responses import FileResponse
 import os
 import sys
 import time
+import json
 from jose import jwt
 from datetime import datetime
 from pathlib import Path
@@ -23,6 +24,7 @@ from database import engine, Base
 from sqlalchemy import inspect, text
 from routes import auth_routes, scan_routes, extended_scan_routes, tools_routes, redteam_routes, blueteam_routes, payment_routes, user_routes, admin_routes, viggio_shield_routes
 from utils.email_service import email_service
+from models.public_stats import PublicStats
 
 tables = []
 try:
@@ -30,11 +32,10 @@ try:
     tables = inspector.get_table_names()
 except Exception:
     tables = []
-if not tables:
-    try:
-        Base.metadata.create_all(bind=engine)
-    except Exception:
-        pass
+try:
+    Base.metadata.create_all(bind=engine)
+except Exception:
+    pass
 
 app = FastAPI(
     title="Iron Net API",
@@ -105,6 +106,7 @@ RATE_LIMIT_CACHE = {}
 from database import SessionLocal
 from config import settings
 from models.user import User
+from models.scan import Scan
 
 @app.middleware("http")
 async def rate_limit_middleware(request: Request, call_next):
@@ -176,6 +178,52 @@ async def rate_limit_middleware(request: Request, call_next):
 @app.get("/api/health")
 def health_check():
     return {"status": "healthy", "message": "Iron Net API is running"}
+
+@app.get("/api/public/stats")
+def public_stats():
+    """Retorna estatísticas públicas exibidas na landing page."""
+    db = SessionLocal()
+    try:
+        total_users = db.query(User).count()
+        scans = db.query(Scan).all()
+        total_vulnerabilities = 0
+
+        for scan in scans:
+            if not scan.results:
+                continue
+            try:
+                results = json.loads(scan.results)
+            except (TypeError, ValueError):
+                continue
+
+            if isinstance(results.get("total_vulnerabilities"), (int, float)):
+                total_vulnerabilities += int(results["total_vulnerabilities"])
+            elif isinstance(results.get("summary"), dict) and isinstance(
+                results["summary"].get("total_vulnerabilities"), (int, float)
+            ):
+                total_vulnerabilities += int(results["summary"]["total_vulnerabilities"])
+            elif isinstance(results.get("vulnerabilities"), list):
+                total_vulnerabilities += len(results["vulnerabilities"])
+
+        accumulated = db.query(PublicStats).filter(PublicStats.id == 1).first()
+        if not accumulated:
+            accumulated = PublicStats(id=1, users=0, scans=0, vulnerabilities=0)
+            db.add(accumulated)
+
+        accumulated.users = max(accumulated.users or 0, total_users)
+        accumulated.scans = max(accumulated.scans or 0, len(scans))
+        accumulated.vulnerabilities = max(
+            accumulated.vulnerabilities or 0, total_vulnerabilities
+        )
+        db.commit()
+
+        return {
+            "users": accumulated.users,
+            "scans": accumulated.scans,
+            "vulnerabilities": accumulated.vulnerabilities,
+        }
+    finally:
+        db.close()
 
 @app.get("/api/uptime")
 def uptime():

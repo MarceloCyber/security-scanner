@@ -73,8 +73,9 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
             return RedirectResponse(url=str(https_url), status_code=308)
 
         response = await call_next(request)
-        response.headers.pop("Server", None)
-        response.headers.pop("X-Powered-By", None)
+        for header in ("server", "x-powered-by"):
+            if header in response.headers:
+                del response.headers[header]
         response.headers.setdefault("X-Content-Type-Options", "nosniff")
         response.headers.setdefault("X-Frame-Options", "DENY")
         response.headers.setdefault("Referrer-Policy", "no-referrer")

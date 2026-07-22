@@ -39,9 +39,9 @@ MERCADOPAGO_WEBHOOK_SECRET = os.getenv("MERCADOPAGO_WEBHOOK_SECRET", "")
 
 # Preços dos planos (em centavos para Stripe)
 PLAN_PRICES = {
-    "starter": 4990,      # R$ 49.90
-    "professional": 14990, # R$ 149.90
-    "enterprise": 49990    # R$ 499.90
+    "starter": 18990,       # R$ 189.90
+    "professional": 43990,  # R$ 439.90
+    "enterprise": None       # Preço personalizado
 }
 
 # Rate limiting simples por usuário
@@ -138,7 +138,9 @@ async def create_checkout_session(
     plan = data.get("plan", "starter")
     payment_method = data.get("payment_method", "credit-card")
 
-    if plan not in PLAN_PRICES:
+    if plan not in PLAN_PRICES or PLAN_PRICES[plan] is None:
+        if plan == "enterprise":
+            raise HTTPException(status_code=400, detail="O plano Enterprise possui preço personalizado. Entre em contato com vendas.")
         raise HTTPException(status_code=400, detail="Plano inválido")
 
     try:
@@ -303,7 +305,9 @@ async def create_checkout_registration(request: Request, db: Session = Depends(g
     full_name = (data.get("full_name") or "").strip()
     plan = data.get("selected_plan") or "starter"
 
-    if plan == "free" or plan not in PLAN_PRICES:
+    if plan == "free" or plan not in PLAN_PRICES or PLAN_PRICES[plan] is None:
+        if plan == "enterprise":
+            raise HTTPException(status_code=400, detail="O plano Enterprise possui preço personalizado. Entre em contato com vendas.")
         raise HTTPException(status_code=400, detail="Plano inválido para checkout")
     if not STRIPE_CONFIGURED:
         raise HTTPException(status_code=500, detail="Stripe não configurado")
@@ -486,7 +490,7 @@ async def stripe_webhook(request: Request, background_tasks: BackgroundTasks, db
                         upgrade_user_plan(user, plan, 1, db)
                     user.stripe_subscription_id = subscription_id
                     db.commit()
-                    plan_prices = {'starter': 49.90, 'professional': 149.90, 'enterprise': 499.90}
+                    plan_prices = {'starter': 189.90, 'professional': 439.90}
                     background_tasks.add_task(
                         email_service.send_subscription_confirmation,
                         user.email,

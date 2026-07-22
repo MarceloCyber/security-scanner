@@ -1,0 +1,1881 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Viggio Shield - Monitoramento de Segurança</title>
+    <link rel="stylesheet" href="/css/modern-style.css?v=6.2">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* Melhorias visuais avançadas */
+        * {
+            transition: all 0.3s ease;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
+            background-attachment: fixed;
+        }
+        
+        .viggio-container {
+            padding: clamp(12px, 1.6vw, 20px);
+            max-width: 1280px;
+            margin: 0 auto;
+        }
+
+        .viggio-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding: clamp(16px, 2.2vw, 22px);
+            background: rgba(26, 29, 41, 0.92);
+            border-radius: 18px;
+            border: 1px solid rgba(148, 163, 184, 0.16);
+            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.28);
+            backdrop-filter: blur(12px);
+        }
+
+        .viggio-title {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .viggio-title h1 {
+            font-size: clamp(1.75rem, 3vw, 2.2rem);
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin: 0;
+            font-weight: 800;
+            text-shadow: 0 0 30px rgba(102, 126, 234, 0.5);
+        }
+
+        .shield-icon {
+            font-size: clamp(2.35rem, 4vw, 3rem);
+            color: #667eea;
+            animation: pulse 2s infinite, float 3s ease-in-out infinite;
+            filter: drop-shadow(0 0 20px rgba(102, 126, 234, 0.8));
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.7; transform: scale(1.05); }
+        }
+        
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(100%, 230px), 1fr));
+            gap: 14px;
+            margin-bottom: 22px;
+        }
+
+        .stat-card {
+            background: rgba(26, 29, 41, 0.92);
+            padding: 16px 18px;
+            border-radius: 16px;
+            border: 1px solid rgba(148, 163, 184, 0.16);
+            transition: border-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+            box-shadow: 0 8px 18px rgba(0, 0, 0, 0.2);
+            backdrop-filter: blur(10px);
+            position: relative;
+            overflow: hidden;
+            min-width: 0;
+        }
+        
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle at top left, rgba(102, 126, 234, 0.12) 0%, transparent 45%);
+            pointer-events: none;
+        }
+        
+        @keyframes rotate {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        .stat-card:hover {
+            border-color: rgba(102, 126, 234, 0.42);
+            transform: translateY(-3px);
+            box-shadow: 0 14px 30px rgba(0, 0, 0, 0.28);
+        }
+
+        .stat-card.critical {
+            border-color: rgba(239, 68, 68, 0.32);
+            background: rgba(41, 25, 29, 0.92);
+        }
+        
+        .stat-card.critical::before {
+            background: radial-gradient(circle, rgba(239, 68, 68, 0.1) 0%, transparent 70%);
+        }
+
+        .stat-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .stat-icon {
+            width: 44px;
+            height: 44px;
+            border-radius: 12px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(102, 126, 234, 0.12);
+            font-size: 1.25em;
+            opacity: 0.95;
+            filter: none;
+        }
+
+        .stat-value {
+            font-size: clamp(1.55rem, 4vw, 2rem);
+            font-weight: 800;
+            color: #667eea;
+            text-shadow: none;
+            position: relative;
+            z-index: 1;
+            line-height: 1.05;
+            overflow-wrap: anywhere;
+        }
+
+        .stat-value.stat-percent {
+            font-size: clamp(1.45rem, 3.4vw, 1.78rem);
+            white-space: nowrap;
+            letter-spacing: 0;
+        }
+
+        .stat-value.critical {
+            color: #ef4444;
+            text-shadow: none;
+        }
+
+        .stat-label {
+            color: #b8c4d8;
+            font-size: 0.78em;
+            margin-top: 6px;
+            font-weight: 650;
+            position: relative;
+            z-index: 1;
+            line-height: 1.3;
+            overflow-wrap: anywhere;
+            text-transform: uppercase;
+            letter-spacing: 0;
+        }
+
+        .stat-label.stat-label-soft {
+            color: #9bdcaf;
+            font-size: 0.76em;
+            text-transform: none;
+            font-weight: 650;
+            white-space: nowrap;
+            display: block;
+            max-width: 100%;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .targets-section, .incidents-section {
+            background: rgba(26, 29, 41, 0.92);
+            padding: clamp(18px, 2.4vw, 24px);
+            border-radius: 18px;
+            margin-bottom: 22px;
+            border: 1px solid rgba(148, 163, 184, 0.14);
+            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.26);
+            backdrop-filter: blur(12px);
+        }
+        .appsec-nav { display:flex; gap:8px; overflow:auto; padding:10px; margin-bottom:20px; background:rgba(26,29,41,.92); border:1px solid rgba(148,163,184,.16); border-radius:14px; }
+        .appsec-nav button { white-space:nowrap; border:0; padding:10px 14px; border-radius:9px; color:#b8c4d8; background:transparent; cursor:pointer; font-weight:700; }
+        .appsec-nav button:hover,.appsec-nav button.active { background:rgba(102,126,234,.2); color:#fff; }
+        .appsec-workspace { display:none; background:rgba(26,29,41,.95); border:1px solid rgba(148,163,184,.16); border-radius:18px; padding:22px; margin-bottom:22px; }
+        .appsec-workspace.active { display:block; }
+        .appsec-grid { display:grid; grid-template-columns:minmax(280px,.8fr) minmax(0,1.2fr); gap:18px; }
+        .appsec-panel { border:1px solid rgba(148,163,184,.14); border-radius:14px; padding:18px; background:rgba(255,255,255,.025); }
+        .appsec-textarea { width:100%; min-height:260px; resize:vertical; font-family:monospace; }
+        .appsec-findings { display:grid; gap:12px; max-height:650px; overflow:auto; }
+        .appsec-finding { border-left:4px solid #eab308; background:rgba(255,255,255,.035); padding:14px; border-radius:9px; }
+        .appsec-finding.critical { border-color:#ef4444 }.appsec-finding.high { border-color:#f59e0b }.appsec-finding.low { border-color:#10b981 }
+        .appsec-tags { display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 }.appsec-tags span { background:rgba(102,126,234,.16);padding:3px 7px;border-radius:6px;font-size:.75rem;color:#c7d2fe }
+        .info-tooltip { position:relative; cursor:help !important; border-bottom:1px dotted #c7d2fe; }
+        .info-tooltip:hover::after { content:attr(data-tooltip); position:absolute; z-index:20; left:0; top:calc(100% + 7px); width:260px; padding:9px 11px; border-radius:8px; background:#111827; color:#e5e7eb; border:1px solid #4b5563; box-shadow:0 8px 20px rgba(0,0,0,.35); font-size:.78rem; line-height:1.35; white-space:normal; text-align:left; pointer-events:none; }
+        @media(max-width:850px){.appsec-grid{grid-template-columns:1fr}}
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 18px;
+        }
+
+        .section-title {
+            font-size: clamp(1.25rem, 2vw, 1.55rem);
+            color: #fff;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-weight: 700;
+        }
+        
+        .section-title i {
+            color: #667eea;
+            filter: drop-shadow(0 0 10px rgba(102, 126, 234, 0.6));
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 14px 28px;
+            border-radius: 12px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.3);
+            font-size: 0.92em;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(102, 126, 234, 0.45);
+        }
+        
+        .btn-primary:active {
+            transform: scale(0.98);
+        }
+
+        .targets-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 18px;
+        }
+
+        .target-card {
+            background: rgba(26, 29, 41, 0.94);
+            padding: 18px;
+            border-radius: 16px;
+            border: 1px solid rgba(148, 163, 184, 0.16);
+            transition: border-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+            box-shadow: 0 8px 18px rgba(0, 0, 0, 0.2);
+            backdrop-filter: blur(10px);
+            position: relative;
+            overflow: hidden;
+            min-width: 0;
+        }
+        
+        .target-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 3px;
+            background: linear-gradient(90deg, #667eea, rgba(102, 126, 234, 0.15));
+            opacity: 0.8;
+        }
+        
+        .target-card:hover::before {
+            opacity: 1;
+        }
+
+        .target-card:hover {
+            border-color: rgba(102, 126, 234, 0.42);
+            transform: translateY(-3px);
+            box-shadow: 0 14px 30px rgba(0, 0, 0, 0.28);
+        }
+
+        .target-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 15px;
+            position: relative;
+            z-index: 1;
+            min-width: 0;
+        }
+
+        .target-header > div {
+            min-width: 0;
+            width: 100%;
+        }
+
+        .target-name {
+            font-size: 1.08em;
+            font-weight: 700;
+            color: #fff;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            line-height: 1.25;
+            overflow-wrap: anywhere;
+            word-break: break-word;
+        }
+        
+        .target-name i {
+            color: #667eea;
+            filter: none;
+            flex: 0 0 auto;
+        }
+
+        .target-type {
+            background: rgba(102, 126, 234, 0.14);
+            padding: 5px 10px;
+            border-radius: 999px;
+            font-size: 0.72em;
+            color: #a8b8ea;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0;
+            border: 1px solid rgba(102, 126, 234, 0.24);
+            display: inline-block;
+            max-width: 100%;
+            line-height: 1.2;
+            white-space: normal;
+            overflow-wrap: anywhere;
+        }
+        
+        .status-badge {
+            padding: 5px 10px;
+            border-radius: 999px;
+            font-size: 0.72em;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0;
+            margin-left: 8px;
+            display: inline-block;
+            line-height: 1.2;
+            white-space: normal;
+        }
+        
+        .status-badge.active {
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.3) 0%, rgba(5, 150, 105, 0.3) 100%);
+            color: #6ee7b7;
+            border: 1px solid rgba(16, 185, 129, 0.4);
+        }
+        
+        .status-badge.paused {
+            background: linear-gradient(135deg, rgba(245, 158, 11, 0.3) 0%, rgba(217, 119, 6, 0.3) 100%);
+            color: #fcd34d;
+            border: 1px solid rgba(245, 158, 11, 0.4);
+        }
+
+        .target-address {
+            color: #aebacf;
+            font-size: 0.9em;
+            margin-bottom: 14px;
+            word-break: break-all;
+            font-weight: 500;
+            position: relative;
+            z-index: 1;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            line-height: 1.35;
+            min-width: 0;
+        }
+
+        .target-address i {
+            flex: 0 0 auto;
+        }
+        
+        .target-address i {
+            color: #667eea;
+        }
+
+        .target-meta {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin: 12px 0 14px;
+            padding: 10px 12px;
+            background: rgba(15, 23, 42, 0.34);
+            border: 1px solid rgba(148, 163, 184, 0.12);
+            border-radius: 14px;
+            color: #9aa8bd;
+            font-size: 0.84em;
+            line-height: 1.35;
+            overflow-wrap: anywhere;
+        }
+
+        .target-meta i {
+            color: #667eea;
+            flex: 0 0 auto;
+        }
+
+        .target-stats {
+            display: flex;
+            justify-content: space-around;
+            gap: 10px;
+            padding: 12px;
+            border: 1px solid rgba(148, 163, 184, 0.12);
+            margin-bottom: 16px;
+            position: relative;
+            z-index: 1;
+            background: rgba(15, 23, 42, 0.34);
+            border-radius: 16px;
+        }
+
+        .target-stat {
+            text-align: center;
+            min-width: 0;
+            flex: 1;
+        }
+
+        .target-stat-value {
+            font-size: clamp(1.18rem, 5vw, 1.5em);
+            font-weight: 800;
+            color: #48bb78;
+            text-shadow: none;
+            line-height: 1.1;
+            overflow-wrap: anywhere;
+        }
+
+        .target-stat-label {
+            font-size: 0.8em;
+            color: #9aa8bd;
+            margin-top: 5px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0;
+            line-height: 1.25;
+            overflow-wrap: anywhere;
+        }
+
+        .target-actions {
+            display: flex;
+            gap: 10px;
+            position: relative;
+            z-index: 1;
+            flex-wrap: wrap;
+        }
+
+        .btn-small {
+            flex: 1;
+            min-width: 110px;
+            padding: 9px 12px;
+            border: none;
+            border-radius: 999px;
+            cursor: pointer;
+            font-weight: 700;
+            transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
+            font-size: 0.84em;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            line-height: 1.2;
+            white-space: normal;
+        }
+
+        .btn-check {
+            background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+            color: white;
+        }
+
+        .btn-details {
+            background: linear-gradient(135deg, #667eea 0%, #5568d3 100%);
+            color: white;
+        }
+
+        .btn-delete {
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+            color: white;
+        }
+
+        .btn-small:hover {
+            transform: translateY(-1px);
+            filter: brightness(1.05);
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.32);
+        }
+        
+        .btn-small:active {
+            transform: scale(0.95);
+        }
+
+        .incident-list {
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+        }
+
+        .incident-card {
+            background: linear-gradient(135deg, rgba(45, 55, 72, 0.95) 0%, rgba(26, 29, 41, 0.95) 100%);
+            padding: 25px;
+            border-radius: 16px;
+            border-left: 5px solid;
+            transition: all 0.4s ease;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(10px);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .incident-card::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 100px;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.03));
+        }
+
+        .incident-card.critical { 
+            border-color: #ef4444; 
+            box-shadow: 0 8px 25px rgba(239, 68, 68, 0.3);
+        }
+        .incident-card.high { 
+            border-color: #f59e0b; 
+            box-shadow: 0 8px 25px rgba(245, 158, 11, 0.3);
+        }
+        .incident-card.medium { 
+            border-color: #eab308; 
+            box-shadow: 0 8px 25px rgba(234, 179, 8, 0.3);
+        }
+        .incident-card.low { 
+            border-color: #10b981; 
+            box-shadow: 0 8px 25px rgba(16, 185, 129, 0.3);
+        }
+        
+        .incident-card:hover {
+            transform: translateX(8px);
+            box-shadow: 0 12px 35px rgba(0, 0, 0, 0.4);
+        }
+
+        .incident-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 12px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .incident-title {
+            font-weight: 800;
+            color: #fff;
+            font-size: 1.2em;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .incident-title i {
+            filter: drop-shadow(0 0 5px currentColor);
+        }
+
+        .incident-badge {
+            padding: 6px 16px;
+            border-radius: 10px;
+            font-size: 0.8em;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+
+        .incident-badge.critical { background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: white; }
+        .incident-badge.high { background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white; }
+        .incident-badge.medium { background: linear-gradient(135deg, #eab308 0%, #ca8a04 100%); color: #000; }
+        .incident-badge.low { background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; }
+
+        .incident-details {
+            color: #cbd5e0;
+            font-size: 0.95em;
+            margin: 12px 0;
+            line-height: 1.6;
+            position: relative;
+            z-index: 1;
+        }
+
+        .incident-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            font-size: 0.85em;
+            color: #a0aec0;
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            position: relative;
+            z-index: 1;
+        }
+        
+        .incident-meta span {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .incident-meta i {
+            color: #667eea;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            z-index: 10000;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(5px);
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: linear-gradient(135deg, rgba(26, 29, 41, 0.98) 0%, rgba(45, 55, 72, 0.98) 100%);
+            padding: 35px;
+            border-radius: 20px;
+            max-width: 650px;
+            width: 90%;
+            max-height: 85vh;
+            overflow-y: auto;
+            border: 2px solid rgba(102, 126, 234, 0.4);
+            box-shadow: 0 25px 80px rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(10px);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid rgba(102, 126, 234, 0.3);
+        }
+
+        .modal-title {
+            font-size: 1.8em;
+            color: #fff;
+            font-weight: 800;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .modal-close {
+            background: rgba(239, 68, 68, 0.2);
+            border: 2px solid rgba(239, 68, 68, 0.4);
+            color: #ef4444;
+            font-size: 1.5em;
+            cursor: pointer;
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+        
+        .modal-close:hover {
+            background: rgba(239, 68, 68, 0.4);
+            transform: rotate(90deg) scale(1.1);
+        }
+
+        .form-group {
+            margin-bottom: 22px;
+        }
+
+        .form-label {
+            display: block;
+            color: #e2e8f0;
+            margin-bottom: 10px;
+            font-weight: 700;
+            font-size: 0.95em;
+        }
+
+        .form-input, .form-select, .form-textarea {
+            width: 100%;
+            padding: 14px;
+            background: rgba(45, 55, 72, 0.8);
+            border: 2px solid rgba(102, 126, 234, 0.3);
+            border-radius: 10px;
+            color: #fff;
+            font-size: 1em;
+            transition: all 0.3s ease;
+        }
+
+        .form-input:focus, .form-select:focus, .form-textarea:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 20px rgba(102, 126, 234, 0.3);
+            background: rgba(45, 55, 72, 0.95);
+        }
+
+        .form-textarea {
+            resize: vertical;
+            min-height: 120px;
+        }
+
+        .form-checkbox {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 80px 30px;
+            color: #cbd5e0;
+            background: rgba(45, 55, 72, 0.5);
+            border-radius: 16px;
+            border: 2px dashed rgba(102, 126, 234, 0.3);
+        }
+
+        .empty-state i {
+            font-size: 5em;
+            margin-bottom: 25px;
+            opacity: 0.6;
+            filter: drop-shadow(0 0 15px currentColor);
+            animation: float 3s ease-in-out infinite;
+        }
+        
+        .empty-state h3 {
+            font-size: 1.5em;
+            margin-bottom: 10px;
+            font-weight: 800;
+        }
+        
+        .empty-state p {
+            font-size: 1em;
+            opacity: 0.8;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 60px;
+            color: #cbd5e0;
+        }
+
+        .loading i {
+            font-size: 4em;
+            animation: spin 1s linear infinite;
+            color: #667eea;
+            filter: drop-shadow(0 0 20px rgba(102, 126, 234, 0.8));
+        }
+
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 5px 10px;
+            border-radius: 999px;
+            font-size: 0.72em;
+            font-weight: 700;
+        }
+
+        .status-badge.active {
+            background: rgba(16, 185, 129, 0.16);
+            color: #6ee7b7;
+            border: 1px solid rgba(16, 185, 129, 0.28);
+        }
+
+        .status-badge.paused {
+            background: rgba(245, 158, 11, 0.16);
+            color: #fcd34d;
+            border: 1px solid rgba(245, 158, 11, 0.28);
+        }
+
+        .status-badge.inactive {
+            background: rgba(107, 114, 128, 0.18);
+            color: #d1d5db;
+            border: 1px solid rgba(107, 114, 128, 0.28);
+        }
+
+        @media (max-width: 768px) {
+            .targets-grid {
+                grid-template-columns: 1fr;
+            }
+            .stats-grid {
+                grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
+            }
+        }
+
+        @media (max-width: 420px) {
+            .stat-card {
+                padding: 14px 16px;
+                border-radius: 14px;
+            }
+
+            .stat-icon {
+                width: 36px;
+                height: 36px;
+                border-radius: 10px;
+                font-size: 1.1em;
+            }
+
+            .stat-value {
+                font-size: clamp(1.45rem, 11vw, 1.75rem);
+            }
+
+            .stat-value.stat-percent {
+                font-size: clamp(1.35rem, 9vw, 1.55rem);
+            }
+
+        }
+    </style>
+</head>
+<body>
+    <div class="viggio-container">
+        <!-- Header -->
+        <div class="viggio-header">
+            <div class="viggio-title">
+                <i class="fas fa-shield-alt shield-icon"></i>
+                <div>
+                    <h1>Viggio Shield</h1>
+                    <p style="color: #a0aec0; margin: 5px 0 0 0;">Monitoramento de Segurança em Tempo Real</p>
+                </div>
+            </div>
+            <div>
+                <button class="btn-primary" onclick="openAddTargetModal()">
+                    <i class="fas fa-plus"></i> Adicionar Alvo
+                </button>
+            </div>
+        </div>
+
+        <nav class="appsec-nav" aria-label="Módulos de segurança">
+            <button class="active" onclick="showViggioOverview(this)"><i class="fas fa-chart-pie"></i> Visão Geral</button>
+            <button onclick="openAppSecModule('sast',this)"><i class="fas fa-code"></i> SAST & Secrets</button>
+            <button onclick="openAppSecModule('sca',this)"><i class="fas fa-cubes"></i> SCA</button>
+            <button onclick="openAppSecModule('iac',this)"><i class="fas fa-cloud"></i> IaC Security</button>
+            <button onclick="openAppSecModule('container',this)"><i class="fab fa-docker"></i> Containers</button>
+            <button onclick="openAppSecModule('api_inventory',this)"><i class="fas fa-diagram-project"></i> API Security</button>
+            <button onclick="openAppSecModule('graphql',this)"><i class="fas fa-project-diagram"></i> GraphQL/DAST</button>
+            <button onclick="openAppSecModule('sbom',this)"><i class="fas fa-list"></i> SBOM</button>
+            <button onclick="openAppSecModule('governance',this)"><i class="fas fa-gavel"></i> Policies & CI/CD</button>
+        </nav>
+
+        <section class="appsec-workspace" id="appsecWorkspace">
+            <div class="section-header">
+                <div><h2 class="section-title" id="appsecTitle"><i class="fas fa-code"></i> SAST & Secrets</h2><p id="appsecDescription" style="color:#a0aec0;margin-top:6px">Análise estática e detecção de segredos.</p></div>
+                <button class="btn-small" onclick="closeAppSecWorkspace()"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="appsec-grid">
+                <div class="appsec-panel">
+                    <input type="hidden" id="appsecScanType" value="sast">
+                    <div class="form-group" id="appsecFilenameGroup"><label class="form-label">Nome do arquivo</label><input class="form-input" id="appsecFilename" value="app.py" placeholder="app.py, package.json, main.tf..."></div>
+                    <div class="form-group" id="appsecUrlGroup" style="display:none"><label class="form-label">Endpoint autorizado</label><input class="form-input" id="appsecTargetUrl" placeholder="https://api.exemplo.com/graphql"></div>
+                    <div class="form-group" id="appsecContentGroup"><label class="form-label">Código ou configuração</label><textarea class="form-input appsec-textarea" id="appsecContent" spellcheck="false" placeholder="Cole aqui o conteúdo autorizado para análise..."></textarea></div>
+                    <div class="form-group" id="appsecPolicyGroup"><label class="form-label">Quality gate</label><select class="form-select" id="appsecFailOn"><option value="critical">Bloquear somente críticos</option><option value="high">Bloquear alto e crítico</option><option value="medium">Bloquear médio, alto e crítico</option><option value="low">Bloquear qualquer achado</option></select></div>
+                    <div id="appsecGuide" class="appsec-finding low" style="margin-bottom:14px"></div>
+                    <button class="btn-small" style="margin-bottom:10px" onclick="loadAppSecExample()"><i class="fas fa-lightbulb"></i> Carregar exemplo seguro</button>
+                    <button class="btn-small" style="margin:0 0 10px 6px" onclick="clearAppSecModule()"><i class="fas fa-eraser"></i> Limpar este módulo</button>
+                    <button class="btn-primary" style="width:100%" onclick="runAppSecWorkspaceScan()"><i class="fas fa-play"></i> Executar análise</button>
+                </div>
+                <div class="appsec-panel">
+                    <div id="appsecSummary" class="stats-grid" style="margin-bottom:16px"></div>
+                    <div id="appsecResults" class="appsec-findings"><div class="empty-state"><i class="fas fa-microscope"></i><h3>Pronto para analisar</h3><p>Configure o scanner e execute a análise.</p></div></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Stats Cards -->
+        <div class="stats-grid viggio-overview" id="statsGrid">
+            <div class="stat-card">
+                <div class="stat-header">
+                    <div class="stat-icon" style="color: #667eea;">
+                        <i class="fas fa-crosshairs"></i>
+                    </div>
+                </div>
+                <div class="stat-value" id="totalTargets">0</div>
+                <div class="stat-label">Alvos Monitorados</div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-header">
+                    <div class="stat-icon" style="color: #48bb78;">
+                        <i class="fas fa-chart-line"></i>
+                    </div>
+                </div>
+                <div class="stat-value stat-percent" style="color: #48bb78;" id="avgUptime">100%</div>
+                <div class="stat-label stat-label-soft">Uptime</div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-header">
+                    <div class="stat-icon" style="color: #f59e0b;">
+                        <i class="fas fa-exclamation-triangle"></i>
+                    </div>
+                </div>
+                <div class="stat-value" style="color: #f59e0b;" id="openIncidents">0</div>
+                <div class="stat-label">Incidentes Abertos</div>
+            </div>
+
+            <div class="stat-card critical">
+                <div class="stat-header">
+                    <div class="stat-icon" style="color: #ef4444;">
+                        <i class="fas fa-fire"></i>
+                    </div>
+                </div>
+                <div class="stat-value critical" id="criticalIncidents">0</div>
+                <div class="stat-label">Incidentes Críticos</div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-header">
+                    <div class="stat-icon" style="color: #ef4444;">
+                        <i class="fas fa-ban"></i>
+                    </div>
+                </div>
+                <div class="stat-value" style="color: #ef4444;" id="blockedIPs">0</div>
+                <div class="stat-label">IPs Bloqueados</div>
+            </div>
+        </div>
+
+        <!-- Alvos de Monitoramento -->
+        <div class="targets-section viggio-overview">
+            <div class="section-header">
+                <h2 class="section-title">
+                    <i class="fas fa-bullseye"></i> Alvos de Monitoramento
+                </h2>
+            </div>
+            <div class="targets-grid" id="targetsGrid">
+                <div class="loading">
+                    <i class="fas fa-spinner"></i>
+                    <p>Carregando alvos...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Incidentes Recentes -->
+        <div class="incidents-section viggio-overview">
+            <div class="section-header">
+                <h2 class="section-title">
+                    <i class="fas fa-exclamation-circle"></i> Incidentes Recentes
+                </h2>
+                <select id="severityFilter" class="form-select" style="width: auto;" onchange="loadIncidents()">
+                    <option value="">Todas as Severidades</option>
+                    <option value="critical">Crítico</option>
+                    <option value="high">Alto</option>
+                    <option value="medium">Médio</option>
+                    <option value="low">Baixo</option>
+                </select>
+            </div>
+            <div class="incident-list" id="incidentsList">
+                <div class="loading">
+                    <i class="fas fa-spinner"></i>
+                    <p>Carregando incidentes...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Detalhes de achado AppSec -->
+    <div class="modal" id="appsecDetailModal">
+        <div class="modal-content" style="max-width:760px;max-height:90vh;overflow:auto">
+            <div class="modal-header"><h2 class="modal-title"><i class="fas fa-bug"></i> Detalhes do achado</h2><button class="modal-close" onclick="closeAppSecDetail()"><i class="fas fa-times"></i></button></div>
+            <div id="appsecDetailContent" style="padding:24px"></div>
+        </div>
+    </div>
+
+    <!-- Modal: Avaliação profunda -->
+    <div class="modal" id="targetDetailsModal">
+        <div class="modal-content" style="max-width:980px;max-height:90vh;overflow:auto">
+            <div class="modal-header">
+                <h2 class="modal-title"><i class="fas fa-layer-group"></i> Avaliação de Segurança em Camadas</h2>
+                <button class="modal-close" onclick="closeTargetDetails()"><i class="fas fa-times"></i></button>
+            </div>
+            <div id="targetDetailsContent" style="padding:24px"></div>
+        </div>
+    </div>
+
+    <!-- Modal: Adicionar Alvo -->
+    <div class="modal" id="addTargetModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title"><i class="fas fa-plus-circle"></i> Adicionar Alvo de Monitoramento</h2>
+                <button class="modal-close" onclick="closeAddTargetModal()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <form id="addTargetForm" onsubmit="submitAddTarget(event)">
+                <div class="form-group">
+                    <label class="form-label">Nome do Alvo *</label>
+                    <input type="text" class="form-input" name="name" required placeholder="Ex: Servidor de Produção">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Tipo *</label>
+                    <select class="form-select" name="target_type" required>
+                        <option value="server">Servidor</option>
+                        <option value="network">Rede</option>
+                        <option value="application">Aplicação Web</option>
+                        <option value="api">API</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Endereço (IP/URL/Domínio) *</label>
+                    <input type="text" class="form-input" name="target_address" required placeholder="Ex: 192.168.1.1 ou https://exemplo.com">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Portas a Monitorar (separadas por vírgula)</label>
+                    <input type="text" class="form-input" name="monitoring_ports" placeholder="Ex: 80,443,22" pattern="^\s*\d{1,5}(\s*,\s*\d{1,5})*\s*$">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Intervalo de Verificação (segundos)</label>
+                    <input type="number" class="form-input" name="check_interval" value="300" min="60" max="86400">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Limite de Falhas para Alerta</label>
+                    <input type="number" class="form-input" name="alert_threshold" value="3" min="1" max="20">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-checkbox">
+                        <input type="checkbox" name="enable_email_alerts" checked>
+                        <span>Alertas por E-mail</span>
+                    </label>
+                </div>
+
+                <div class="form-group">
+                    <button type="submit" class="btn-primary" style="width: 100%;">
+                        <i class="fas fa-save"></i> Criar Alvo
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="/js/confirm-dialog.js?v=1.0"></script>
+    <script>
+        // ============= FUNÇÕES AUXILIARES =============
+        
+        function getToken() {
+            return localStorage.getItem('access_token') || 
+                   sessionStorage.getItem('access_token') || 
+                   localStorage.getItem('token') || 
+                   sessionStorage.getItem('token');
+        }
+
+        function securityEscape(value) {
+            return String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+        }
+
+        const appsecModules = {
+            sast: ['SAST & Secrets', 'Análise estática multilíngue, fluxo inseguro e segredos expostos.', 'app.py'],
+            sca: ['Software Composition Analysis', 'Dependências, versões desatualizadas, CVEs e risco de componentes.', 'requirements.txt'],
+            iac: ['IaC Security', 'Terraform, Kubernetes, CloudFormation e configurações cloud inseguras.', 'main.tf'],
+            container: ['Container Security', 'Dockerfile e Compose: privilégios, segredos, imagens e configuração.', 'Dockerfile'],
+            api_inventory: ['API Security', 'Descoberta de endpoints no código para inventário de APIs shadow e não documentadas.', 'app.py'],
+            graphql: ['GraphQL DAST', 'Testes dinâmicos de introspecção, profundidade e batching no endpoint autorizado.', ''],
+            sbom: ['Software Bill of Materials', 'Geração real de SBOM CycloneDX 1.6 para npm e Python.', 'package.json']
+            ,governance: ['Policies & CI/CD', 'Defina a regra de bloqueio do pipeline e gere uma configuração de integração contínua.', '']
+        };
+        const appsecState = {};
+        let currentAppSecModule = null;
+        const appsecGuides = {
+            sast: 'Como usar: informe o nome do arquivo e cole apenas código que você possui ou tem autorização para analisar. Execute para ver linhas afetadas e sugestões de correção.',
+            sca: 'Como usar: cole um requirements.txt ou package.json e mantenha o nome do arquivo correspondente. O scanner identifica versões e CVEs conhecidos.',
+            iac: 'Como usar: cole Terraform, YAML Kubernetes ou configuração cloud. Use o nome do manifesto para documentar a origem do resultado.',
+            container: 'Como usar: cole um Dockerfile ou docker-compose.yml. Para Compose, use um nome que contenha “compose”.',
+            api_inventory: 'Como usar: cole código de rotas da aplicação. O módulo gera um inventário dos endpoints identificados para comparação com sua documentação OpenAPI.',
+            graphql: 'Como usar: informe somente um endpoint GraphQL que você controla ou tem autorização explícita para testar.',
+            sbom: 'Como usar: informe package.json ou requirements.txt. O resultado é uma SBOM CycloneDX 1.6 que pode ser exportada ou arquivada.',
+            governance: 'Como usar: defina o limite no Quality Gate antes de rodar um scanner. O resultado retorna passed=true/false; use isso para aprovar ou bloquear seu pipeline.'
+        };
+        const appsecExamples = {
+            sast: {filename:'app.py',content:'import os\n\n# Exemplo educacional: será sinalizado como segredo hardcoded\napi_key = "example-key-for-scanner-only"\n'},
+            sca: {filename:'package.json',content:'{\n  "dependencies": {\n    "lodash": "4.17.15"\n  }\n}'},
+            iac: {filename:'main.tf',content:'resource "aws_security_group" "example" {\n  ingress { cidr_blocks = ["0.0.0.0/0"] }\n}'},
+            container: {filename:'Dockerfile',content:'FROM ubuntu:latest\nENV PASSWORD=example-only\nRUN curl -k https://example.invalid\n'},
+            api_inventory: {filename:'app.py',content:'@app.get("/users/{id}")\ndef get_user(id):\n    return {}\n\n@app.post("/orders")\ndef create_order():\n    return {}\n'},
+            sbom: {filename:'package.json',content:'{\n  "name": "example-app",\n  "dependencies": { "lodash": "4.17.15" }\n}'}
+        };
+
+        function saveAppSecState() {
+            if (!currentAppSecModule || currentAppSecModule === 'governance') return;
+            appsecState[currentAppSecModule] = {
+                filename: document.getElementById('appsecFilename').value,
+                content: document.getElementById('appsecContent').value,
+                targetUrl: document.getElementById('appsecTargetUrl').value,
+                failOn: document.getElementById('appsecFailOn').value,
+                summary: document.getElementById('appsecSummary').innerHTML,
+                results: document.getElementById('appsecResults').innerHTML,
+                findings: window.lastAppSecFindings || []
+            };
+        }
+
+        function loadAppSecExample() {
+            const example = appsecExamples[currentAppSecModule];
+            if (!example) return showToast('Este módulo usa configuração de integração, não conteúdo para colar.', 'info');
+            document.getElementById('appsecFilename').value = example.filename;
+            document.getElementById('appsecContent').value = example.content;
+            saveAppSecState();
+            showToast('Exemplo carregado. Execute a análise para ver o fluxo.', 'success');
+        }
+
+        function clearAppSecModule() {
+            if (!currentAppSecModule || currentAppSecModule === 'governance') return;
+            appsecState[currentAppSecModule] = {filename: appsecModules[currentAppSecModule][2], content: '', targetUrl: '', failOn: 'critical', summary: '', results: ''};
+            document.getElementById('appsecFilename').value = appsecState[currentAppSecModule].filename;
+            document.getElementById('appsecContent').value = '';
+            document.getElementById('appsecTargetUrl').value = '';
+            document.getElementById('appsecFailOn').value = 'critical';
+            document.getElementById('appsecSummary').innerHTML = '';
+            document.getElementById('appsecResults').innerHTML = '<div class="empty-state"><i class="fas fa-microscope"></i><h3>Módulo limpo</h3><p>Os outros módulos não foram alterados.</p></div>';
+            showToast('Somente este módulo foi limpo.', 'success');
+        }
+
+        function setAppSecNavActive(button) {
+            document.querySelectorAll('.appsec-nav button').forEach(item => item.classList.remove('active'));
+            if (button) button.classList.add('active');
+        }
+
+        function openAppSecModule(type, button) {
+            const config = appsecModules[type];
+            saveAppSecState();
+            currentAppSecModule = type;
+            setAppSecNavActive(button);
+            document.querySelectorAll('.viggio-overview').forEach(item => item.style.display = 'none');
+            document.getElementById('appsecWorkspace').classList.add('active');
+            document.getElementById('appsecScanType').value = type;
+            document.getElementById('appsecTitle').innerHTML = `<i class="fas fa-shield-halved"></i> ${securityEscape(config[0])}`;
+            document.getElementById('appsecDescription').textContent = config[1];
+            const saved = appsecState[type] || {filename: config[2], content: '', targetUrl: '', failOn: 'critical', summary: '', results: ''};
+            document.getElementById('appsecFilename').value = saved.filename;
+            document.getElementById('appsecContent').value = saved.content;
+            document.getElementById('appsecTargetUrl').value = saved.targetUrl;
+            document.getElementById('appsecFailOn').value = saved.failOn;
+            window.lastAppSecFindings = saved.findings || [];
+            document.getElementById('appsecGuide').innerHTML = `<strong>Guia de uso</strong><p style="margin:6px 0 0">${securityEscape(appsecGuides[type])}</p>`;
+            document.getElementById('appsecUrlGroup').style.display = type === 'graphql' ? 'block' : 'none';
+            document.getElementById('appsecContentGroup').style.display = type === 'graphql' ? 'none' : 'block';
+            document.getElementById('appsecFilenameGroup').style.display = type === 'graphql' ? 'none' : 'block';
+            document.getElementById('appsecPolicyGroup').style.display = type === 'governance' ? 'none' : 'block';
+            if (type === 'governance') {
+                document.getElementById('appsecContentGroup').style.display = 'none';
+                document.getElementById('appsecFilenameGroup').style.display = 'none';
+                document.getElementById('appsecUrlGroup').style.display = 'none';
+                document.getElementById('appsecSummary').innerHTML = '';
+                document.getElementById('appsecResults').innerHTML = `<div class="appsec-finding low"><strong>Integração passo a passo</strong><ol style="padding-left:20px;line-height:1.8"><li>Em cada scanner, escolha a severidade do Quality Gate.</li><li>Execute o scan via interface ou envie um POST autenticado para <code>/api/viggio-shield/appsec/scan</code>.</li><li>Leia <code>result.quality_gate.passed</code>: <code>false</code> deve encerrar o job com erro.</li><li>Publique <code>result.sarif</code> no seu provedor de CI para centralizar os achados.</li><li>Guarde <code>VIGGIO_URL</code> e <code>VIGGIO_TOKEN</code> como secrets do repositório.</li></ol><button class="btn-primary" onclick="downloadViggioCiTemplate()"><i class="fas fa-download"></i> Baixar template GitHub Actions</button></div>`;
+                return;
+            }
+            document.getElementById('appsecSummary').innerHTML = saved.summary;
+            document.getElementById('appsecResults').innerHTML = saved.results || '<div class="empty-state"><i class="fas fa-microscope"></i><h3>Pronto para analisar</h3><p>Configure o scanner e execute a análise.</p></div>';
+            window.scrollTo({top:0,behavior:'smooth'});
+        }
+
+        function showViggioOverview(button) {
+            setAppSecNavActive(button);
+            document.getElementById('appsecWorkspace').classList.remove('active');
+            document.querySelectorAll('.viggio-overview').forEach(item => item.style.display = '');
+        }
+
+        function closeAppSecWorkspace() {
+            showViggioOverview(document.querySelector('.appsec-nav button'));
+        }
+
+        function appsecFindingCard(item) {
+            const findingIndex = (window.lastAppSecFindings || []).push(item) - 1;
+            const severity = String(item.severity || 'INFO').toLowerCase();
+            const cves = item.cves || [];
+            return `<article class="appsec-finding ${securityEscape(severity)}" role="button" tabindex="0" onclick="showAppSecFinding(${findingIndex})" onkeydown="if(event.key==='Enter')showAppSecFinding(${findingIndex})">
+                <div style="display:flex;justify-content:space-between;gap:12px"><strong>${securityEscape(item.type || item.package || 'Achado')}</strong><span class="incident-badge ${securityEscape(severity)}">${securityEscape(severity).toUpperCase()}</span></div>
+                <div class="appsec-tags">${item.scanner ? `<span>${securityEscape(item.scanner)}</span>` : ''}${item.cwe ? `<span class="info-tooltip" data-tooltip="${securityEscape(cweTooltip(item.cwe))}">${securityEscape(item.cwe)}</span>` : ''}${item.owasp ? `<span class="info-tooltip" data-tooltip="${securityEscape(owaspTooltip(item.owasp))}">OWASP ${securityEscape(item.owasp)}</span>` : ''}${item.cvss ? `<span class="info-tooltip" data-tooltip="${securityEscape(cvssTooltip(item.cvss))}">CVSS ${securityEscape(item.cvss)}</span>` : ''}${item.line ? `<span>Linha ${securityEscape(item.line)}</span>` : ''}${cves.map(cve => `<span class="info-tooltip" data-tooltip="Identificador CVE de uma vulnerabilidade publicada. Clique no card para ver a correção sugerida.">${securityEscape(cve)}</span>`).join('')}</div>
+                ${item.latest_version ? `<p style="color:#93c5fd"><strong>Atualização:</strong> ${securityEscape(item.version || 'versão instalada')} → ${securityEscape(item.latest_version)}</p>` : ''}
+                <p>${securityEscape(item.description || '')}</p>
+                ${item.code ? `<pre style="white-space:pre-wrap;background:#0f172a;padding:9px;border-radius:7px;margin-top:8px"><code>${securityEscape(item.code)}</code></pre>` : ''}
+                <p style="color:#86efac;margin-top:9px"><strong>Correção:</strong> ${securityEscape(item.recommendation || 'Revise e corrija o achado conforme a política de segurança.')}</p>
+            </article>`;
+        }
+
+        const cweDescriptions = {'CWE-79':'Cross-Site Scripting: saída controlada pelo usuário pode executar script.','CWE-89':'SQL Injection: entrada pode alterar a consulta ao banco.','CWE-798':'Credencial ou segredo embutido no código.','CWE-284':'Controle de acesso insuficiente.','CWE-22':'Path Traversal: acesso fora do diretório permitido.','CWE-319':'Dados transmitidos sem criptografia.'};
+        const owaspDescriptions = {'A01:2021':'Broken Access Control','A02:2021':'Cryptographic Failures','A03:2021':'Injection','A05:2021':'Security Misconfiguration','A06:2021':'Vulnerable and Outdated Components','A07:2021':'Identification and Authentication Failures'};
+        function cweTooltip(value) { return cweDescriptions[value] || 'Categoria CWE: classificação técnica da fraqueza de segurança.'; }
+        function owaspTooltip(value) { return owaspDescriptions[value] || 'Categoria do OWASP Top 10 relacionada ao achado.'; }
+        function cvssTooltip(value) { return `CVSS ${value}: pontuação de 0 a 10 que estima a severidade técnica. Quanto maior, maior a prioridade.`; }
+
+        async function runAppSecWorkspaceScan() {
+            const scanType = document.getElementById('appsecScanType').value;
+            if (scanType === 'governance') return downloadViggioCiTemplate();
+            const body = {scan_type:scanType, filename:document.getElementById('appsecFilename').value.trim(), content:document.getElementById('appsecContent').value, target_url:document.getElementById('appsecTargetUrl').value.trim(), policy:{name:'Viggio Quality Gate',fail_on:document.getElementById('appsecFailOn').value}};
+            const results = document.getElementById('appsecResults');
+            results.innerHTML = '<div class="loading"><i class="fas fa-spinner"></i><p>Executando scanners...</p></div>';
+            try {
+                const response = await apiRequest('/viggio-shield/appsec/scan', {method:'POST',body:JSON.stringify(body)});
+                const result = response.result || {};
+                const summary = result.summary || {};
+                document.getElementById('appsecSummary').innerHTML = Object.entries(summary).map(([key,value]) => `<div class="stat-card"><div class="stat-value">${securityEscape(value)}</div><div class="stat-label">${securityEscape(key.replaceAll('_',' '))}</div></div>`).join('');
+                const gate = result.quality_gate;
+                if (gate) document.getElementById('appsecSummary').insertAdjacentHTML('afterbegin', `<div class="stat-card ${gate.passed ? '' : 'critical'}"><div class="stat-value" style="color:${gate.passed ? '#48bb78' : '#ef4444'}">${gate.passed ? 'APROVADO' : 'BLOQUEADO'}</div><div class="stat-label">${securityEscape(gate.message)}</div></div>`);
+                if (result.sbom) {
+                    results.innerHTML = `<div class="appsec-finding low"><strong>SBOM CycloneDX 1.6 gerado</strong><pre style="white-space:pre-wrap;max-height:520px;overflow:auto;margin-top:12px"><code>${securityEscape(JSON.stringify(result.sbom,null,2))}</code></pre></div>`;
+                } else if (result.endpoints) {
+                    results.innerHTML = result.endpoints.length ? result.endpoints.map(endpoint => `<div class="appsec-finding"><strong>${securityEscape(endpoint.method)} ${securityEscape(endpoint.path)}</strong><div class="appsec-tags"><span>Linha ${securityEscape(endpoint.line)}</span><span>API não documentada</span></div><p style="color:#fbbf24">Inclua no OpenAPI e valide autenticação, autorização e exposição de dados.</p></div>`).join('') : '<div class="empty-state"><i class="fas fa-check-circle"></i><h3>Nenhum endpoint identificado</h3></div>';
+                } else {
+                    const findings = result.findings || result.vulnerabilities || [];
+                    window.lastAppSecFindings = [];
+                    window.lastViggioSarif = result.sarif || null;
+                    const sarif = result.sarif ? '<button class="btn-small" onclick="downloadSarif(window.lastViggioSarif)"><i class="fas fa-download"></i> Exportar SARIF</button>' : '';
+                    results.innerHTML = `${sarif}${findings.length ? findings.map(appsecFindingCard).join('') : '<div class="empty-state"><i class="fas fa-shield-check"></i><h3>Nenhum achado identificado</h3><p>O conteúdo analisado não correspondeu às regras ativas.</p></div>'}`;
+                }
+                showToast('Análise AppSec concluída.', 'success');
+                saveAppSecState();
+            } catch (error) {
+                results.innerHTML = `<div class="empty-state" style="color:#ef4444"><i class="fas fa-exclamation-triangle"></i><p>${securityEscape(error.message)}</p></div>`;
+                showToast(error.message, 'error');
+            }
+        }
+
+        function showAppSecFinding(index) {
+            const item = (window.lastAppSecFindings || [])[index];
+            if (!item) return;
+            const current = item.version || item.current_version;
+            const latest = item.latest_version || item.recommended_version;
+            document.getElementById('appsecDetailContent').innerHTML = `<div class="appsec-finding ${securityEscape(String(item.severity || 'info').toLowerCase())}">
+                <h3>${securityEscape(item.type || item.package || 'Achado')}</h3>
+                <div class="appsec-tags">${item.scanner ? `<span>${securityEscape(item.scanner)}</span>` : ''}${item.cwe ? `<span class="info-tooltip" data-tooltip="${securityEscape(cweTooltip(item.cwe))}">${securityEscape(item.cwe)}</span>` : ''}${item.owasp ? `<span class="info-tooltip" data-tooltip="${securityEscape(owaspTooltip(item.owasp))}">OWASP ${securityEscape(item.owasp)}</span>` : ''}${item.cvss ? `<span class="info-tooltip" data-tooltip="${securityEscape(cvssTooltip(item.cvss))}">CVSS ${securityEscape(item.cvss)}</span>` : ''}${(item.cves || []).map(cve => `<span class="info-tooltip" data-tooltip="Identificador CVE de uma vulnerabilidade publicada.">${securityEscape(cve)}</span>`).join('')}</div>
+                ${item.package ? `<p><strong>Pacote:</strong> ${securityEscape(item.package)}</p><p><strong>Versão instalada:</strong> ${securityEscape(current || 'não informada')}</p>${latest ? `<p style="color:#86efac"><strong>Versão recomendada:</strong> ${securityEscape(latest)}<br><code>${securityEscape(item.package)}@${securityEscape(latest)}</code></p>` : ''}` : ''}
+                <p><strong>O que foi encontrado:</strong><br>${securityEscape(item.description || '')}</p>
+                ${item.code ? `<p><strong>Evidência:</strong></p><pre style="white-space:pre-wrap;background:#0f172a;padding:10px"><code>${securityEscape(item.code)}</code></pre>` : ''}
+                <p style="color:#86efac"><strong>Como corrigir:</strong><br>${securityEscape(item.recommendation || '')}</p>
+                ${item.fix ? `<p style="color:#bfdbfe"><strong>Sugestão prática:</strong><br>${securityEscape(item.fix.guidance || '')}<br><code>${securityEscape(item.fix.patch_template || '')}</code></p>` : ''}
+                ${item.fix && item.fix.terminal_commands ? `<div style="margin-top:14px"><strong>Comandos de correção</strong><p style="color:#a0aec0;font-size:.85rem">Confirme o pacote, faça backup do lockfile e execute os testes após atualizar.</p>${Object.entries(item.fix.terminal_commands).map(([os,command]) => `<div style="margin-top:8px"><label style="text-transform:capitalize;color:#c7d2fe">${securityEscape(os)}</label><pre style="white-space:pre-wrap;background:#0f172a;padding:9px;border-radius:7px;margin:3px 0"><code>${securityEscape(command)}</code></pre></div>`).join('')}</div>` : ''}
+            </div>`;
+            document.getElementById('appsecDetailModal').classList.add('active');
+        }
+
+        function closeAppSecDetail() { document.getElementById('appsecDetailModal').classList.remove('active'); }
+
+        function downloadText(filename, content, type='text/plain') { const blob=new Blob([content],{type}); const link=document.createElement('a'); link.href=URL.createObjectURL(blob); link.download=filename; link.click(); URL.revokeObjectURL(link.href); }
+        function downloadSarif(sarif) { downloadText('viggio-results.sarif', JSON.stringify(sarif,null,2), 'application/sarif+json'); }
+        function downloadViggioCiTemplate() { downloadText('viggio-appsec.yml', `name: Viggio AppSec\non: [push, pull_request]\npermissions:\n  contents: read\njobs:\n  sast:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v4\n      - name: Enviar código ao Viggio\n        env:\n          VIGGIO_URL: \${{ secrets.VIGGIO_URL }}\n          VIGGIO_TOKEN: \${{ secrets.VIGGIO_TOKEN }}\n        run: |\n          test -n "$VIGGIO_URL" && test -n "$VIGGIO_TOKEN"\n          jq -n --rawfile content app.py '{scan_type:"sast",filename:"app.py",content:$content,policy:{name:"CI Quality Gate",fail_on:"high"}}' > request.json\n          curl --fail-with-body -sS "$VIGGIO_URL/api/viggio-shield/appsec/scan" \\\n            -H "Authorization: Bearer $VIGGIO_TOKEN" -H "Content-Type: application/json" \\\n            --data @request.json > viggio-result.json\n          jq '.result.sarif' viggio-result.json > viggio-results.sarif\n          test "$(jq -r '.result.quality_gate.passed' viggio-result.json)" = "true"\n      - uses: actions/upload-artifact@v4\n        with:\n          name: viggio-sarif\n          path: viggio-results.sarif\n\n# Antes de usar: crie os secrets VIGGIO_URL (ex.: https://sua-plataforma.com)\n# e VIGGIO_TOKEN no repositório. Ajuste app.py e scan_type para o módulo desejado.\n`, 'text/yaml'); }
+
+        function showToast(message, type = 'info') {
+            // Remove toasts anteriores
+            const existingToasts = document.querySelectorAll('.custom-toast');
+            existingToasts.forEach(t => t.remove());
+            
+            const toast = document.createElement('div');
+            toast.className = 'custom-toast';
+            toast.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                padding: 16px 24px;
+                background: ${type === 'error' ? '#ef4444' : type === 'success' ? '#10b981' : type === 'warning' ? '#f59e0b' : '#3b82f6'};
+                color: white;
+                border-radius: 12px;
+                z-index: 10000;
+                box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+                animation: slideIn 0.3s ease;
+                font-weight: 600;
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                max-width: 400px;
+            `;
+            
+            const icon = type === 'error' ? '❌' : type === 'success' ? '✅' : type === 'warning' ? '⚠️' : 'ℹ️';
+            toast.innerHTML = `<span style="font-size: 1.2em;">${icon}</span><span>${message}</span>`;
+            
+            document.body.appendChild(toast);
+            
+            setTimeout(() => {
+                toast.style.animation = 'slideOut 0.3s ease';
+                setTimeout(() => toast.remove(), 300);
+            }, 5000);
+        }
+
+        function showLoading(message = 'Carregando...') {
+            const existing = document.getElementById('globalLoader');
+            if (existing) existing.remove();
+            
+            const loader = document.createElement('div');
+            loader.id = 'globalLoader';
+            loader.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0,0,0,0.8);
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+                align-items: center;
+                z-index: 99999;
+                backdrop-filter: blur(5px);
+            `;
+            loader.innerHTML = `
+                <div style="width: 60px; height: 60px; border: 5px solid #333; border-top: 5px solid #667eea; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+                <div style="color: white; margin-top: 20px; font-size: 1.1em; font-weight: 600;">${message}</div>
+            `;
+            document.body.appendChild(loader);
+        }
+
+        function hideLoading() {
+            const loader = document.getElementById('globalLoader');
+            if (loader) loader.remove();
+        }
+
+        async function apiRequest(endpoint, options = {}) {
+            const token = getToken();
+            
+            if (!token) {
+                showToast('Você precisa fazer login primeiro', 'error');
+                setTimeout(() => window.location.href = '/index.html', 2000);
+                throw new Error('Não autenticado');
+            }
+
+            const headers = {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`,
+                ...options.headers
+            };
+
+            try {
+                const response = await fetch(`/api${endpoint}`, {
+                    ...options,
+                    headers
+                });
+
+                if (!response.ok) {
+                    if (response.status === 401) {
+                        showToast('Sessão expirada. Faça login novamente.', 'error');
+                        setTimeout(() => window.location.href = '/index.html', 2000);
+                        throw new Error('Não autorizado');
+                    }
+                    
+                    const errorData = await response.json().catch(() => ({}));
+                    throw new Error(errorData.detail || `Erro: ${response.status}`);
+                }
+
+                return await response.json();
+            } catch (error) {
+                console.error('API Request Error:', error);
+                throw error;
+            }
+        }
+
+        // ============= CARREGAMENTO DE DADOS =============
+        // ============= CARREGAMENTO DE DADOS =============
+        
+        async function loadDashboard() {
+            try {
+                console.log('📊 Carregando dashboard...');
+                const response = await apiRequest('/viggio-shield/dashboard');
+                console.log('✅ Dashboard carregado:', response);
+                
+                // Atualiza estatísticas com animação
+                document.getElementById('totalTargets').textContent = response.total_targets;
+                document.getElementById('avgUptime').textContent = response.average_uptime.toFixed(1) + '%';
+                document.getElementById('openIncidents').textContent = response.open_incidents;
+                document.getElementById('criticalIncidents').textContent = response.critical_incidents;
+                document.getElementById('blockedIPs').textContent = response.blocked_ips;
+                
+            } catch (error) {
+                console.error('❌ Erro ao carregar dashboard:', error);
+                showToast('Erro ao carregar estatísticas: ' + error.message, 'error');
+            }
+        }
+
+        // Carrega alvos
+        async function loadTargets() {
+            const grid = document.getElementById('targetsGrid');
+            
+            try {
+                console.log('🎯 Carregando alvos...');
+                const response = await apiRequest('/viggio-shield/targets');
+                console.log('✅ Alvos carregados:', response);
+                
+                if (!response.targets || response.targets.length === 0) {
+                    grid.innerHTML = `
+                        <div class="empty-state" style="grid-column: 1/-1;">
+                            <i class="fas fa-crosshairs"></i>
+                            <h3>Nenhum alvo monitorado ainda</h3>
+                            <p>Clique em "Adicionar Alvo" para começar a monitorar seus sistemas</p>
+                            <button class="btn-primary" onclick="openAddTargetModal()" style="margin-top: 20px;">
+                                <i class="fas fa-plus"></i> Adicionar Primeiro Alvo
+                            </button>
+                        </div>
+                    `;
+                    return;
+                }
+                
+                grid.innerHTML = response.targets.map(target => {
+                    const lastCheck = target.last_check ? 
+                        new Date(target.last_check).toLocaleString('pt-BR') : 
+                        'Nunca verificado';
+                    
+                    return `
+                    <div class="target-card" style="animation: fadeIn 0.5s ease;cursor:pointer" onclick="viewTargetDetails(${target.id})">
+                        <div class="target-header">
+                            <div>
+                                <div class="target-name">
+                                    <i class="fas fa-${target.type === 'api' ? 'plug' : target.type === 'server' ? 'server' : target.type === 'network' ? 'network-wired' : 'globe'}"></i>
+                                    ${target.name}
+                                </div>
+                                <div style="margin-top: 5px;">
+                                    <span class="target-type">${target.type}</span>
+                                    <span class="status-badge ${target.status}">${target.status === 'active' ? 'Ativo' : target.status === 'paused' ? 'Pausado' : 'Inativo'}</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="target-address" title="${target.address}">
+                            <i class="fas fa-link"></i> ${target.address}
+                        </div>
+                        <div class="target-meta">
+                            <i class="fas fa-clock"></i> Última verificação: ${lastCheck}
+                        </div>
+                        <div class="target-stats">
+                            <div class="target-stat">
+                                <div class="target-stat-value" style="color: ${target.uptime >= 99 ? '#10b981' : target.uptime >= 95 ? '#f59e0b' : '#ef4444'}">${target.uptime.toFixed(1)}%</div>
+                                <div class="target-stat-label">Uptime</div>
+                            </div>
+                            <div class="target-stat">
+                                <div class="target-stat-value" style="color: ${target.active_incidents > 0 ? '#ef4444' : '#48bb78'}">
+                                    ${target.active_incidents}
+                                </div>
+                                <div class="target-stat-label">Incidentes</div>
+                            </div>
+                        </div>
+                        <div class="target-actions">
+                            <button class="btn-small btn-check" onclick="event.stopPropagation();checkTarget(${target.id})" title="Verificar agora">
+                                <i class="fas fa-sync"></i> Verificar
+                            </button>
+                            <button class="btn-small btn-details" onclick="event.stopPropagation();viewTargetDetails(${target.id})" title="Ver detalhes">
+                                <i class="fas fa-info-circle"></i> Detalhes
+                            </button>
+                            <button class="btn-small btn-delete" onclick="event.stopPropagation();deleteTarget(${target.id})" title="Remover alvo">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                `}).join('');
+                
+            } catch (error) {
+                console.error('❌ Erro ao carregar alvos:', error);
+                grid.innerHTML = `
+                    <div class="empty-state" style="grid-column: 1/-1; color: #ef4444;">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <h3>Erro ao carregar alvos</h3>
+                        <p>${error.message}</p>
+                        <button class="btn-primary" onclick="loadTargets()" style="margin-top: 20px;">
+                            <i class="fas fa-redo"></i> Tentar Novamente
+                        </button>
+                    </div>
+                `;
+                showToast('Erro ao carregar alvos: ' + error.message, 'error');
+            }
+        }
+
+        // Carrega incidentes
+        // Carrega incidentes
+        async function loadIncidents() {
+            const list = document.getElementById('incidentsList');
+            
+            try {
+                console.log('🚨 Carregando incidentes...');
+                const severity = document.getElementById('severityFilter').value;
+                const params = severity ? `?severity=${severity}` : '';
+                const response = await apiRequest(`/viggio-shield/incidents${params}`);
+                console.log('✅ Incidentes carregados:', response);
+                
+                if (!response.incidents || response.incidents.length === 0) {
+                    list.innerHTML = `
+                        <div class="empty-state">
+                            <i class="fas fa-shield-check" style="color: #10b981; font-size: 4em;"></i>
+                            <h3 style="color: #10b981;">Nenhum incidente detectado!</h3>
+                            <p>Seus sistemas estão protegidos e funcionando normalmente 🛡️</p>
+                            ${severity ? '<p style="margin-top: 10px;"><em>Filtro ativo: ' + severity + '</em></p>' : ''}
+                        </div>
+                    `;
+                    return;
+                }
+                
+                window.viggioIncidents = response.incidents;
+                list.innerHTML = response.incidents.map(inc => {
+                    const severityColors = {
+                        critical: '#ef4444',
+                        high: '#f59e0b',
+                        medium: '#eab308',
+                        low: '#10b981'
+                    };
+                    
+                    const severityIcons = {
+                        critical: 'fa-fire',
+                        high: 'fa-exclamation-circle',
+                        medium: 'fa-exclamation-triangle',
+                        low: 'fa-info-circle'
+                    };
+                    
+                    return `
+                    <div class="incident-card ${inc.severity}" style="animation: fadeIn 0.5s ease;cursor:pointer" onclick="showIncidentDetails(${inc.id})">
+                        <div class="incident-header">
+                            <div class="incident-title">
+                                <i class="fas ${severityIcons[inc.severity] || 'fa-exclamation-triangle'}"></i>
+                                ${inc.title}
+                            </div>
+                            <span class="incident-badge ${inc.severity}">
+                                ${inc.severity.toUpperCase()}
+                            </span>
+                        </div>
+                        <div class="incident-details">${securityEscape(inc.description || 'Sem descrição adicional')}</div>
+                        ${inc.remediation ? `<div class="incident-details" style="margin-top:10px;color:#86efac"><strong>Como corrigir:</strong> ${securityEscape(inc.remediation)}</div>` : ''}
+                        <div class="incident-meta" style="margin-top:10px">
+                            ${inc.layer ? `<span><i class="fas fa-layer-group"></i> ${securityEscape(inc.layer)}</span>` : ''}
+                            ${inc.cwe ? `<span class="info-tooltip" data-tooltip="${securityEscape(cweTooltip(inc.cwe))}">${securityEscape(inc.cwe)}</span>` : ''}
+                            ${inc.owasp ? `<span class="info-tooltip" data-tooltip="${securityEscape(owaspTooltip(inc.owasp))}">OWASP ${securityEscape(inc.owasp)}</span>` : ''}
+                            ${inc.cvss != null ? `<span class="info-tooltip" data-tooltip="${securityEscape(cvssTooltip(inc.cvss))}">CVSS ${securityEscape(inc.cvss)}</span>` : ''}
+                            ${(inc.cves || []).map(cve => `<span class="info-tooltip" data-tooltip="Identificador CVE de uma vulnerabilidade publicada." style="color:#fca5a5">${securityEscape(cve)}</span>`).join('')}
+                        </div>
+                        <div class="incident-meta">
+                            <span><i class="fas fa-network-wired"></i> IP: ${inc.source_ip || 'N/A'}</span>
+                            <span><i class="fas fa-clock"></i> ${new Date(inc.detected_at).toLocaleString('pt-BR')}</span>
+                            <span><i class="fas fa-tag"></i> ${inc.type.replace('_', ' ')}</span>
+                            <span style="color: ${inc.status === 'open' ? '#f59e0b' : '#10b981'}">
+                                <i class="fas fa-circle" style="font-size: 0.6em;"></i> ${inc.status === 'open' ? 'Aberto' : 'Resolvido'}
+                            </span>
+                        </div>
+                    </div>
+                `}).join('');
+                
+            } catch (error) {
+                console.error('❌ Erro ao carregar incidentes:', error);
+                list.innerHTML = `
+                    <div class="empty-state" style="color: #ef4444;">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <h3>Erro ao carregar incidentes</h3>
+                        <p>${error.message}</p>
+                        <button class="btn-primary" onclick="loadIncidents()" style="margin-top: 20px;">
+                            <i class="fas fa-redo"></i> Tentar Novamente
+                        </button>
+                    </div>
+                `;
+                showToast('Erro ao carregar incidentes: ' + error.message, 'error');
+            }
+        }
+
+        // ============= AÇÕES =============
+
+        // Verifica alvo manualmente
+        async function checkTarget(targetId) {
+            try {
+                showLoading('Verificando alvo...');
+                console.log('🔍 Verificando alvo ID:', targetId);
+                
+                const response = await apiRequest(`/viggio-shield/targets/${targetId}/check`, {
+                    method: 'POST'
+                });
+                
+                hideLoading();
+                console.log('✅ Resultado da verificação:', response);
+                
+                const vulnerabilitiesFound = Number(response.vulnerabilities_found || 0);
+                if (vulnerabilitiesFound > 0) {
+                    showToast(`⚠️ ${vulnerabilitiesFound} vulnerabilidade(s) encontrada(s). Consulte os incidentes.`, 'warning');
+                } else if (response.health.is_healthy) {
+                    showToast('✅ Alvo saudável e nenhuma vulnerabilidade encontrada.', 'success');
+                } else {
+                    const issues = response.health.issues.join(', ');
+                    showToast('⚠️ Problemas detectados: ' + issues, 'warning');
+                }
+                
+                // Mostra detalhes da verificação
+                console.log('📊 Detalhes:', {
+                    uptime: response.uptime + '%',
+                    tempo_resposta: response.health.response_time + 'ms',
+                    problemas: response.health.issues
+                });
+                
+                await loadTargets();
+                await loadDashboard();
+                await loadIncidents();
+                
+            } catch (error) {
+                hideLoading();
+                console.error('❌ Erro ao verificar alvo:', error);
+                showToast('Erro ao verificar alvo: ' + error.message, 'error');
+            }
+        }
+
+        // Deleta alvo
+        async function deleteTarget(targetId) {
+            if (!await showConfirmDialog({
+                title: 'Remover alvo do monitoramento',
+                message: 'O alvo deixará de ser monitorado e seus agendamentos associados serão removidos.',
+                confirmText: 'Sim, remover alvo'
+            })) return;
+            
+            try {
+                showLoading('Removendo alvo...');
+                await apiRequest(`/viggio-shield/targets/${targetId}`, {
+                    method: 'DELETE'
+                });
+                hideLoading();
+                
+                showToast('Alvo removido com sucesso', 'success');
+                await loadTargets();
+                await loadDashboard();
+                
+            } catch (error) {
+                hideLoading();
+                showToast('Erro ao remover alvo: ' + error.message, 'error');
+            }
+        }
+
+        function showIncidentDetails(incidentId) {
+            const item = (window.viggioIncidents || []).find(incident => incident.id === incidentId);
+            if (!item) return;
+            document.getElementById('targetDetailsModal').classList.add('active');
+            document.getElementById('targetDetailsContent').innerHTML = `<div class="incident-card ${securityEscape(item.severity)}">
+                <div class="incident-header"><div class="incident-title">${securityEscape(item.title)}</div><span class="incident-badge ${securityEscape(item.severity)}">${securityEscape(item.severity).toUpperCase()}</span></div>
+                <div class="incident-meta"><span>${securityEscape(item.layer || item.type || 'Monitoramento')}</span>${item.cwe ? `<span>${securityEscape(item.cwe)}</span>` : ''}${item.owasp ? `<span>${securityEscape(item.owasp)}</span>` : ''}${item.cvss != null ? `<span>CVSS ${securityEscape(item.cvss)}</span>` : ''}${(item.cves || []).map(cve => `<span style="color:#fca5a5">${securityEscape(cve)}</span>`).join('')}</div>
+                <p class="incident-details"><strong>Detalhes:</strong><br>${securityEscape(item.description || 'Sem descrição adicional')}</p>
+                ${item.evidence ? `<p class="incident-details"><strong>Evidência:</strong><br><code>${securityEscape(item.evidence)}</code></p>` : ''}
+                <p class="incident-details" style="color:#86efac"><strong>Como corrigir:</strong><br>${securityEscape(item.remediation || 'Revise a configuração e execute uma nova verificação.')}</p>
+            </div>`;
+        }
+
+        // Ver detalhes do alvo
+        async function viewTargetDetails(targetId) {
+            const modal = document.getElementById('targetDetailsModal');
+            const content = document.getElementById('targetDetailsContent');
+            modal.classList.add('active');
+            content.innerHTML = '<div class="loading"><i class="fas fa-spinner"></i><p>Carregando avaliação...</p></div>';
+            try {
+                const response = await apiRequest(`/viggio-shield/targets/${targetId}`);
+                const target = response.target;
+                const findings = response.recent_incidents || [];
+                const severityCount = severity => findings.filter(item => item.severity === severity && item.status === 'open').length;
+                content.innerHTML = `
+                    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:22px">
+                        <div class="stat-card"><div class="stat-value">${securityEscape(target.uptime?.toFixed(1) || 0)}%</div><div class="stat-label">Uptime</div></div>
+                        <div class="stat-card"><div class="stat-value" style="color:#ef4444">${severityCount('critical')}</div><div class="stat-label">Críticas</div></div>
+                        <div class="stat-card"><div class="stat-value" style="color:#f59e0b">${severityCount('high')}</div><div class="stat-label">Altas</div></div>
+                        <div class="stat-card"><div class="stat-value" style="color:#eab308">${severityCount('medium')}</div><div class="stat-label">Médias</div></div>
+                    </div>
+                    <div style="padding:16px;border:1px solid rgba(255,255,255,.1);border-radius:12px;margin-bottom:20px">
+                        <strong>${securityEscape(target.name)}</strong><br><span style="color:#a0aec0">${securityEscape(target.address)} · ${securityEscape(target.type)} · ${target.total_checks || 0} verificações</span>
+                    </div>
+                    <h3 style="margin-bottom:14px"><i class="fas fa-bug"></i> Achados técnicos</h3>
+                    ${findings.length ? findings.map(item => `
+                        <div class="incident-card ${securityEscape(item.severity)}" style="margin-bottom:14px">
+                            <div class="incident-header"><div class="incident-title">${securityEscape(item.title)}</div><span class="incident-badge ${securityEscape(item.severity)}">${securityEscape(item.severity).toUpperCase()}</span></div>
+                            <div class="incident-meta" style="margin:8px 0">${item.layer ? `<span><i class="fas fa-layer-group"></i> ${securityEscape(item.layer)}</span>` : ''}${item.cwe ? `<span>${securityEscape(item.cwe)}</span>` : ''}${item.owasp ? `<span>OWASP ${securityEscape(item.owasp)}</span>` : ''}${item.cvss != null ? `<span>CVSS ${securityEscape(item.cvss)}</span>` : ''}${(item.cves || []).map(cve => `<span style="color:#fca5a5">${securityEscape(cve)}</span>`).join('')}</div>
+                            <div class="incident-details"><strong>Risco:</strong> ${securityEscape(item.description || '')}</div>
+                            ${item.evidence ? `<div class="incident-details" style="margin-top:8px"><strong>Evidência:</strong> <code>${securityEscape(item.evidence)}</code></div>` : ''}
+                            <div class="incident-details" style="margin-top:8px;color:#86efac"><strong>Correção:</strong> ${securityEscape(item.remediation || '')}</div>
+                        </div>`).join('') : '<div class="empty-state"><i class="fas fa-shield-check"></i><h3>Nenhum achado registrado</h3><p>Execute uma verificação para gerar a avaliação em camadas.</p></div>'}
+                `;
+            } catch (error) {
+                content.innerHTML = `<div class="empty-state" style="color:#ef4444"><i class="fas fa-exclamation-triangle"></i><p>${securityEscape(error.message)}</p></div>`;
+            }
+        }
+
+        function closeTargetDetails() {
+            document.getElementById('targetDetailsModal').classList.remove('active');
+        }
+
+        // ============= MODAL =============
+        
+        function openAddTargetModal() {
+            document.getElementById('addTargetModal').classList.add('active');
+            document.querySelector('.modal-content').style.animation = 'slideDown 0.3s ease';
+        }
+
+        function closeAddTargetModal() {
+            const modal = document.getElementById('addTargetModal');
+            document.querySelector('.modal-content').style.animation = 'slideUp 0.3s ease';
+            setTimeout(() => {
+                modal.classList.remove('active');
+                document.getElementById('addTargetForm').reset();
+            }, 300);
+        }
+
+        // Submete novo alvo
+        async function submitAddTarget(event) {
+            event.preventDefault();
+            
+            const form = event.target;
+            const formData = new FormData(form);
+            
+            const data = {
+                name: formData.get('name'),
+                target_type: formData.get('target_type'),
+                target_address: formData.get('target_address'),
+                check_interval: parseInt(formData.get('check_interval')),
+                alert_threshold: parseInt(formData.get('alert_threshold')),
+                enable_email_alerts: formData.get('enable_email_alerts') === 'on'
+            };
+            
+            // Processa portas
+            const ports = formData.get('monitoring_ports');
+            if (ports) {
+                data.monitoring_ports = ports.split(',').map(p => parseInt(p.trim())).filter(p => !isNaN(p));
+                const invalidPorts = data.monitoring_ports.filter(port => port < 1 || port > 65535);
+                if (invalidPorts.length > 0) {
+                    showToast('Informe apenas portas entre 1 e 65535.', 'error');
+                    return;
+                }
+            }
+            
+            try {
+                showLoading('Criando alvo...');
+                await apiRequest('/viggio-shield/targets', {
+                    method: 'POST',
+                    body: JSON.stringify(data)
+                });
+                hideLoading();
+                
+                closeAddTargetModal();
+                showToast('🎯 Alvo criado com sucesso! Monitoramento iniciado.', 'success');
+                await loadTargets();
+                await loadDashboard();
+                
+            } catch (error) {
+                hideLoading();
+                showToast('Erro ao criar alvo: ' + error.message, 'error');
+            }
+        }
+
+        // ============= INICIALIZAÇÃO =============
+        
+        document.addEventListener('DOMContentLoaded', async () => {
+            console.log('🚀 Iniciando Viggio Shield...');
+            
+            // Verifica autenticação
+            const token = getToken();
+            if (!token) {
+                showToast('Você precisa fazer login para acessar o Viggio Shield', 'error');
+                setTimeout(() => window.location.href = '/index.html', 2000);
+                return;
+            }
+            
+            // Carrega dados iniciais
+            showLoading('Carregando Viggio Shield...');
+            try {
+                await Promise.all([
+                    loadDashboard(),
+                    loadTargets(),
+                    loadIncidents()
+                ]);
+                hideLoading();
+                showToast('✅ Viggio Shield carregado com sucesso!', 'success');
+            } catch (error) {
+                hideLoading();
+                showToast('Erro ao carregar dados: ' + error.message, 'error');
+            }
+            
+            // Auto-refresh a cada 30 segundos
+            setInterval(async () => {
+                console.log('🔄 Atualizando dados...');
+                try {
+                    await Promise.all([
+                        loadDashboard(),
+                        loadTargets(),
+                        loadIncidents()
+                    ]);
+                    console.log('✅ Dados atualizados');
+                } catch (error) {
+                    console.error('❌ Erro ao atualizar:', error);
+                }
+            }, 30000);
+        });
+        
+        // Adiciona estilos de animação
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes spin {
+                0% { transform: rotate(0deg); }
+                100% { transform: rotate(360deg); }
+            }
+            
+            @keyframes fadeIn {
+                from { opacity: 0; transform: translateY(10px); }
+                to { opacity: 1; transform: translateY(0); }
+            }
+            
+            @keyframes slideIn {
+                from { transform: translateX(400px); opacity: 0; }
+                to { transform: translateX(0); opacity: 1; }
+            }
+            
+            @keyframes slideOut {
+                from { transform: translateX(0); opacity: 1; }
+                to { transform: translateX(400px); opacity: 0; }
+            }
+            
+            @keyframes slideDown {
+                from { transform: translateY(-50px); opacity: 0; }
+                to { transform: translateY(0); opacity: 1; }
+            }
+            
+            @keyframes slideUp {
+                from { transform: translateY(0); opacity: 1; }
+                to { transform: translateY(-50px); opacity: 0; }
+            }
+            
+            @keyframes pulse {
+                0%, 100% { opacity: 1; }
+                50% { opacity: 0.5; }
+            }
+            
+            .btn-check:hover {
+                transform: scale(1.05);
+                box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+            }
+            
+            .btn-details:hover {
+                transform: scale(1.05);
+                box-shadow: 0 4px 15px rgba(52, 211, 153, 0.4);
+            }
+            
+            .btn-delete:hover {
+                transform: scale(1.05);
+                box-shadow: 0 4px 15px rgba(239, 68, 68, 0.4);
+            }
+            
+            .target-card:hover {
+                transform: translateY(-3px);
+                box-shadow: 0 14px 30px rgba(0,0,0,0.28);
+            }
+            
+            .incident-card:hover {
+                transform: translateX(5px);
+                box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            }
+            
+            .stat-card:hover {
+                transform: translateY(-3px);
+                box-shadow: 0 14px 30px rgba(0,0,0,0.28);
+            }
+        `;
+        document.head.appendChild(style);
+    </script>
+</body>
+</html>

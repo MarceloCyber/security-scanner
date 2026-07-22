@@ -21,7 +21,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from database import engine, Base
 from sqlalchemy import inspect, text
-from routes import auth_routes, scan_routes, extended_scan_routes, tools_routes, redteam_routes, blueteam_routes, payment_routes, user_routes, admin_routes
+from routes import auth_routes, scan_routes, extended_scan_routes, tools_routes, redteam_routes, blueteam_routes, payment_routes, user_routes, admin_routes, viggio_shield_routes
 from utils.email_service import email_service
 
 tables = []
@@ -210,6 +210,33 @@ async def align_sequences():
         except Exception:
             pass
 
+@app.on_event("startup")
+async def start_intelligent_automation():
+    """Executa continuamente as verificacoes de monitoramento que chegaram ao prazo."""
+    async def _automation_loop():
+        from routes.viggio_shield_routes import run_automatic_target_check
+        from models.monitor import MonitorTarget
+        while True:
+            db = SessionLocal()
+            try:
+                now = datetime.utcnow()
+                targets = db.query(MonitorTarget).filter(
+                    MonitorTarget.is_active == True,
+                    MonitorTarget.status == "active"
+                ).all()
+                for target in targets:
+                    interval = max(int(target.check_interval or 300), 60)
+                    if not target.last_check or (now - target.last_check).total_seconds() >= interval:
+                        try:
+                            await run_automatic_target_check(target, db)
+                        except Exception as exc:
+                            db.rollback()
+                            print(f"Erro na automacao do alvo {target.id}: {exc}")
+            finally:
+                db.close()
+            await asyncio.sleep(30)
+    asyncio.create_task(_automation_loop())
+
 app.include_router(auth_routes.router, prefix="/api/auth", tags=["Authentication"])
 app.include_router(scan_routes.router, prefix="/api", tags=["Scans"])
 app.include_router(extended_scan_routes.router, prefix="/api", tags=["Extended Scans"])
@@ -219,6 +246,7 @@ app.include_router(blueteam_routes.router, prefix="/api", tags=["Blue Team"])
 app.include_router(payment_routes.router, prefix="/api", tags=["Payments"])
 app.include_router(user_routes.router, prefix="/api", tags=["User"])
 app.include_router(admin_routes.router, tags=["Admin"])
+app.include_router(viggio_shield_routes.router, tags=["Viggio Shield"])
 
 # Rota de redirecionamento curto (sem /api para links públicos)
 @app.get("/p/{short_id}")

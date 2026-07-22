@@ -3,8 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
     <title>Painel Administrativo - Iron Net</title>
-    <link rel="stylesheet" href="css/admin.css">
+    <link rel="stylesheet" href="css/admin.css?v=2.1">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
 <body>
@@ -499,30 +502,10 @@
         </div>
     </div>
 
-    <!-- Delete Confirmation Modal -->
-    <div id="deleteUserModal" class="modal">
-        <div class="modal-content modal-sm">
-            <div class="modal-header danger">
-                <h3>Confirmar Exclusão</h3>
-                <button class="modal-close" onclick="closeDeleteModal()">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
-            <div class="modal-body">
-                <p>Tem certeza que deseja excluir o usuário <strong id="deleteUserName"></strong>?</p>
-                <p class="warning-text">Esta ação não pode ser desfeita!</p>
-                <input type="hidden" id="deleteUserId">
-            </div>
-            <div class="modal-footer">
-                <button class="btn-secondary" onclick="closeDeleteModal()">Cancelar</button>
-                <button class="btn-danger" onclick="confirmDeleteUser()">Excluir Usuário</button>
-            </div>
-        </div>
-    </div>
-
     <!-- Toast Notifications -->
     <div id="toastContainer"></div>
 
-    <script src="js/admin.js"></script>
+    <script src="js/confirm-dialog.js?v=1.0"></script>
+    <script src="js/admin.js?v=2.1"></script>
 </body>
 </html>

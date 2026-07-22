@@ -414,15 +414,15 @@ async function saveUserChanges() {
 }
 
 // ============ Deletar Usuário ============
-function openDeleteModal(userId, username) {
+async function openDeleteModal(userId, username) {
     currentUserId = userId;
     currentUsername = username;
-    
-    const deleteUsernameElem = document.getElementById('deleteUsername');
-    if (deleteUsernameElem) deleteUsernameElem.textContent = username;
-    
-    const modal = document.getElementById('deleteUserModal');
-    if (modal) modal.classList.add('active');
+    const confirmed = await showConfirmDialog({
+        title: 'Excluir usuário',
+        message: `O usuário “${username}” e os dados associados serão removidos permanentemente.`,
+        confirmText: 'Sim, excluir usuário'
+    });
+    if (confirmed) await confirmDeleteUser();
 }
 
 function closeDeleteModal() {
@@ -476,7 +476,11 @@ async function changePlanAction(plan) {
 window.changePlanAction = changePlanAction;
 
 async function cancelSubscriptionAdmin(userId) {
-    if (!confirm('Confirmar cancelamento da assinatura?')) return;
+    if (!await showConfirmDialog({
+        title: 'Cancelar assinatura',
+        message: 'A assinatura deste usuário será cancelada conforme as regras do provedor de pagamento.',
+        confirmText: 'Sim, cancelar'
+    })) return;
     try {
         await fetchAPI(`/api/admin/subscriptions/${userId}/cancel`, { method: 'POST' });
         showToast('Assinatura cancelada', 'success');
@@ -487,7 +491,12 @@ async function cancelSubscriptionAdmin(userId) {
 }
 
 async function refundLastInvoice(userId) {
-    if (!confirm('Confirmar reembolso da última fatura (Stripe)?')) return;
+    if (!await showConfirmDialog({
+        title: 'Confirmar reembolso',
+        message: 'A solicitação de reembolso da última fatura será enviada ao Stripe.',
+        details: 'Confirme os dados da cobrança antes de continuar.',
+        confirmText: 'Solicitar reembolso'
+    })) return;
     try {
         await fetchAPI(`/api/admin/subscriptions/${userId}/refund`, { method: 'POST' });
         showToast('Reembolso solicitado', 'success');
@@ -498,7 +507,11 @@ async function refundLastInvoice(userId) {
 
 // ============ Reset Scans ============
 async function resetUserScans(userId) {
-    if (!confirm('Deseja realmente resetar os scans deste usuário?')) return;
+    if (!await showConfirmDialog({
+        title: 'Resetar scans do usuário',
+        message: 'A contagem e os dados de scans deste usuário serão redefinidos.',
+        confirmText: 'Sim, resetar'
+    })) return;
     
     try {
         await fetchAPI(`/api/admin/users/${userId}/reset-scans`, {
@@ -572,7 +585,11 @@ async function loadActivity() {
 }
 
 async function clearActivity() {
-    if (!confirm('Deseja apagar todo o histórico de atividades?')) return;
+    if (!await showConfirmDialog({
+        title: 'Apagar histórico de atividades',
+        message: 'Todos os registros exibidos no histórico administrativo serão removidos.',
+        confirmText: 'Sim, apagar tudo'
+    })) return;
     try {
         await fetchAPI('/api/admin/activity', { method: 'DELETE' });
         showToast('Histórico de atividades apagado', 'success');
@@ -854,53 +871,105 @@ window.openEditModal = openEditModal;
 window.openDeleteModal = openDeleteModal;
 window.resetUserScans = resetUserScans;
 
+function renderPaymentsState(icon, title, message, state = 'empty') {
+    const tbody = document.getElementById('paymentsTableBody');
+    if (!tbody) return;
+    tbody.innerHTML = `
+        <tr>
+            <td colspan="10" class="payments-state-cell">
+                <div class="payments-state ${state}">
+                    <div class="payments-state-icon"><i class="fas fa-${icon}"></i></div>
+                    <div>
+                        <strong>${escapeHtml(title)}</strong>
+                        <p>${escapeHtml(message)}</p>
+                    </div>
+                </div>
+            </td>
+        </tr>
+    `;
+}
+
 async function loadPayments() {
+    const tbody = document.getElementById('paymentsTableBody');
+    if (!tbody) return;
+
+    renderPaymentsState('spinner fa-spin', 'Carregando pagamentos', 'Aguarde enquanto consultamos as sessões de checkout.', 'loading');
+
     try {
         const response = await fetchAPI('/api/admin/payments/sessions');
-        const data = await response.json();
-        const tbody = document.getElementById('paymentsTableBody');
-        if (!tbody) return;
-    const rows = (data.sessions || []).map(s => {
-        const user = s.user || {};
-        const url = s.url ? `<a href="${s.url}" target="_blank" rel="noopener">Abrir</a>` : '-';
-        const amount = typeof s.amount_total === 'number' ? `R$ ${(s.amount_total / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : '-';
-        const methods = (s.payment_methods && s.payment_methods.length) ? s.payment_methods.join(', ') : '-';
-        const paymentLabel = getPaymentStatusLabel(s);
-        const paymentClass = getPaymentStatusClass(s);
-        return `
-            <tr>
-                <td>${s.id}</td>
-                <td>${escapeHtml(user.username || '-')}</td>
-                <td>${escapeHtml(user.email || '-')}</td>
-                <td>${getPlanLabel(s.plan || user.plan)}</td>
-                <td>${amount}</td>
-                <td>${escapeHtml(methods)}</td>
-                <td>${escapeHtml(s.status || '-')}</td>
-                <td><span class="status-badge ${paymentClass}">${paymentLabel}</span></td>
-                <td>${formatDateTime(s.created)}</td>
-                <td>${url}</td>
-            </tr>
-        `;
-    }).join('');
-    tbody.innerHTML = rows || '<tr><td colspan="10" class="loading-cell">Nenhuma sessão encontrada</td></tr>';
-    } catch (error) {
-        console.error('Erro ao carregar pagamentos:', error);
-        const tbody = document.getElementById('paymentsTableBody');
-        if (tbody) {
-            tbody.innerHTML = '<tr><td colspan="10" class="loading-cell">Erro ao carregar pagamentos</td></tr>';
+        const rawBody = await response.text();
+        let data = {};
+        try {
+            data = rawBody ? JSON.parse(rawBody) : {};
+        } catch (_) {
+            data = {};
         }
-        showToast('Erro ao carregar pagamentos', 'error');
+
+        const sessions = Array.isArray(data.sessions)
+            ? data.sessions.filter(session => session && typeof session === 'object')
+            : [];
+
+        if (sessions.length === 0) {
+            renderPaymentsState(
+                'receipt',
+                'Nenhum pagamento registrado',
+                'As sessões de checkout aparecerão aqui assim que o primeiro pagamento for iniciado.'
+            );
+            return;
+        }
+
+        tbody.innerHTML = sessions.map(s => {
+            const user = s.user && typeof s.user === 'object' ? s.user : {};
+            const safeUrl = typeof s.url === 'string' && /^https?:\/\//i.test(s.url) ? s.url : '';
+            const url = safeUrl ? `<a href="${escapeHtml(safeUrl)}" target="_blank" rel="noopener">Abrir</a>` : '-';
+            const amount = typeof s.amount_total === 'number'
+                ? `R$ ${(s.amount_total / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`
+                : '-';
+            const methods = Array.isArray(s.payment_methods) && s.payment_methods.length
+                ? s.payment_methods.join(', ')
+                : '-';
+            const paymentLabel = getPaymentStatusLabel(s);
+            const paymentClass = getPaymentStatusClass(s);
+            return `
+                <tr>
+                    <td>${escapeHtml(s.id || '-')}</td>
+                    <td>${escapeHtml(user.username || '-')}</td>
+                    <td>${escapeHtml(user.email || '-')}</td>
+                    <td>${getPlanLabel(s.plan || user.plan)}</td>
+                    <td>${amount}</td>
+                    <td>${escapeHtml(methods)}</td>
+                    <td>${escapeHtml(s.status || '-')}</td>
+                    <td><span class="status-badge ${paymentClass}">${paymentLabel}</span></td>
+                    <td>${formatDateTime(s.created)}</td>
+                    <td>${url}</td>
+                </tr>
+            `;
+        }).join('');
+    } catch (error) {
+        console.error('Falha técnica na consulta ao provedor de pagamentos:', error);
+        renderPaymentsState(
+            'cloud-arrow-down',
+            'Pagamentos indisponíveis no momento',
+            'Não foi possível consultar o provedor agora. Use o botão Atualizar para tentar novamente.',
+            'unavailable'
+        );
     }
 }
 
 async function clearPayments() {
     try {
-        const confirmClear = confirm('O histórico de pagamentos é consultado diretamente do Stripe/Mercado Pago. Deseja apenas limpar a tabela local?');
+        const confirmClear = await showConfirmDialog({
+            title: 'Limpar tabela de pagamentos',
+            message: 'Somente os dados exibidos nesta tabela serão limpos. O histórico no Stripe ou Mercado Pago não será alterado.',
+            details: 'Esta ação não cancela cobranças nem remove transações do provedor.',
+            confirmText: 'Limpar tabela'
+        });
         if (!confirmClear) return;
-        const tbody = document.getElementById('paymentsTableBody');
-        if (tbody) {
-            tbody.innerHTML = '<tr><td colspan="10" class="loading-cell">Nenhuma sessão encontrada</td></tr>';
-        }
+        renderPaymentsState(
+            'receipt',
+            'Nenhum pagamento exibido',
+            'A tabela local foi limpa. Novas sessões aparecerão após a próxima atualização.'
+        );
         showToast('Tabela de pagamentos limpa (não afeta provedor externo)', 'success');
     } catch (error) {
         showToast('Erro ao limpar tabela de pagamentos', 'error');

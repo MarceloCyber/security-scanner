@@ -312,11 +312,17 @@ async def generate_report_endpoint(
             if isinstance(res, dict):
                 if res.get('vulnerabilities'):
                     vulns = res['vulnerabilities']
+                elif res.get('findings'):
+                    vulns = res['findings']
                 elif res.get('endpoint_results'):
                     for er in res['endpoint_results']:
                         for v in er.get('vulnerabilities', []):
                             vulns.append(v)
-            return vulns
+            if isinstance(vulns, dict):
+                vulns = list(vulns.values())
+            if not isinstance(vulns, list):
+                return []
+            return [v for v in vulns if isinstance(v, dict)]
 
         def extract_summary(res: dict) -> dict:
             def to_int(x):
@@ -525,11 +531,17 @@ async def generate_full_report(
             if isinstance(res, dict):
                 if res.get('vulnerabilities'):
                     vulns = res['vulnerabilities']
+                elif res.get('findings'):
+                    vulns = res['findings']
                 elif res.get('endpoint_results'):
                     for er in res['endpoint_results']:
                         for v in er.get('vulnerabilities', []):
                             vulns.append(v)
-            return vulns
+            if isinstance(vulns, dict):
+                vulns = list(vulns.values())
+            if not isinstance(vulns, list):
+                return []
+            return [v for v in vulns if isinstance(v, dict)]
 
         def extract_summary(res: dict) -> dict:
             def to_int(x):
@@ -579,6 +591,7 @@ async def generate_full_report(
         }
         tools_summary = {}
         scans_details = []
+        consolidated_vulnerabilities = []
 
         for s in scans_all:
             res = {}
@@ -587,13 +600,21 @@ async def generate_full_report(
             except Exception:
                 res = {}
             vulns = extract_vulns(res)
+            tname = tools_map.get(s.scan_type, s.scan_type)
+            for vuln in vulns:
+                if not isinstance(vuln, dict):
+                    continue
+                detailed_vuln = dict(vuln)
+                detailed_vuln.setdefault('scan_id', s.id)
+                detailed_vuln.setdefault('scanner', tname)
+                detailed_vuln.setdefault('file', s.target)
+                consolidated_vulnerabilities.append(detailed_vuln)
             summ = extract_summary(res)
             agg_total += summ.get('total', 0)
             agg_sc['CRITICAL'] += summ.get('critical', 0)
             agg_sc['HIGH'] += summ.get('high', 0)
             agg_sc['MEDIUM'] += summ.get('medium', 0)
             agg_sc['LOW'] += summ.get('low', 0)
-            tname = tools_map.get(s.scan_type, s.scan_type)
             if tname not in tools_summary:
                 tools_summary[tname] = {'tool': tname, 'scans': 0, 'vulnerabilities': 0}
             tools_summary[tname]['scans'] += 1
@@ -694,7 +715,7 @@ async def generate_full_report(
             'target': 'Todos',
             'created_at': datetime.utcnow().isoformat(),
             'summary': overall_summary,
-            'vulnerabilities': [],
+            'vulnerabilities': consolidated_vulnerabilities,
             'user_overview': {
                 'total_scans': len(scans_all),
                 'total_vulnerabilities': agg_total,

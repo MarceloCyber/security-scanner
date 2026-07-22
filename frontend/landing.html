@@ -336,67 +336,6 @@
             font-size: 1.1rem;
         }
 
-        /* Testimonials */
-        .testimonials {
-            padding: 6rem 5%;
-            max-width: 1200px;
-            margin: 0 auto;
-        }
-
-        .testimonials-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 2rem;
-        }
-
-        .testimonial-card {
-            background: var(--dark-light);
-            padding: 2rem;
-            border-radius: 15px;
-            position: relative;
-        }
-
-        .quote-icon {
-            font-size: 3rem;
-            color: var(--primary);
-            opacity: 0.3;
-            position: absolute;
-            top: 1rem;
-            right: 1rem;
-        }
-
-        .testimonial-text {
-            font-style: italic;
-            margin-bottom: 1.5rem;
-            color: var(--text-dark);
-        }
-
-        .testimonial-author {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-        }
-
-        .author-avatar {
-            width: 50px;
-            height: 50px;
-            border-radius: 50%;
-            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: bold;
-        }
-
-        .author-info h4 {
-            margin-bottom: 0.2rem;
-        }
-
-        .author-info p {
-            font-size: 0.9rem;
-            color: var(--text-dark);
-        }
-
         /* CTA Section */
         .cta-section {
             padding: 6rem 5%;
@@ -526,8 +465,7 @@
                 grid-template-columns: repeat(2, 1fr);
             }
 
-            .features-grid,
-            .testimonials-grid {
+            .features-grid {
                 grid-template-columns: 1fr;
             }
 
@@ -574,7 +512,6 @@
         <ul class="nav-links" id="navLinks">
             <li><a href="#features">Recursos</a></li>
             <li><a href="#how-it-works">Como Funciona</a></li>
-            <li><a href="#testimonials">Depoimentos</a></li>
             <li><a href="pricing.html" class="cta-nav">Ver Planos</a></li>
             <li><a href="register.html">Cadastrar</a></li>
             <li><a href="index.html">Login</a></li>
@@ -614,15 +551,15 @@
     <section class="stats">
         <div class="stats-grid">
             <div class="stat-item">
-                <h3><i class="fas fa-users"></i> 10K+</h3>
+                <h3><i class="fas fa-users"></i> 3</h3>
                 <p>Usuários Ativos</p>
             </div>
             <div class="stat-item">
-                <h3><i class="fas fa-shield-alt"></i> 500K+</h3>
+                <h3><i class="fas fa-shield-alt"></i> 7</h3>
                 <p>Scans Realizados</p>
             </div>
             <div class="stat-item">
-                <h3><i class="fas fa-bug"></i> 2M+</h3>
+                <h3><i class="fas fa-bug"></i> 19</h3>
                 <p>Vulnerabilidades Detectadas</p>
             </div>
             <div class="stat-item">
@@ -717,55 +654,6 @@
                 <div class="step-content">
                     <h3>Corrija as Vulnerabilidades</h3>
                     <p>Receba relatórios detalhados com recomendações de correção.</p>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- Testimonials -->
-    <section class="testimonials" id="testimonials">
-        <div class="section-header">
-            <h2>O que dizem nossos <span class="gradient-text">Clientes</span></h2>
-            <p>Milhares de desenvolvedores confiam na Iron Net</p>
-        </div>
-        <div class="testimonials-grid">
-            <div class="testimonial-card">
-                <i class="fas fa-quote-right quote-icon"></i>
-                <p class="testimonial-text">
-                    "Excelente ferramenta! Encontrou várias vulnerabilidades que nosso time não tinha identificado. Salvou nosso projeto de um grande problema."
-                </p>
-                <div class="testimonial-author">
-                    <div class="author-avatar">JS</div>
-                    <div class="author-info">
-                        <h4>João Silva</h4>
-                        <p>Tech Lead @ StartupXYZ</p>
-                    </div>
-                </div>
-            </div>
-            <div class="testimonial-card">
-                <i class="fas fa-quote-right quote-icon"></i>
-                <p class="testimonial-text">
-                    "Interface intuitiva e resultados precisos. O melhor investimento que fizemos em segurança este ano."
-                </p>
-                <div class="testimonial-author">
-                    <div class="author-avatar">MS</div>
-                    <div class="author-info">
-                        <h4>Maria Santos</h4>
-                        <p>CTO @ TechCorp</p>
-                    </div>
-                </div>
-            </div>
-            <div class="testimonial-card">
-                <i class="fas fa-quote-right quote-icon"></i>
-                <p class="testimonial-text">
-                    "Os relatórios são incrivelmente detalhados. Conseguimos melhorar significativamente a segurança de todas as nossas aplicações."
-                </p>
-                <div class="testimonial-author">
-                    <div class="author-avatar">PC</div>
-                    <div class="author-info">
-                        <h4>Pedro Costa</h4>
-                        <p>DevOps Engineer @ BigCompany</p>
-                    </div>
                 </div>
             </div>
         </div>

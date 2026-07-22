@@ -17,6 +17,12 @@
     --shadow-lg: 0 10px 25px rgba(0, 0, 0, 0.15);
     --transition: all 0.3s ease;
     --sidebar-width: 260px;
+    /* Tokens compartilhados pelo diálogo de confirmação */
+    --bg-secondary: #ffffff;
+    --bg-tertiary: #f9fafb;
+    --bg-elevated: #f3f4f6;
+    --text: #1f2937;
+    --text-secondary: #6b7280;
 }
 
 * {
@@ -584,6 +590,59 @@ body {
     text-align: center;
     padding: 40px !important;
     color: #6b7280;
+}
+
+#payments-page .payments-state-cell {
+    padding: 48px 24px !important;
+    background: #ffffff;
+    border-bottom: 0;
+}
+
+#payments-page .payments-state {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    max-width: 560px;
+    margin: 0 auto;
+    text-align: left;
+}
+
+#payments-page .payments-state-icon {
+    width: 52px;
+    height: 52px;
+    flex: 0 0 52px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 14px;
+    background: #eef2ff;
+    color: var(--primary);
+    font-size: 21px;
+}
+
+#payments-page .payments-state strong {
+    display: block;
+    margin-bottom: 4px;
+    color: var(--dark);
+    font-size: 16px;
+}
+
+#payments-page .payments-state p {
+    margin: 0;
+    color: #6b7280;
+    font-size: 13px;
+    line-height: 1.55;
+}
+
+#payments-page .payments-state.unavailable .payments-state-icon {
+    background: #fff7ed;
+    color: #c2410c;
+}
+
+#payments-page .payments-state.loading .payments-state-icon {
+    background: #eff6ff;
+    color: #2563eb;
 }
 
 /* ============ Search & Filters ============ */

@@ -548,7 +548,7 @@
                 name: 'Starter',
                 icon: 'fas fa-rocket',
                 iconClass: 'starter',
-                price: 49.90,
+                price: 189.90,
                 description: '100 scans/mês',
                 features: [
                     { text: '100 scans por mês', enabled: true },
@@ -570,7 +570,7 @@
                 name: 'Professional',
                 icon: 'fas fa-crown',
                 iconClass: 'professional',
-                price: 149.90,
+                price: 439.90,
                 description: 'Scans ilimitados',
                 popular: true,
                 features: [
@@ -639,7 +639,7 @@
                     // Renderizar preço
                     const priceHTML = plan.priceText 
                         ? `<div class="plan-price">${plan.priceText}</div>`
-                        : `<div class="plan-price">R$ ${plan.price.toFixed(2)}<span>/mês</span></div>`;
+                        : `<div class="plan-price">R$ ${plan.price.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}<span>/mês</span></div>`;
                     
                     return `
                         <div class="pricing-card ${plan.popular ? 'popular' : ''}">

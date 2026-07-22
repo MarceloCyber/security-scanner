@@ -211,7 +211,8 @@ class PortScanner:
                     'port': port,
                     'service': service,
                     'description': f'{service} não usa criptografia. Dados trafegam em texto claro.',
-                    'recommendation': f'Use alternativas seguras (SFTP, SSH, HTTPS)'
+                    'recommendation': f'Use alternativas seguras (SFTP, SSH, HTTPS)',
+                    'layer': 'Network Services', 'cwe': 'CWE-319', 'owasp': 'A02:2021', 'cvss': 7.5
                 })
             
             # Serviços de banco de dados expostos
@@ -222,7 +223,8 @@ class PortScanner:
                     'port': port,
                     'service': service,
                     'description': f'Banco de dados {service} acessível externamente',
-                    'recommendation': 'Restrinja acesso via firewall. Use VPN ou túnel SSH.'
+                    'recommendation': 'Restrinja acesso via firewall. Use VPN ou túnel SSH.',
+                    'layer': 'Network Exposure', 'cwe': 'CWE-284', 'owasp': 'A01:2021', 'cvss': 9.1
                 })
             
             # RDP exposto
@@ -233,7 +235,8 @@ class PortScanner:
                     'port': port,
                     'service': service,
                     'description': 'RDP exposto é alvo frequente de ataques brute force',
-                    'recommendation': 'Use VPN, implemente MFA, restrinja IPs permitidos'
+                    'recommendation': 'Use VPN, implemente MFA, restrinja IPs permitidos',
+                    'layer': 'Remote Access', 'cwe': 'CWE-284', 'owasp': 'A07:2021', 'cvss': 9.1
                 })
             
             # SMB exposto
@@ -243,8 +246,9 @@ class PortScanner:
                     'severity': 'CRITICAL',
                     'port': port,
                     'service': service,
-                    'description': 'SMB vulnerável a exploits como EternalBlue',
-                    'recommendation': 'Atualize Windows, desabilite SMBv1, use firewall'
+                    'description': 'SMB exposto aumenta a superfície de ataque; a versão deve ser validada contra CVEs conhecidos.',
+                    'recommendation': 'Atualize Windows, desabilite SMBv1 e restrinja SMB por firewall e segmentação.',
+                    'layer': 'Network Services', 'cwe': 'CWE-284', 'owasp': 'A05:2021', 'cvss': 9.1
                 })
             
             # Versões desatualizadas
@@ -289,7 +293,8 @@ class PortScanner:
                         'version': version,
                         'cves': cves,
                         'description': f'{software} {version} possui vulnerabilidades conhecidas',
-                        'recommendation': f'Atualize {software} para versão mais recente'
+                        'recommendation': f'Atualize {software} para versão estável suportada mais recente e valide novamente o serviço.',
+                        'layer': 'Vulnerable Components', 'cwe': 'CWE-1104', 'owasp': 'A06:2021', 'cvss': 9.8
                     }
         
         return None

@@ -141,16 +141,16 @@ async function checkSubscription() {
 
         // Lock Tools - Define quais ferramentas cada plano pode acessar
         const toolAccess = {
-            'free': ['port-scan'],
-            'starter': ['port-scan', 'scanner', 'encoder', 'subdomain', 'hash-analyzer', 'password-strength'],
-            'professional': ['port-scan', 'scanner', 'encoder', 'phishing', 'payloads', 'subdomain', 'sql-injection', 'xss-tester', 'brute-force', 'log-analyzer', 'threat-intel', 'hash-analyzer', 'password-strength', 'reports', 'ai-assistant', 'api-scanner', 'dependency-scanner', 'docker-scanner', 'graphql-scanner'],
-            'enterprise': ['port-scan', 'scanner', 'encoder', 'phishing', 'payloads', 'subdomain', 'sql-injection', 'xss-tester', 'brute-force', 'log-analyzer', 'threat-intel', 'hash-analyzer', 'password-strength', 'reports', 'ai-assistant', 'api-scanner', 'dependency-scanner', 'docker-scanner', 'graphql-scanner']
+            'free': ['port-scan', 'intelligent-automation'],
+            'starter': ['port-scan', 'scanner', 'encoder', 'subdomain', 'hash-analyzer', 'password-strength', 'intelligent-automation'],
+            'professional': ['port-scan', 'scanner', 'encoder', 'phishing', 'payloads', 'subdomain', 'sql-injection', 'xss-tester', 'brute-force', 'log-analyzer', 'threat-intel', 'hash-analyzer', 'password-strength', 'reports', 'ai-assistant', 'api-scanner', 'dependency-scanner', 'docker-scanner', 'graphql-scanner', 'intelligent-automation'],
+            'enterprise': ['port-scan', 'scanner', 'encoder', 'phishing', 'payloads', 'subdomain', 'sql-injection', 'xss-tester', 'brute-force', 'log-analyzer', 'threat-intel', 'hash-analyzer', 'password-strength', 'reports', 'ai-assistant', 'api-scanner', 'dependency-scanner', 'docker-scanner', 'graphql-scanner', 'intelligent-automation']
         };
 
         const allowedTools = toolAccess[plan] || [];
         
         // Bloquear todas as ferramentas que não estão na lista permitida
-    const allTools = ['dashboard', 'phishing', 'payloads', 'encoder', 'scanner', 'port-scan', 'api-scanner', 'dependency-scanner', 'docker-scanner', 'graphql-scanner', 'sql-injection', 'xss-tester', 'brute-force', 'subdomain', 'log-analyzer', 'threat-intel', 'hash-analyzer', 'password-strength', 'reports', 'ai-assistant'];
+    const allTools = ['dashboard', 'phishing', 'payloads', 'encoder', 'scanner', 'port-scan', 'api-scanner', 'dependency-scanner', 'docker-scanner', 'graphql-scanner', 'sql-injection', 'xss-tester', 'brute-force', 'subdomain', 'log-analyzer', 'threat-intel', 'hash-analyzer', 'password-strength', 'reports', 'ai-assistant', 'intelligent-automation'];
         
         allTools.forEach(toolId => {
             if (toolId === 'dashboard') return; // Dashboard sempre acessível
@@ -332,8 +332,8 @@ async function sendAiMessage() {
 function prelockTools() {
     const plan = (localStorage.getItem('userPlan') || 'free').toLowerCase();
     const toolAccess = {
-        'free': ['port-scan'],
-        'starter': ['port-scan', 'scanner', 'encoder', 'subdomain', 'hash-analyzer', 'password-strength'],
+        'free': ['port-scan', 'intelligent-automation'],
+        'starter': ['port-scan', 'scanner', 'encoder', 'subdomain', 'hash-analyzer', 'password-strength', 'intelligent-automation'],
         'professional': ['port-scan', 'scanner', 'encoder', 'phishing', 'payloads', 'subdomain', 'directory-enum', 'sql-injection', 'xss-tester', 'brute-force', 'log-analyzer', 'ioc-analyzer', 'threat-intel', 'hash-analyzer', 'password-strength', 'reports', 'ai-assistant', 'api-scanner', 'dependency-scanner', 'docker-scanner', 'graphql-scanner'],
         'enterprise': ['port-scan', 'scanner', 'encoder', 'phishing', 'payloads', 'subdomain', 'directory-enum', 'sql-injection', 'xss-tester', 'brute-force', 'log-analyzer', 'ioc-analyzer', 'threat-intel', 'hash-analyzer', 'password-strength', 'reports', 'ai-assistant', 'api-scanner', 'dependency-scanner', 'docker-scanner', 'graphql-scanner']
     };
@@ -354,8 +354,8 @@ function prelockTools() {
 function prelockToolCards() {
     const plan = (localStorage.getItem('userPlan') || 'free').toLowerCase();
     const toolAccess = {
-        'free': ['port-scan'],
-        'starter': ['port-scan', 'scanner', 'encoder', 'subdomain', 'hash-analyzer', 'password-strength'],
+        'free': ['port-scan', 'intelligent-automation'],
+        'starter': ['port-scan', 'scanner', 'encoder', 'subdomain', 'hash-analyzer', 'password-strength', 'intelligent-automation'],
         'professional': ['port-scan', 'scanner', 'encoder', 'phishing', 'payloads', 'subdomain', 'sql-injection', 'xss-tester', 'brute-force', 'log-analyzer', 'threat-intel', 'hash-analyzer', 'password-strength', 'reports', 'ai-assistant', 'api-scanner', 'dependency-scanner', 'docker-scanner', 'graphql-scanner'],
         'enterprise': ['port-scan', 'scanner', 'encoder', 'phishing', 'payloads', 'subdomain', 'sql-injection', 'xss-tester', 'brute-force', 'log-analyzer', 'threat-intel', 'hash-analyzer', 'password-strength', 'reports', 'ai-assistant', 'api-scanner', 'dependency-scanner', 'docker-scanner', 'graphql-scanner']
     };
@@ -538,8 +538,12 @@ function prepopulateToolResults() {
     } catch (e) {}
 }
 
-function clearAllSQLiResults() {
-    if (!confirm('Tem certeza que deseja limpar todos os resultados do SQL Injection Tester?')) return;
+function confirmDeletion(title, message, confirmText = 'Sim, apagar') {
+    return showConfirmDialog({ title, message, confirmText });
+}
+
+async function clearAllSQLiResults() {
+    if (!await confirmDeletion('Apagar resultados de SQL Injection', 'Todos os resultados armazenados deste teste serão removidos.')) return;
     try {
         localStorage.removeItem('tool.sqli.resultsHtml');
         localStorage.removeItem('tool.sqli.vulnCount');
@@ -551,8 +555,8 @@ function clearAllSQLiResults() {
     showToast('Resultados limpos com sucesso', 'success');
 }
 
-function clearAllXSSResults() {
-    if (!confirm('Tem certeza que deseja limpar todos os resultados do XSS Tester?')) return;
+async function clearAllXSSResults() {
+    if (!await confirmDeletion('Apagar resultados de XSS', 'Todos os resultados armazenados deste teste serão removidos.')) return;
     try {
         localStorage.removeItem('tool.xss.resultsHtml');
         localStorage.removeItem('tool.xss.vulnCount');
@@ -564,8 +568,8 @@ function clearAllXSSResults() {
     showToast('Resultados limpos com sucesso', 'success');
 }
 
-function clearAllBruteForceResults() {
-    if (!confirm('Tem certeza que deseja limpar todos os resultados do Brute Force Tool?')) return;
+async function clearAllBruteForceResults() {
+    if (!await confirmDeletion('Apagar resultados de força bruta', 'O progresso e todos os resultados armazenados serão removidos.')) return;
     try {
         localStorage.removeItem('tool.brute.resultsHtml');
         localStorage.removeItem('tool.brute.progress');
@@ -577,8 +581,8 @@ function clearAllBruteForceResults() {
     showToast('Resultados limpos com sucesso', 'success');
 }
 
-function clearAllSubdomainResults() {
-    if (!confirm('Tem certeza que deseja limpar todos os resultados do Subdomain Enumeration?')) return;
+async function clearAllSubdomainResults() {
+    if (!await confirmDeletion('Apagar resultados de subdomínios', 'Todos os subdomínios encontrados e armazenados serão removidos.')) return;
     try {
         localStorage.removeItem('tool.subdomain.resultsHtml');
         localStorage.removeItem('tool.subdomain.count');
@@ -590,8 +594,8 @@ function clearAllSubdomainResults() {
     showToast('Resultados limpos com sucesso', 'success');
 }
 
-function clearAllLogAnalysis() {
-    if (!confirm('Tem certeza que deseja limpar todos os resultados do Log Analyzer?')) return;
+async function clearAllLogAnalysis() {
+    if (!await confirmDeletion('Apagar análise de logs', 'Os resultados da análise e as ameaças identificadas serão removidos.')) return;
     try {
         localStorage.removeItem('tool.log.resultsHtml');
         localStorage.removeItem('tool.log.threats');
@@ -603,8 +607,8 @@ function clearAllLogAnalysis() {
     showToast('Resultados limpos com sucesso', 'success');
 }
 
-function clearAllThreatIntel() {
-    if (!confirm('Tem certeza que deseja limpar todos os resultados do Threat Intelligence?')) return;
+async function clearAllThreatIntel() {
+    if (!await confirmDeletion('Apagar consulta de ameaças', 'Os resultados, a pontuação e os indicadores armazenados serão removidos.')) return;
     try {
         localStorage.removeItem('tool.threat.resultsHtml');
         localStorage.removeItem('tool.threat.score');
@@ -620,8 +624,8 @@ function clearAllThreatIntel() {
     showToast('Resultados limpos com sucesso', 'success');
 }
 
-function clearAllDirEnum() {
-    if (!confirm('Tem certeza que deseja limpar todos os resultados do Directory Enumerator?')) return;
+async function clearAllDirEnum() {
+    if (!await confirmDeletion('Apagar resultados de diretórios', 'Todos os diretórios encontrados e armazenados serão removidos.')) return;
     try {
         localStorage.removeItem('tool.direnum.resultsHtml');
         localStorage.removeItem('tool.direnum.count');
@@ -633,8 +637,8 @@ function clearAllDirEnum() {
     showToast('Resultados limpos com sucesso', 'success');
 }
 
-function clearAllIOCAnalyzer() {
-    if (!confirm('Tem certeza que deseja limpar todos os resultados do IOC Analyzer?')) return;
+async function clearAllIOCAnalyzer() {
+    if (!await confirmDeletion('Apagar análise de IOCs', 'Todos os indicadores e resultados armazenados serão removidos.')) return;
     try {
         localStorage.removeItem('tool.ioc.resultsHtml');
         localStorage.removeItem('tool.ioc.count');
@@ -646,8 +650,8 @@ function clearAllIOCAnalyzer() {
     showToast('Resultados limpos com sucesso', 'success');
 }
 
-function clearAllHashAnalysis() {
-    if (!confirm('Tem certeza que deseja limpar todos os resultados do Hash Analyzer?')) return;
+async function clearAllHashAnalysis() {
+    if (!await confirmDeletion('Apagar análise de hashes', 'Todos os resultados armazenados da análise serão removidos.')) return;
     try {
         localStorage.removeItem('tool.hash.resultsHtml');
     } catch (_) {}
@@ -656,8 +660,8 @@ function clearAllHashAnalysis() {
     showToast('Resultados limpos com sucesso', 'success');
 }
 
-function clearAllPasswordAnalysis() {
-    if (!confirm('Tem certeza que deseja limpar todos os resultados do Password Strength Checker?')) return;
+async function clearAllPasswordAnalysis() {
+    if (!await confirmDeletion('Apagar análise de senha', 'O resultado armazenado da verificação será removido.')) return;
     try {
         localStorage.removeItem('tool.password.resultsHtml');
     } catch (_) {}
@@ -726,7 +730,7 @@ function navigateTo(pageName) {
     }
     const plan = (localStorage.getItem('userPlan') || 'free').toLowerCase();
     if (plan === 'free') {
-        const allowed = ['dashboard', 'port-scan'];
+        const allowed = ['dashboard', 'port-scan', 'intelligent-automation'];
         if (!allowed.includes(pageName)) {
             showToast('Esta ferramenta requer um plano superior. Faça upgrade!', 'info');
             setTimeout(() => window.location.href = 'pricing.html', 1500);
@@ -758,8 +762,56 @@ function navigateTo(pageName) {
         loadProfile();
     } else if (pageName === 'ai-assistant') {
         initAiAssistant();
+    } else if (pageName === 'intelligent-automation') {
+        loadAutomationData();
     }
 }
+
+function escapeAutomationHtml(value) {
+    return String(value ?? '').replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
+}
+
+async function loadAutomationData() {
+    const list = document.getElementById('automation-list');
+    if (!list) return;
+    try {
+        const [targetsData, incidentsData, stats] = await Promise.all([
+            apiRequest('/viggio-shield/targets'), apiRequest('/viggio-shield/incidents?status=open'), apiRequest('/viggio-shield/dashboard')
+        ]);
+        const monthlyLimit = stats.automation_monthly_limit === -1 ? 'Ilimitado' : stats.automation_monthly_limit;
+        document.getElementById('automation-total').textContent = `${stats.automations_this_month || 0} / ${monthlyLimit}`;
+        document.getElementById('automation-uptime').textContent = `${Number(stats.average_uptime || 100).toFixed(1)}%`;
+        document.getElementById('automation-alerts').textContent = stats.open_incidents || 0;
+        list.innerHTML = targetsData.targets?.length ? targetsData.targets.map(t => `
+            <div class="automation-item"><div class="automation-item-main"><strong>${escapeAutomationHtml(t.name)} <span class="automation-status ${t.status === 'paused' ? 'paused' : ''}">${t.status === 'paused' ? 'Pausada' : 'Ativa'}</span></strong><small>${escapeAutomationHtml(t.address)} · Último scan: ${t.last_check ? new Date(t.last_check).toLocaleString('pt-BR') : 'aguardando execução'} · Uptime ${Number(t.uptime || 0).toFixed(1)}%</small></div><div class="automation-actions"><button class="btn-sm" onclick="runAutomationNow(${t.id})" title="Executar agora"><i class="fas fa-play"></i></button><button class="btn-sm" onclick="toggleAutomation(${t.id}, '${t.status === 'paused' ? 'active' : 'paused'}')" title="${t.status === 'paused' ? 'Retomar' : 'Pausar'}"><i class="fas fa-${t.status === 'paused' ? 'play' : 'pause'}"></i></button><button class="btn-sm btn-danger" onclick="deleteAutomation(${t.id})" title="Excluir"><i class="fas fa-trash"></i></button></div></div>`).join('') : '<div class="automation-empty"><i class="fas fa-calendar-plus fa-2x"></i><p>Nenhum scan automático configurado.</p></div>';
+        const incidents = document.getElementById('automation-incidents');
+        const vulnerabilityLimit = document.getElementById('automation-vulnerability-limit');
+        vulnerabilityLimit.textContent = incidentsData.display_limit === -1 ? `${incidentsData.total_found || 0} exibidas · sem limite` : `${incidentsData.incidents?.length || 0} de até ${incidentsData.display_limit}`;
+        incidents.innerHTML = incidentsData.incidents?.length ? incidentsData.incidents.map(i => `<div class="automation-item"><div class="automation-item-main"><strong>${escapeAutomationHtml(i.title)}</strong><small><b>Problema:</b> ${escapeAutomationHtml(i.description || 'Detalhes não disponíveis')}</small><small style="color:#68d391"><b>Como corrigir:</b> ${escapeAutomationHtml(i.remediation || '')}</small><small>Detectada em ${new Date(i.detected_at).toLocaleString('pt-BR')}</small></div><span class="badge badge-danger">${escapeAutomationHtml(i.severity).toUpperCase()}</span></div>`).join('') : '<div class="automation-empty"><i class="fas fa-shield-check fa-2x"></i><p>Nenhuma vulnerabilidade encontrada.</p></div>';
+    } catch (error) { list.innerHTML = `<div class="alert alert-danger">${escapeAutomationHtml(error.message)}</div>`; }
+}
+
+async function createAutomation(event) {
+    event.preventDefault();
+    const ports = document.getElementById('automation-ports').value.split(',').map(v => v.trim()).filter(Boolean).map(Number);
+    if (ports.some(p => p < 1 || p > 65535)) return showToast('Informe portas entre 1 e 65535.', 'error');
+    try {
+        await apiRequest('/viggio-shield/targets', {method:'POST', body:JSON.stringify({name:document.getElementById('automation-name').value.trim(), target_type:document.getElementById('automation-type').value, target_address:document.getElementById('automation-address').value.trim(), monitoring_ports:ports.length ? ports : null, check_interval:Number(document.getElementById('automation-interval').value), alert_threshold:Number(document.getElementById('automation-threshold').value), enable_email_alerts:true})});
+        event.target.reset(); showToast('Automação ativada com sucesso.', 'success'); await loadAutomationData();
+    } catch (error) { showToast(error.message, 'error'); }
+}
+async function runAutomationNow(id) { try { showLoading(); const result = await apiRequest(`/viggio-shield/targets/${id}/check`, {method:'POST'}); hideLoading(); const found = Number(result.vulnerabilities_found || 0); showToast(found ? `Scan concluído: ${found} vulnerabilidade(s) encontrada(s).` : 'Scan concluído: nenhuma vulnerabilidade encontrada.', found ? 'warning' : 'success'); await loadAutomationData(); } catch(e) { hideLoading(); showToast(e.message,'error'); } }
+async function toggleAutomation(id, status) { try { await apiRequest(`/viggio-shield/targets/${id}`, {method:'PATCH',body:JSON.stringify({status})}); showToast(status === 'paused' ? 'Automação pausada.' : 'Automação retomada.','success'); await loadAutomationData(); } catch(e) { showToast(e.message,'error'); } }
+async function deleteAutomation(id) {
+    if (!await confirmDeletion('Excluir automação', 'O agendamento e o histórico associado a esta automação serão removidos.', 'Sim, excluir')) return;
+    try {
+        await apiRequest(`/viggio-shield/targets/${id}`, {method:'DELETE'});
+        showToast('Automação excluída.','success');
+        await loadAutomationData();
+    } catch(e) { showToast(e.message,'error'); }
+}
+
+setInterval(() => { if (document.getElementById('intelligent-automation-page')?.classList.contains('active')) loadAutomationData(); }, 15000);
 
 function maybeShowUpgradeModal(plan) {
     try {
@@ -1216,7 +1268,7 @@ async function loadPhishingPages() {
 }
 
 async function clearAllPhishingPages() {
-    if (!confirm('⚠️ Tem certeza que deseja APAGAR TODOS os links de phishing gerados?\n\nEsta ação não pode ser desfeita!')) {
+    if (!await confirmDeletion('Apagar links de phishing', 'Todos os links e páginas de phishing gerados serão removidos.', 'Sim, apagar todos')) {
         return;
     }
     
@@ -1367,7 +1419,7 @@ async function loadPhishingCaptures() {
 }
 
 async function deleteCapture(captureId) {
-    if (!confirm('Tem certeza que deseja deletar esta captura? Esta ação não pode ser desfeita.')) {
+    if (!await confirmDeletion('Excluir captura', 'Esta captura de phishing será removida permanentemente.', 'Sim, excluir')) {
         return;
     }
     
@@ -1384,7 +1436,7 @@ async function deleteCapture(captureId) {
 }
 
 async function clearPhishingCaptures() {
-    if (!confirm('Tem certeza que deseja limpar TODAS as capturas de phishing? Esta ação não pode ser desfeita.')) {
+    if (!await confirmDeletion('Apagar capturas de phishing', 'Todas as capturas armazenadas serão removidas permanentemente.', 'Sim, apagar todas')) {
         return;
     }
     
@@ -1849,8 +1901,8 @@ function escapeHtml(text) {
 function isToolAllowed(toolId) {
     const plan = (localStorage.getItem('userPlan') || 'free').toLowerCase();
     const toolAccess = {
-        'free': ['port-scan'],
-        'starter': ['port-scan', 'scanner', 'encoder', 'subdomain', 'hash-analyzer', 'password-strength'],
+        'free': ['port-scan', 'intelligent-automation'],
+        'starter': ['port-scan', 'scanner', 'encoder', 'subdomain', 'hash-analyzer', 'password-strength', 'intelligent-automation'],
         'professional': ['port-scan', 'scanner', 'encoder', 'phishing', 'payloads', 'subdomain', 'sql-injection', 'xss-tester', 'brute-force', 'log-analyzer', 'threat-intel', 'hash-analyzer', 'password-strength', 'reports', 'ai-assistant', 'api-scanner', 'dependency-scanner', 'docker-scanner', 'graphql-scanner'],
         'enterprise': ['port-scan', 'scanner', 'encoder', 'phishing', 'payloads', 'subdomain', 'sql-injection', 'xss-tester', 'brute-force', 'log-analyzer', 'threat-intel', 'hash-analyzer', 'password-strength', 'reports', 'ai-assistant', 'api-scanner', 'dependency-scanner', 'docker-scanner', 'graphql-scanner']
     };
@@ -2792,7 +2844,7 @@ async function showFullReportPreview() {
 }
 
 async function deleteScan(scanId) {
-    if (!confirm('Tem certeza que deseja deletar este scan? Esta ação não pode ser desfeita.')) {
+    if (!await confirmDeletion('Excluir scan', 'O scan e todos os resultados associados serão removidos permanentemente.', 'Sim, excluir')) {
         return;
     }
     
@@ -2854,6 +2906,7 @@ async function generateToolReport(toolName, toolData, resultData) {
 
 // Cria modal de preview do relatório
 function createReportPreviewModal(reportHtml, toolName) {
+    const isXSSReport = /xss/i.test(String(toolName));
     const modal = document.createElement('div');
     modal.className = 'modal-overlay';
     modal.innerHTML = `
@@ -2876,7 +2929,7 @@ function createReportPreviewModal(reportHtml, toolName) {
                         <i class="fas fa-copy"></i> Copiar HTML
                     </button>
                 </div>
-                <div id="report-content" class="report-preview" style="background: var(--bg-secondary); color: var(--text); padding: 25px; border-radius: var(--border-radius); border: 1px solid var(--border);">
+                <div id="report-content" class="report-preview${isXSSReport ? ' xss-report-preview' : ''}" data-report-kind="${isXSSReport ? 'xss' : 'generic'}" style="background: ${isXSSReport ? '#ffffff' : 'var(--bg-secondary)'}; color: ${isXSSReport ? '#172033' : 'var(--text)'}; padding: ${isXSSReport ? '0' : '25px'}; border-radius: var(--border-radius); border: 1px solid var(--border);">
                     ${reportHtml}
                 </div>
             </div>
@@ -2898,14 +2951,17 @@ function createReportPreviewModal(reportHtml, toolName) {
 function printReport() {
     const reportContent = document.getElementById('report-content');
     if (!reportContent) return;
-    
+    const isXSSReport = reportContent.dataset.reportKind === 'xss';
     const printWindow = window.open('', '_blank');
+    const stylesheet = document.querySelector('link[href*="modern-style.css"]');
+    const stylesheetUrl = stylesheet ? stylesheet.href : '/css/modern-style.css';
     printWindow.document.write(`
         <html>
             <head>
                 <title>Relatório de Segurança</title>
+                ${isXSSReport ? `<link rel="stylesheet" href="${stylesheetUrl}">` : ''}
                 <style>
-                    body { font-family: Arial, sans-serif; padding: 20px; }
+                    body { font-family: Arial, sans-serif; padding: 20px; background: #fff; color: #172033; }
                     table { border-collapse: collapse; width: 100%; margin: 20px 0; }
                     th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
                     th { background-color: #7c3aed; color: white; }
@@ -2923,7 +2979,7 @@ function printReport() {
     setTimeout(() => {
         printWindow.print();
         printWindow.close();
-    }, 250);
+    }, isXSSReport ? 500 : 250);
 }
 
 // Download relatório como PDF
@@ -2936,13 +2992,25 @@ async function downloadReportPDF(toolName) {
         
         // Usar html2pdf se estiver disponível, senão usar print
         if (typeof html2pdf !== 'undefined') {
+            const isXSSReport = /xss/i.test(String(toolName));
             const opt = {
-                margin: 1,
+                margin: isXSSReport ? [0.35, 0.35, 0.35, 0.35] : 1,
                 filename: `relatorio-${toolName.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}.pdf`,
                 image: { type: 'jpeg', quality: 0.98 },
-                html2canvas: { scale: 2 },
-                jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
+                html2canvas: isXSSReport ? {
+                    scale: 2,
+                    backgroundColor: '#ffffff',
+                    useCORS: true,
+                    windowWidth: 1100
+                } : { scale: 2 },
+                jsPDF: { unit: 'in', format: isXSSReport ? 'a4' : 'letter', orientation: 'portrait' }
             };
+            if (isXSSReport) {
+                opt.pagebreak = {
+                    mode: ['css', 'legacy'],
+                    avoid: ['.xss-finding-card', '.xss-guidance-grid > div']
+                };
+            }
             
             await html2pdf().set(opt).from(reportContent).save();
             showToast('PDF baixado com sucesso!', 'success');
@@ -3210,58 +3278,100 @@ function generateXSSReport() {
         showToast('Nenhum resultado de teste XSS disponível', 'error');
         return;
     }
-    
+
     const results = window.lastXSSResults;
-    const vulnerableResults = results.results.filter(r => r.vulnerable);
-    
+    const allResults = Array.isArray(results.results) ? results.results : [];
+    const vulnerableResults = allResults.filter(r => r && r.vulnerable);
+    const testedPayloads = Number(results.payloads_tested ?? allResults.length ?? 0);
+    const vulnerabilityCount = Number(results.vulnerabilities_found ?? vulnerableResults.length);
+    const analyst = escapeHtml(localStorage.getItem('username') || 'Usuário');
+    const target = escapeHtml(results.target || 'Não informado');
+
     const reportHtml = `
-        <div style="font-family: Arial, sans-serif;">
-            <h1 style="color: #7c3aed; border-bottom: 3px solid #7c3aed; padding-bottom: 10px;">
-                Relatório de Teste XSS (Cross-Site Scripting)
-            </h1>
-            <div style="background: #f5f5f5; padding: 15px; margin: 20px 0; border-radius: 5px;">
-                <p><strong>Data:</strong> ${new Date().toLocaleString('pt-BR')}</p>
-                <p><strong>Analista:</strong> ${localStorage.getItem('username') || 'Usuário'}</p>
-                <p><strong>URL Testada:</strong> ${results.target || 'N/A'}</p>
-                <p><strong>Vulnerabilidades Encontradas:</strong> ${results.vulnerabilities_found}</p>
-            </div>
-            
-            ${vulnerableResults.length > 0 ? `
-                <h2 style="color: #f57c00; margin-top: 30px;">⚠️ Vulnerabilidades XSS Detectadas</h2>
-                ${vulnerableResults.map((v, i) => `
-                    <div style="border: 2px solid #f57c00; padding: 15px; margin: 15px 0; border-radius: 5px; background: #fff3e6;">
-                        <h3 style="margin: 0 0 10px 0; color: #f57c00;">
-                            ${v.type.toUpperCase()} XSS - Parâmetro: ${v.parameter}
-                        </h3>
-                        <p><strong>Severidade:</strong> <span style="color: ${getSeverityColor(v.severity.toUpperCase())};">${v.severity.toUpperCase()}</span></p>
-                        <p><strong>Payload:</strong></p>
-                        <pre style="background: #f5f5f5; padding: 10px; border-radius: 5px; overflow-x: auto;"><code>${escapeHtml(v.payload)}</code></pre>
-                    </div>
-                `).join('')}
-            ` : `
-                <div style="margin-top: 30px; padding: 20px; background: #e6ffe6; border-radius: 5px; border: 2px solid #388e3c;">
-                    <h3 style="color: #388e3c;">✓ Nenhuma vulnerabilidade XSS detectada</h3>
-                    <p>O sistema testado parece estar protegido contra ataques XSS.</p>
+        <article class="xss-report-document">
+            <header class="xss-report-header">
+                <div class="xss-report-brand">IRON NET <span>/ SECURITY</span></div>
+                <div class="xss-report-label">RELATÓRIO TÉCNICO</div>
+                <h1>Teste de Cross-Site Scripting (XSS)</h1>
+                <p>Análise de exposição, evidências encontradas e recomendações de correção.</p>
+            </header>
+
+            <section class="xss-report-metadata">
+                <div><span>Data da análise</span><strong>${new Date().toLocaleString('pt-BR')}</strong></div>
+                <div><span>Analista</span><strong>${analyst}</strong></div>
+                <div class="xss-report-target"><span>URL testada</span><strong>${target}</strong></div>
+            </section>
+
+            <section class="xss-report-summary">
+                <div class="xss-summary-card">
+                    <span>Payloads testados</span>
+                    <strong>${testedPayloads}</strong>
                 </div>
+                <div class="xss-summary-card ${vulnerabilityCount > 0 ? 'is-danger' : 'is-safe'}">
+                    <span>Vulnerabilidades</span>
+                    <strong>${vulnerabilityCount}</strong>
+                </div>
+                <div class="xss-summary-card">
+                    <span>Status</span>
+                    <strong class="xss-summary-status">${vulnerabilityCount > 0 ? 'AÇÃO NECESSÁRIA' : 'SEM ACHADOS'}</strong>
+                </div>
+            </section>
+
+            ${vulnerableResults.length > 0 ? `
+                <section class="xss-report-section">
+                    <div class="xss-section-heading">
+                        <span class="xss-section-number">01</span>
+                        <div><h2>Vulnerabilidades detectadas</h2><p>Achados que exigem validação e correção.</p></div>
+                    </div>
+                    ${vulnerableResults.map((v, i) => {
+                        const severity = String(v.severity || 'HIGH').toUpperCase();
+                        const type = escapeHtml(String(v.type || 'Reflected').toUpperCase());
+                        const parameter = escapeHtml(v.parameter || 'Não informado');
+                        const payload = escapeHtml(v.payload || 'Payload não informado');
+                        return `
+                        <div class="xss-finding-card">
+                            <div class="xss-finding-header">
+                                <div><span>ACHADO XSS-${String(i + 1).padStart(3, '0')}</span><h3>${type} XSS</h3></div>
+                                <span class="xss-severity-badge">${escapeHtml(severity)}</span>
+                            </div>
+                            <div class="xss-finding-grid">
+                                <div><span>Parâmetro afetado</span><strong>${parameter}</strong></div>
+                                <div><span>Risco principal</span><strong>Execução de script no navegador</strong></div>
+                            </div>
+                            <div class="xss-evidence-label">Payload utilizado</div>
+                            <pre class="xss-evidence"><code>${payload}</code></pre>
+                            <div class="xss-remediation">
+                                <strong>Como corrigir</strong>
+                                <p>Codifique a saída conforme o contexto, evite inserir dados não confiáveis com <code>innerHTML</code> e sanitize HTML permitido com uma biblioteca mantida, como DOMPurify.</p>
+                            </div>
+                        </div>`;
+                    }).join('')}
+                </section>
+            ` : `
+                <section class="xss-safe-result">
+                    <div class="xss-safe-icon"><i class="fas fa-shield-alt"></i></div>
+                    <div><h2>Nenhuma vulnerabilidade XSS detectada</h2><p>Os payloads executados não confirmaram exposição. Mantenha os controles e repita o teste após mudanças relevantes.</p></div>
+                </section>
             `}
-            
-            <div style="margin-top: 40px; padding: 20px; background: #f0f0f0; border-radius: 5px;">
-                <h3>Tipos de XSS</h3>
-                <ul>
-                    <li><strong>Reflected XSS:</strong> O payload é refletido imediatamente na resposta</li>
-                    <li><strong>Stored XSS:</strong> O payload é armazenado no servidor e executado posteriormente</li>
-                    <li><strong>DOM-based XSS:</strong> A vulnerabilidade existe no código JavaScript do cliente</li>
-                </ul>
-                <h3>Recomendações de Segurança</h3>
-                <ul>
-                    <li>Sanitize e escape todos os dados de entrada antes de exibi-los</li>
-                    <li>Implemente Content Security Policy (CSP)</li>
-                    <li>Use bibliotecas de sanitização como DOMPurify</li>
-                    <li>Valide e codifique saídas baseadas no contexto (HTML, JavaScript, CSS)</li>
-                    <li>Configure HttpOnly e Secure flags em cookies</li>
-                </ul>
-            </div>
-        </div>
+
+            <section class="xss-report-section">
+                <div class="xss-section-heading">
+                    <span class="xss-section-number">02</span>
+                    <div><h2>Orientações técnicas</h2><p>Controles recomendados para reduzir a superfície de ataque.</p></div>
+                </div>
+                <div class="xss-guidance-grid">
+                    <div><h3>Reflected XSS</h3><p>O payload retorna na resposta. Codifique a saída e valide parâmetros recebidos.</p></div>
+                    <div><h3>Stored XSS</h3><p>O conteúdo persiste no servidor. Sanitize antes de armazenar e ao renderizar.</p></div>
+                    <div><h3>DOM-based XSS</h3><p>O fluxo vulnerável está no cliente. Prefira <code>textContent</code> e APIs seguras do DOM.</p></div>
+                    <div><h3>Defesa adicional</h3><p>Implemente CSP restritiva e cookies com <code>HttpOnly</code>, <code>Secure</code> e <code>SameSite</code>.</p></div>
+                </div>
+            </section>
+
+            <footer class="xss-report-footer">
+                <span>IRON NET · RELATÓRIO DE SEGURANÇA</span>
+                <strong>CONFIDENCIAL — USO INTERNO</strong>
+            </footer>
+        </article>
     `;
     
     createReportPreviewModal(reportHtml, 'XSS Tester');
@@ -3449,6 +3559,11 @@ async function markNotificationRead(notificationId) {
 }
 
 async function deleteNotification(notificationId) {
+    if (!await confirmDeletion(
+        'Excluir notificação',
+        'Esta notificação será removida da sua central.',
+        'Sim, excluir'
+    )) return;
     try {
         await apiRequest(`/tools/notifications/${notificationId}`, {
             method: 'DELETE'
@@ -3461,7 +3576,7 @@ async function deleteNotification(notificationId) {
 }
 
 async function clearAllNotifications() {
-    if (!confirm('Tem certeza que deseja limpar todas as notificações?')) {
+    if (!await confirmDeletion('Apagar notificações', 'Todas as notificações serão removidas da sua central.', 'Sim, apagar todas')) {
         return;
     }
     

@@ -259,7 +259,7 @@ def get_plan_info(plan_name: str) -> dict:
         },
         "starter": {
             "name": "Starter",
-            "price": 49.90,
+            "price": 189.90,
             "currency": "BRL",
             "scans_limit": 100,
             "features": [
@@ -272,7 +272,7 @@ def get_plan_info(plan_name: str) -> dict:
         },
         "professional": {
             "name": "Professional",
-            "price": 149.90,
+            "price": 439.90,
             "currency": "BRL",
             "scans_limit": -1,
             "features": [
@@ -286,7 +286,7 @@ def get_plan_info(plan_name: str) -> dict:
         },
         "enterprise": {
             "name": "Enterprise",
-            "price": 499.90,
+            "price": None,
             "currency": "BRL",
             "scans_limit": -1,
             "features": [

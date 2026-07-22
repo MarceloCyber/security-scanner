@@ -181,7 +181,7 @@ class DependencyScanner:
         if package_name in known_vulns and package_version:
             for vuln_version, cves in known_vulns[package_name].items():
                 if package_version.startswith(vuln_version):
-                    return {
+                    result = {
                         'package': package_name,
                         'version': package_version,
                         'severity': 'HIGH',
@@ -189,6 +189,11 @@ class DependencyScanner:
                         'description': f'Vulnerabilidades conhecidas encontradas em {package_name} {package_version}',
                         'recommendation': f'Atualize para a versão mais recente de {package_name}'
                     }
+                    latest = self._latest_package_version(package_name, 'python')
+                    if latest:
+                        result['latest_version'] = latest
+                        result['recommendation'] = f'Atualize {package_name} de {package_version} para {latest} e execute os testes de regressão.'
+                    return result
         
         # Verificar se existe versão mais recente
         try:
@@ -205,6 +210,7 @@ class DependencyScanner:
                         'cves': [],
                         'description': f'Versão desatualizada. Versão atual: {package_version}, Última: {latest_version}',
                         'recommendation': f'Considere atualizar para {latest_version}'
+                        , 'latest_version': latest_version
                     }
         except Exception:
             pass
@@ -233,7 +239,7 @@ class DependencyScanner:
         if package_name in known_vulns:
             for vuln_version, cves in known_vulns[package_name].items():
                 if clean_version.startswith(vuln_version):
-                    return {
+                    result = {
                         'package': package_name,
                         'version': clean_version,
                         'severity': 'HIGH',
@@ -241,8 +247,37 @@ class DependencyScanner:
                         'description': f'Vulnerabilidades conhecidas em {package_name} {clean_version}',
                         'recommendation': f'Atualize {package_name} para a versão mais recente'
                     }
+                    latest = self._latest_package_version(package_name, 'npm')
+                    if latest:
+                        result['latest_version'] = latest
+                        result['recommendation'] = f'Atualize {package_name} de {clean_version} para {latest} e execute npm test antes do deploy.'
+                    return result
+
+        latest = self._latest_package_version(package_name, 'npm')
+        if latest and clean_version and clean_version[0].isdigit():
+            try:
+                if version.parse(latest) > version.parse(clean_version):
+                    return {
+                        'package': package_name, 'version': clean_version, 'latest_version': latest,
+                        'severity': 'MEDIUM', 'cves': [],
+                        'description': f'Versão desatualizada. Atual: {clean_version}, recomendada: {latest}',
+                        'recommendation': f'Atualize {package_name} para {latest} e execute a suíte de testes.'
+                    }
+            except Exception:
+                pass
         
         return None
+
+    def _latest_package_version(self, package_name: str, ecosystem: str) -> Optional[str]:
+        """Consulta a versão publicada sem inventar uma versão quando o registry falhar."""
+        try:
+            if ecosystem == 'npm':
+                response = requests.get(self.npm_api.format(package_name), timeout=5)
+                return response.json().get('dist-tags', {}).get('latest') if response.status_code == 200 else None
+            response = requests.get(self.pypi_api.format(package_name), timeout=5)
+            return response.json().get('info', {}).get('version') if response.status_code == 200 else None
+        except Exception:
+            return None
     
     def _check_packagist_package(self, package_name: str, package_version: str) -> Optional[Dict[str, Any]]:
         """Verifica vulnerabilidades em pacote PHP/Composer"""

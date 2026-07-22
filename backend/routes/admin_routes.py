@@ -559,7 +559,7 @@ def change_plan(
                 f'Olá, {user.username}! Seu plano foi alterado para Free. Você pode fazer upgrade a qualquer momento.'
             )
         else:
-            plan_prices = {'starter': 49.90, 'professional': 149.90, 'enterprise': 499.90}
+            plan_prices = {'starter': 189.90, 'professional': 439.90}
             email_service.send_subscription_confirmation(
                 user.email,
                 user.username,

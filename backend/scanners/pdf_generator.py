@@ -4,24 +4,39 @@ Gera relatórios detalhados e profissionais em PDF
 """
 
 from reportlab.lib import colors
-from reportlab.lib.pagesizes import letter, A4
+from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import inch
 from reportlab.platypus import (
     SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle,
-    PageBreak, Image, KeepTogether, Preformatted, XPreformatted
+    PageBreak, XPreformatted
 )
-from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT, TA_JUSTIFY
+from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
 from reportlab.graphics.shapes import Drawing
 from reportlab.graphics.charts.piecharts import Pie
-from reportlab.graphics.charts.barcharts import VerticalBarChart
 from datetime import datetime
 from typing import Dict, List, Any
+from xml.sax.saxutils import escape
 import io
 
 
 class PDFReportGenerator:
     """Gerador de relatórios PDF profissionais"""
+
+    NAVY = colors.HexColor('#14213D')
+    BLUE = colors.HexColor('#2563EB')
+    SLATE = colors.HexColor('#475569')
+    MUTED = colors.HexColor('#64748B')
+    BORDER = colors.HexColor('#CBD5E1')
+    SURFACE = colors.HexColor('#F8FAFC')
+    WHITE = colors.white
+    SEVERITY_COLORS = {
+        'CRITICAL': colors.HexColor('#991B1B'),
+        'HIGH': colors.HexColor('#C2410C'),
+        'MEDIUM': colors.HexColor('#A16207'),
+        'LOW': colors.HexColor('#047857'),
+        'INFO': colors.HexColor('#475569'),
+    }
     
     def __init__(self):
         self.styles = getSampleStyleSheet()
@@ -30,76 +45,64 @@ class PDFReportGenerator:
     def _setup_custom_styles(self):
         """Configura estilos customizados"""
         
-        # Título principal
         self.styles.add(ParagraphStyle(
             name='CustomTitle',
             parent=self.styles['Heading1'],
-            fontSize=24,
-            textColor=colors.HexColor('#1a1a1a'),
-            spaceAfter=30,
-            alignment=TA_CENTER,
-            fontName='Helvetica-Bold'
+            fontSize=25, leading=30,
+            textColor=self.NAVY,
+            spaceAfter=8,
+            alignment=TA_LEFT,
+            fontName='Helvetica-Bold',
         ))
-        
-        # Subtítulo
         self.styles.add(ParagraphStyle(
             name='CustomSubtitle',
             parent=self.styles['Heading2'],
-            fontSize=16,
-            textColor=colors.HexColor('#2c3e50'),
-            spaceAfter=12,
-            spaceBefore=12,
-            fontName='Helvetica-Bold'
+            fontSize=15, leading=19,
+            textColor=self.NAVY,
+            spaceAfter=10, spaceBefore=18,
+            fontName='Helvetica-Bold',
+            keepWithNext=True,
         ))
-        
-        # Seção
         self.styles.add(ParagraphStyle(
             name='CustomSection',
             parent=self.styles['Heading3'],
-            fontSize=14,
-            textColor=colors.HexColor('#34495e'),
-            spaceAfter=10,
-            spaceBefore=10,
-            fontName='Helvetica-Bold'
+            fontSize=12, leading=15,
+            textColor=self.NAVY,
+            spaceAfter=7, spaceBefore=12,
+            fontName='Helvetica-Bold',
+            keepWithNext=True,
         ))
-        
-        # Texto de alerta crítico
-        self.styles.add(ParagraphStyle(
-            name='CriticalAlert',
-            parent=self.styles['Normal'],
-            fontSize=10,
-            textColor=colors.HexColor('#c0392b'),
-            spaceAfter=6,
-            fontName='Helvetica-Bold'
-        ))
-        
-        # Texto de alerta alto
-        self.styles.add(ParagraphStyle(
-            name='HighAlert',
-            parent=self.styles['Normal'],
-            fontSize=10,
-            textColor=colors.HexColor('#e67e22'),
-            spaceAfter=6,
-            fontName='Helvetica-Bold'
-        ))
-        
-        # Informação
         self.styles.add(ParagraphStyle(
             name='InfoText',
             parent=self.styles['Normal'],
-            fontSize=10,
-            textColor=colors.HexColor('#7f8c8d'),
+            fontSize=9, leading=13,
+            textColor=self.SLATE,
             spaceAfter=6,
-            alignment=TA_JUSTIFY
+            alignment=TA_LEFT,
         ))
-        # Bloco monoespaçado para respostas
+        self.styles.add(ParagraphStyle(
+            name='SmallText', parent=self.styles['Normal'],
+            fontSize=7.5, leading=10, textColor=self.MUTED,
+        ))
+        self.styles.add(ParagraphStyle(
+            name='CardLabel', parent=self.styles['Normal'],
+            fontSize=7.5, leading=9, textColor=self.MUTED,
+            fontName='Helvetica-Bold', spaceAfter=2,
+        ))
+        self.styles.add(ParagraphStyle(
+            name='CardValue', parent=self.styles['Normal'],
+            fontSize=10, leading=13, textColor=self.NAVY,
+        ))
         self.styles.add(ParagraphStyle(
             name='MonospaceBlock',
             parent=self.styles['Normal'],
-            fontSize=9,
-            textColor=colors.HexColor('#2c3e50'),
-            spaceAfter=6,
-            fontName='Courier'
+            fontSize=7.2, leading=9.2,
+            textColor=colors.HexColor('#1E293B'),
+            backColor=self.SURFACE,
+            borderColor=self.BORDER, borderWidth=0.5,
+            borderPadding=7,
+            spaceAfter=7,
+            fontName='Courier',
         ))
     
     def generate_scan_report(self, scan_data: Dict[str, Any], output_path: str = None) -> bytes:
@@ -115,49 +118,39 @@ class PDFReportGenerator:
         doc = SimpleDocTemplate(
             buffer,
             pagesize=A4,
-            rightMargin=72,
-            leftMargin=72,
-            topMargin=72,
-            bottomMargin=18
+            rightMargin=42,
+            leftMargin=42,
+            topMargin=54,
+            bottomMargin=46,
+            title='Relatório Profissional de Segurança',
+            author='Iron Net',
+            subject='Análise de vulnerabilidades e plano de remediação',
         )
         
         # Container para elementos
         story = []
         
-        # Cabeçalho
         story.extend(self._create_header(scan_data))
-        story.append(Spacer(1, 0.2 * inch))
+        story.extend(self._create_executive_summary(scan_data))
+        story.extend(self._create_statistics_section(scan_data))
 
         if scan_data.get('user_overview'):
             story.extend(self._create_user_overview(scan_data['user_overview']))
-            story.append(Spacer(1, 0.15 * inch))
         if scan_data.get('tools_summary'):
             story.extend(self._create_tools_overview(scan_data['tools_summary']))
-            story.append(Spacer(1, 0.15 * inch))
         if scan_data.get('scans_details'):
             story.extend(self._create_scan_list_section(scan_data['scans_details']))
-            story.append(Spacer(1, 0.2 * inch))
-        
-        # Sumário Executivo
-        story.extend(self._create_executive_summary(scan_data))
-        
-        # Gráficos e Estatísticas
-        story.extend(self._create_statistics_section(scan_data))
-        
-        # Detalhes das Vulnerabilidades
-        story.extend(self._create_vulnerabilities_section(scan_data))
 
-        # Respostas das Ferramentas
-        if scan_data.get('scans_details'):
-            story.extend(self._create_tools_responses_section(scan_data['scans_details']))
-        
-        # Recomendações
+        story.extend(self._create_prioritization_section(scan_data))
+        story.extend(self._create_vulnerabilities_section(scan_data))
         story.extend(self._create_recommendations_section(scan_data))
-        
-        # Rodapé
+
+        if scan_data.get('scans_details'):
+            story.append(PageBreak())
+            story.extend(self._create_tools_responses_section(scan_data['scans_details']))
+
         story.extend(self._create_footer())
-        
-        # Construir PDF
+
         doc.build(story, onFirstPage=self._add_page_number, onLaterPages=self._add_page_number)
         
         # Retornar bytes se foi usado buffer
@@ -166,299 +159,508 @@ class PDFReportGenerator:
         
         return None
 
+    @staticmethod
+    def _safe(value: Any, default: str = 'Não informado') -> str:
+        if value is None or value == '' or value == []:
+            value = default
+        return escape(str(value))
+
+    def _cell(self, value: Any, style: str = 'InfoText') -> Paragraph:
+        return Paragraph(self._safe(value, '—'), self.styles[style])
+
+    @staticmethod
+    def _severity(value: Any) -> str:
+        severity = str(value or 'INFO').upper()
+        return severity if severity in ('CRITICAL', 'HIGH', 'MEDIUM', 'LOW') else 'INFO'
+
+    @staticmethod
+    def _number(value: Any) -> float:
+        try:
+            return float(value or 0)
+        except (TypeError, ValueError):
+            return 0
+
+    @staticmethod
+    def _findings(value: Any) -> List[Dict[str, Any]]:
+        if isinstance(value, dict):
+            value = list(value.values())
+        if not isinstance(value, (list, tuple)):
+            return []
+        return [item for item in value if isinstance(item, dict)]
+
+    @staticmethod
+    def _format_date(value: Any) -> str:
+        if not value:
+            return 'Não informada'
+        try:
+            parsed = datetime.fromisoformat(str(value).replace('Z', '+00:00'))
+            return parsed.strftime('%d/%m/%Y %H:%M')
+        except (TypeError, ValueError):
+            return str(value)
+
+    def _section_title(self, title: str, subtitle: str = '') -> List:
+        elements = [Paragraph(self._safe(title), self.styles['CustomSubtitle'])]
+        if subtitle:
+            elements.append(Paragraph(self._safe(subtitle), self.styles['InfoText']))
+        return elements
+
+    def _standard_table(self, data: List[List[Any]], widths: List[float],
+                        header: bool = True) -> Table:
+        table = Table(data, colWidths=widths, repeatRows=1 if header else 0,
+                      hAlign='LEFT')
+        commands = [
+            ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+            ('GRID', (0, 0), (-1, -1), 0.35, self.BORDER),
+            ('LEFTPADDING', (0, 0), (-1, -1), 7),
+            ('RIGHTPADDING', (0, 0), (-1, -1), 7),
+            ('TOPPADDING', (0, 0), (-1, -1), 6),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
+            ('ROWBACKGROUNDS', (0, 1 if header else 0), (-1, -1),
+             [self.WHITE, self.SURFACE]),
+        ]
+        if header:
+            commands.extend([
+                ('BACKGROUND', (0, 0), (-1, 0), self.NAVY),
+                ('TEXTCOLOR', (0, 0), (-1, 0), self.WHITE),
+                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('FONTSIZE', (0, 0), (-1, 0), 8),
+            ])
+        table.setStyle(TableStyle(commands))
+        return table
+
     def _create_user_overview(self, overview: Dict) -> List:
-        elements = []
-        elements.append(Paragraph("Visão Geral do Usuário", self.styles['CustomSubtitle']))
+        elements = self._section_title(
+            'Cobertura da análise',
+            'Consolidação dos ativos analisados e dos achados identificados.'
+        )
         total_scans = overview.get('total_scans', 0)
         total_vulns = overview.get('total_vulnerabilities', 0)
         sc = overview.get('severity_count', {'CRITICAL':0,'HIGH':0,'MEDIUM':0,'LOW':0})
         data = [
-            ['Total de Scans', str(total_scans)],
-            ['Total de Vulnerabilidades', str(total_vulns)],
-            ['Críticas', str(sc.get('CRITICAL', 0))],
-            ['Altas', str(sc.get('HIGH', 0))],
-            ['Médias', str(sc.get('MEDIUM', 0))],
-            ['Baixas', str(sc.get('LOW', 0))]
+            [self._cell('Scans executados', 'CardLabel'), self._cell(total_scans, 'CardValue'),
+             self._cell('Total de achados', 'CardLabel'), self._cell(total_vulns, 'CardValue')],
+            [self._cell('Críticos / Altos', 'CardLabel'),
+             self._cell(f"{sc.get('CRITICAL', 0)} / {sc.get('HIGH', 0)}", 'CardValue'),
+             self._cell('Médios / Baixos', 'CardLabel'),
+             self._cell(f"{sc.get('MEDIUM', 0)} / {sc.get('LOW', 0)}", 'CardValue')],
         ]
-        table = Table(data, colWidths=[3*inch, 2*inch])
+        table = Table(data, colWidths=[1.45*inch, 1.0*inch, 1.45*inch, 1.0*inch],
+                      hAlign='LEFT')
         table.setStyle(TableStyle([
-            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#34495e')),
-            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-            ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
-            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-            ('GRID', (0, 0), (-1, -1), 0.5, colors.black),
+            ('BACKGROUND', (0, 0), (-1, -1), self.SURFACE),
+            ('BOX', (0, 0), (-1, -1), 0.6, self.BORDER),
+            ('INNERGRID', (0, 0), (-1, -1), 0.35, self.BORDER),
+            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+            ('LEFTPADDING', (0, 0), (-1, -1), 8),
+            ('RIGHTPADDING', (0, 0), (-1, -1), 8),
+            ('TOPPADDING', (0, 0), (-1, -1), 8),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
         ]))
         elements.append(table)
         return elements
 
     def _create_tools_overview(self, tools: List[Dict[str, Any]]) -> List:
-        elements = []
-        elements.append(Paragraph("Ferramentas Utilizadas", self.styles['CustomSubtitle']))
-        data = [['Ferramenta', 'Scans', 'Vulnerabilidades']]
+        elements = self._section_title('Ferramentas e resultados')
+        data = [['FERRAMENTA', 'SCANS', 'ACHADOS']]
         for t in tools:
-            data.append([t.get('tool', ''), str(t.get('scans', 0)), str(t.get('vulnerabilities', 0))])
-        table = Table(data, colWidths=[3*inch, 1.25*inch, 1.75*inch])
-        table.setStyle(TableStyle([
-            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#34495e')),
-            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-            ('GRID', (0, 0), (-1, -1), 0.5, colors.black),
-        ]))
-        elements.append(table)
+            data.append([self._cell(t.get('tool', '')), self._cell(t.get('scans', 0)),
+                         self._cell(t.get('vulnerabilities', 0))])
+        elements.append(self._standard_table(data, [3.4*inch, 1.1*inch, 1.2*inch]))
         return elements
 
     def _create_scan_list_section(self, scans: List[Dict[str, Any]]) -> List:
-        elements = []
-        elements.append(Paragraph("Linha do Tempo dos Scans", self.styles['CustomSubtitle']))
-        data = [['ID', 'Tipo', 'Target', 'Data', 'Vulnerabilidades']]
+        elements = self._section_title('Escopo e linha do tempo')
+        data = [['ID', 'TIPO', 'ALVO', 'DATA', 'ACHADOS']]
         for s in scans[:30]:
             data.append([
-                str(s.get('id', '')),
-                str(s.get('scan_type', '')).upper(),
-                s.get('target', ''),
-                s.get('created_at', ''),
-                str(s.get('total_vulnerabilities', 0))
+                self._cell(s.get('id', '')),
+                self._cell(str(s.get('scan_type', '')).upper()),
+                self._cell(s.get('target', '')),
+                self._cell(self._format_date(s.get('created_at'))),
+                self._cell(s.get('total_vulnerabilities', 0)),
             ])
-        table = Table(data, colWidths=[0.8*inch, 1.2*inch, 2.2*inch, 1.6*inch, 1.2*inch])
-        table.setStyle(TableStyle([
-            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#34495e')),
-            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-            ('GRID', (0, 0), (-1, -1), 0.5, colors.black),
-        ]))
-        elements.append(table)
+        elements.append(self._standard_table(
+            data, [0.48*inch, 0.85*inch, 2.25*inch, 1.35*inch, 0.72*inch]
+        ))
         return elements
     
     def _create_header(self, scan_data: Dict) -> List:
         """Cria cabeçalho do relatório"""
         elements = []
-        
-        # Título
-        title = Paragraph(
-            "Security Scan Report",
-            self.styles['CustomTitle']
-        )
-        elements.append(title)
-        
-        # Informações do scan
-        scan_info = f"""
-        <para alignment='center'>
-        <font size=10 color='#7f8c8d'>
-        <b>Scan ID:</b> {scan_data.get('scan_id', 'N/A')}<br/>
-        <b>Data:</b> {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}<br/>
-        <b>Tipo:</b> {scan_data.get('scan_type', 'Code Analysis').upper()}<br/>
-        <b>Target:</b> {scan_data.get('target', 'N/A')}
-        </font>
-        </para>
-        """
-        elements.append(Paragraph(scan_info, self.styles['Normal']))
-        elements.append(Spacer(1, 0.2 * inch))
-        
-        # Linha separadora
-        elements.append(self._create_line())
+
+        scan_id = str(scan_data.get('scan_id', 'N/A'))
+        scan_type = str(scan_data.get('scan_type', 'Code Analysis')).upper()
+        target = str(scan_data.get('target', 'N/A'))
+
+        brand = Table([[
+            Paragraph('IRON NET <font color="#2563EB">/ SECURITY</font>', self.styles['CardValue']),
+            Paragraph('CONFIDENCIAL', ParagraphStyle(
+                'Confidential', parent=self.styles['CardLabel'], alignment=TA_RIGHT,
+                textColor=self.SEVERITY_COLORS['CRITICAL']))
+        ]], colWidths=[4.5*inch, 1.2*inch])
+        brand.setStyle(TableStyle([
+            ('LINEBELOW', (0, 0), (-1, -1), 2, self.BLUE),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ]))
+        elements.extend([
+            brand, Spacer(1, 0.3*inch),
+            Paragraph('Relatório de Segurança', self.styles['CustomTitle']),
+            Paragraph('Análise técnica de vulnerabilidades e plano de remediação',
+                      self.styles['InfoText']),
+            Spacer(1, 0.18*inch),
+        ])
+
+        metadata = [
+            [self._cell('IDENTIFICAÇÃO', 'CardLabel'), self._cell('TIPO DE ANÁLISE', 'CardLabel')],
+            [self._cell(f'Scan {scan_id}', 'CardValue'), self._cell(scan_type, 'CardValue')],
+            [self._cell('ALVO', 'CardLabel'), self._cell('EMITIDO EM', 'CardLabel')],
+            [self._cell(target, 'CardValue'),
+             self._cell(datetime.now().strftime('%d/%m/%Y às %H:%M'), 'CardValue')],
+        ]
+        meta_table = Table(metadata, colWidths=[2.85*inch, 2.85*inch])
+        meta_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, -1), self.SURFACE),
+            ('BOX', (0, 0), (-1, -1), 0.6, self.BORDER),
+            ('LINEBELOW', (0, 1), (-1, 1), 0.35, self.BORDER),
+            ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+            ('LEFTPADDING', (0, 0), (-1, -1), 10),
+            ('RIGHTPADDING', (0, 0), (-1, -1), 10),
+            ('TOPPADDING', (0, 0), (-1, -1), 5),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
+        ]))
+        elements.extend([meta_table, Spacer(1, 0.12*inch)])
+        elements.append(Paragraph(
+            'Classificação: uso interno. Os achados devem ser validados no contexto da aplicação antes de alterações em produção.',
+            self.styles['SmallText']))
         
         return elements
     
     def _create_executive_summary(self, scan_data: Dict) -> List:
         """Cria sumário executivo"""
-        elements = []
-        
-        elements.append(Paragraph("Sumário Executivo", self.styles['CustomSubtitle']))
+        elements = self._section_title(
+            'Sumário executivo',
+            'Visão objetiva da exposição identificada e da urgência de tratamento.'
+        )
         
         summary = scan_data.get('summary', {})
-        total = summary.get('total', 0)
-        critical = summary.get('critical', 0)
-        high = summary.get('high', 0)
-        medium = summary.get('medium', 0)
-        low = summary.get('low', 0)
+        total = self._number(summary.get('total', 0))
+        critical = self._number(summary.get('critical', 0))
+        high = self._number(summary.get('high', 0))
+        medium = self._number(summary.get('medium', 0))
+        low = self._number(summary.get('low', 0))
         
-        # Avaliação geral
         if critical > 0:
             risk_level = "CRÍTICO"
-            risk_color = "#c0392b"
+            risk_color = self.SEVERITY_COLORS['CRITICAL']
+            action = 'Ação imediata: conter a exposição e iniciar a correção dos achados críticos.'
         elif high > 0:
             risk_level = "ALTO"
-            risk_color = "#e67e22"
+            risk_color = self.SEVERITY_COLORS['HIGH']
+            action = 'Prioridade alta: planejar correções antes da próxima liberação para produção.'
         elif medium > 0:
             risk_level = "MÉDIO"
-            risk_color = "#f39c12"
+            risk_color = self.SEVERITY_COLORS['MEDIUM']
+            action = 'Tratamento programado: reduzir a superfície de ataque no ciclo atual.'
         else:
             risk_level = "BAIXO"
-            risk_color = "#27ae60"
-        
-        summary_text = f"""
-        <para alignment='justify'>
-        O scan de segurança identificou <b>{total}</b> potenciais vulnerabilidades no código analisado.
-        O nível de risco geral é classificado como <font color='{risk_color}'><b>{risk_level}</b></font>.
-        </para>
-        """
-        elements.append(Paragraph(summary_text, self.styles['InfoText']))
-        elements.append(Spacer(1, 0.2 * inch))
-        
-        # Tabela de resumo
-        data = [
-            ['Severidade', 'Quantidade', 'Percentual'],
-            ['Crítica', str(critical), f'{(critical/total*100) if total > 0 else 0:.1f}%'],
-            ['Alta', str(high), f'{(high/total*100) if total > 0 else 0:.1f}%'],
-            ['Média', str(medium), f'{(medium/total*100) if total > 0 else 0:.1f}%'],
-            ['Baixa', str(low), f'{(low/total*100) if total > 0 else 0:.1f}%'],
-            ['', f'Total: {total}', '100%']
-        ]
-        
-        table = Table(data, colWidths=[2*inch, 1.5*inch, 1.5*inch])
-        table.setStyle(TableStyle([
-            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#34495e')),
-            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-            ('FONTSIZE', (0, 0), (-1, 0), 12),
-            ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
-            ('BACKGROUND', (0, 1), (-1, -2), colors.beige),
-            ('BACKGROUND', (0, -1), (-1, -1), colors.HexColor('#ecf0f1')),
-            ('GRID', (0, 0), (-1, -1), 1, colors.black),
-            ('FONTNAME', (0, -1), (-1, -1), 'Helvetica-Bold'),
+            risk_color = self.SEVERITY_COLORS['LOW']
+            action = 'Manter monitoramento e confirmar os controles de segurança existentes.'
+
+        risk_card = Table([[
+            Paragraph(f'<font size="8">RISCO GERAL</font><br/><font size="18"><b>{risk_level}</b></font>',
+                      ParagraphStyle('RiskCard', parent=self.styles['Normal'], textColor=self.WHITE,
+                                     leading=21)),
+            Paragraph(
+                f'Foram identificados <b>{total}</b> achado(s), sendo <b>{critical + high}</b> de alta prioridade.<br/>{self._safe(action)}',
+                self.styles['InfoText'])
+        ]], colWidths=[1.55*inch, 4.15*inch])
+        risk_card.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (0, 0), risk_color),
+            ('BACKGROUND', (1, 0), (1, 0), self.SURFACE),
+            ('BOX', (0, 0), (-1, -1), 0.6, self.BORDER),
+            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+            ('LEFTPADDING', (0, 0), (-1, -1), 12),
+            ('RIGHTPADDING', (0, 0), (-1, -1), 12),
+            ('TOPPADDING', (0, 0), (-1, -1), 12),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 12),
         ]))
-        
-        elements.append(table)
-        
+        elements.extend([risk_card, Spacer(1, 0.14*inch)])
+
+        data = [
+            ['SEVERIDADE', 'QUANTIDADE', 'DISTRIBUIÇÃO'],
+            [self._cell('Crítica'), self._cell(critical), self._cell(f'{(critical/total*100) if total > 0 else 0:.1f}%')],
+            [self._cell('Alta'), self._cell(high), self._cell(f'{(high/total*100) if total > 0 else 0:.1f}%')],
+            [self._cell('Média'), self._cell(medium), self._cell(f'{(medium/total*100) if total > 0 else 0:.1f}%')],
+            [self._cell('Baixa'), self._cell(low), self._cell(f'{(low/total*100) if total > 0 else 0:.1f}%')],
+        ]
+        elements.append(self._standard_table(data, [2.5*inch, 1.4*inch, 1.8*inch]))
         return elements
     
     def _create_statistics_section(self, scan_data: Dict) -> List:
         """Cria seção de estatísticas com gráficos"""
-        elements = []
-        
-        elements.append(Paragraph("Análise Estatística", self.styles['CustomSubtitle']))
-        elements.append(Spacer(1, 0.2 * inch))
+        elements = self._section_title('Distribuição por severidade')
         
         summary = scan_data.get('summary', {})
         
         # Gráfico de pizza (com proteção para total = 0)
         data_values = [
-            summary.get('critical', 0),
-            summary.get('high', 0),
-            summary.get('medium', 0),
-            summary.get('low', 0)
+            self._number(summary.get('critical', 0)),
+            self._number(summary.get('high', 0)),
+            self._number(summary.get('medium', 0)),
+            self._number(summary.get('low', 0))
         ]
         total_values = sum(data_values)
         if total_values > 0:
-            drawing = Drawing(400, 200)
+            drawing = Drawing(410, 155)
             pie = Pie()
-            pie.x = 150
-            pie.y = 50
-            pie.width = 100
-            pie.height = 100
+            pie.x = 55
+            pie.y = 20
+            pie.width = 115
+            pie.height = 115
             pie.data = data_values
-            pie.labels = ['Crítica', 'Alta', 'Média', 'Baixa']
+            pie.labels = [f'Crítica: {data_values[0]}', f'Alta: {data_values[1]}',
+                          f'Média: {data_values[2]}', f'Baixa: {data_values[3]}']
             pie.slices.strokeWidth = 0.5
-            pie.slices[0].fillColor = colors.HexColor('#c0392b')
-            pie.slices[1].fillColor = colors.HexColor('#e67e22')
-            pie.slices[2].fillColor = colors.HexColor('#f39c12')
-            pie.slices[3].fillColor = colors.HexColor('#27ae60')
+            pie.slices[0].fillColor = self.SEVERITY_COLORS['CRITICAL']
+            pie.slices[1].fillColor = self.SEVERITY_COLORS['HIGH']
+            pie.slices[2].fillColor = self.SEVERITY_COLORS['MEDIUM']
+            pie.slices[3].fillColor = self.SEVERITY_COLORS['LOW']
             drawing.add(pie)
             elements.append(drawing)
         else:
             elements.append(Paragraph("Sem dados estatísticos disponíveis", self.styles['InfoText']))
         
         return elements
+
+    def _create_prioritization_section(self, scan_data: Dict) -> List:
+        vulnerabilities = self._findings(scan_data.get('vulnerabilities'))
+        if not vulnerabilities:
+            return []
+        ordered = sorted(
+            vulnerabilities,
+            key=lambda item: ({'CRITICAL': 4, 'HIGH': 3, 'MEDIUM': 2, 'LOW': 1}.get(
+                self._severity(item.get('severity')), 0), self._number(item.get('cvss'))),
+            reverse=True,
+        )
+        elements = self._section_title(
+            'Plano de priorização',
+            'Ordem recomendada para triagem e remediação. A prioridade final deve considerar exposição e contexto de negócio.'
+        )
+        data = [['PRIORIDADE', 'ACHADO', 'REFERÊNCIA', 'AÇÃO RECOMENDADA']]
+        for index, vuln in enumerate(ordered[:10], 1):
+            references = self._finding_references(vuln)
+            data.append([
+                self._cell(f'P{index} · {self._severity(vuln.get("severity"))}'),
+                self._cell(vuln.get('type') or vuln.get('title') or 'Achado de segurança'),
+                self._cell(' · '.join(references) if references else 'Sem correlação'),
+                self._cell(self._finding_recommendation(vuln)),
+            ])
+        elements.append(self._standard_table(
+            data, [1.05*inch, 1.55*inch, 1.25*inch, 1.85*inch]
+        ))
+        return elements
     
     def _create_vulnerabilities_section(self, scan_data: Dict) -> List:
         """Cria seção detalhada de vulnerabilidades"""
-        elements = []
-        
-        elements.append(Paragraph("Detalhes das Vulnerabilidades", self.styles['CustomSubtitle']))
-        elements.append(Spacer(1, 0.2 * inch))
-        
-        vulnerabilities = scan_data.get('vulnerabilities', [])
-        
-        # Agrupar por severidade
-        critical_vulns = [v for v in vulnerabilities if v.get('severity') == 'CRITICAL']
-        high_vulns = [v for v in vulnerabilities if v.get('severity') == 'HIGH']
-        medium_vulns = [v for v in vulnerabilities if v.get('severity') == 'MEDIUM']
-        low_vulns = [v for v in vulnerabilities if v.get('severity') == 'LOW']
-        
-        # Vulnerabilidades críticas
-        if critical_vulns:
-            elements.append(Paragraph("Vulnerabilidades Críticas", self.styles['CustomSection']))
-            for vuln in critical_vulns[:10]:  # Limitar a 10
-                elements.extend(self._create_vulnerability_detail(vuln, 'CRITICAL'))
-        
-        # Vulnerabilidades altas
-        if high_vulns:
-            elements.append(Paragraph("Vulnerabilidades Altas", self.styles['CustomSection']))
-            for vuln in high_vulns[:10]:
-                elements.extend(self._create_vulnerability_detail(vuln, 'HIGH'))
-        
-        # Vulnerabilidades médias (resumo)
-        if medium_vulns:
-            elements.append(Paragraph(f"Vulnerabilidades Médias ({len(medium_vulns)})", self.styles['CustomSection']))
+        elements = self._section_title(
+            'Detalhamento técnico dos achados',
+            'Cada item apresenta classificação, possível correlação pública, evidência e orientação de correção.'
+        )
+        vulnerabilities = self._findings(scan_data.get('vulnerabilities'))
+        if not vulnerabilities:
             elements.append(Paragraph(
-                f"Foram encontradas {len(medium_vulns)} vulnerabilidades de severidade média. Recomenda-se revisar e corrigir.",
-                self.styles['InfoText']
-            ))
-        
-        # Vulnerabilidades baixas (resumo)
-        if low_vulns:
-            elements.append(Paragraph(f"Vulnerabilidades Baixas ({len(low_vulns)})", self.styles['CustomSection']))
+                'Nenhum achado técnico detalhado foi disponibilizado para este relatório.',
+                self.styles['InfoText']))
+            return elements
+
+        labels = {'CRITICAL': 'Críticos', 'HIGH': 'Altos', 'MEDIUM': 'Médios', 'LOW': 'Baixos'}
+        for severity in ('CRITICAL', 'HIGH', 'MEDIUM', 'LOW'):
+            group = [v for v in vulnerabilities if self._severity(v.get('severity')) == severity]
+            if not group:
+                continue
             elements.append(Paragraph(
-                f"Foram encontradas {len(low_vulns)} vulnerabilidades de severidade baixa.",
-                self.styles['InfoText']
-            ))
-        
+                f'{labels[severity]} ({len(group)})', self.styles['CustomSection']))
+            for index, vuln in enumerate(group, 1):
+                elements.extend(self._create_vulnerability_detail(vuln, severity, index))
         return elements
-    
-    def _create_vulnerability_detail(self, vuln: Dict, severity: str) -> List:
-        """Cria detalhes de uma vulnerabilidade"""
-        elements = []
-        
-        # Tipo de vulnerabilidade
-        vuln_type = vuln.get('type', 'Unknown')
-        elements.append(Paragraph(f"<b>{vuln_type}</b>", self.styles['CriticalAlert' if severity == 'CRITICAL' else 'HighAlert']))
-        
-        # Localização
-        location = vuln.get('line', vuln.get('endpoint', 'Unknown'))
-        elements.append(Paragraph(f"<i>Localização: {location}</i>", self.styles['InfoText']))
-        
-        # Descrição
-        description = vuln.get('description', 'Sem descrição')
-        elements.append(Paragraph(f"{description}", self.styles['InfoText']))
-        
-        # Recomendação
-        recommendation = vuln.get('recommendation', 'Revise o código')
-        elements.append(Paragraph(f"<b>Recomendação:</b> {recommendation}", self.styles['InfoText']))
-        
-        elements.append(Spacer(1, 0.15 * inch))
-        
+
+    def _finding_cves(self, vuln: Dict) -> List[str]:
+        values = vuln.get('cves') or vuln.get('cve') or vuln.get('cve_id') or []
+        if isinstance(values, str):
+            values = [part.strip() for part in values.replace(';', ',').split(',')]
+        elif isinstance(values, dict):
+            values = list(values.keys())
+        return [str(value).strip() for value in values if str(value).strip()]
+
+    def _finding_references(self, vuln: Dict) -> List[str]:
+        references = self._finding_cves(vuln)
+        for key in ('cwe', 'owasp'):
+            value = vuln.get(key)
+            if value and str(value) not in references:
+                references.append(str(value))
+        if vuln.get('cvss') is not None:
+            references.append(f"CVSS {vuln.get('cvss')}")
+        return references
+
+    def _finding_location(self, vuln: Dict) -> str:
+        parts = []
+        file_name = vuln.get('file') or vuln.get('filename') or vuln.get('path')
+        line = vuln.get('line') or vuln.get('line_number')
+        endpoint = vuln.get('endpoint') or vuln.get('url')
+        if file_name:
+            parts.append(str(file_name))
+        if line:
+            parts.append(f'linha {line}')
+        if endpoint:
+            parts.append(str(endpoint))
+        if vuln.get('port'):
+            parts.append(f"porta {vuln.get('port')}")
+        return ' · '.join(parts) or 'Localização não informada pelo scanner'
+
+    def _finding_recommendation(self, vuln: Dict) -> str:
+        fix = vuln.get('fix')
+        if isinstance(fix, dict):
+            guidance = fix.get('guidance') or fix.get('recommendation')
+            if guidance:
+                return str(guidance)
+        elif fix:
+            return str(fix)
+        return str(vuln.get('recommendation') or vuln.get('remediation') or
+                   vuln.get('solution') or 'Revisar o fluxo afetado e aplicar controles compatíveis com o contexto.')
+
+    def _finding_code_fix(self, vuln: Dict) -> str:
+        fix = vuln.get('fix')
+        if isinstance(fix, dict):
+            for key in ('patch_template', 'code', 'example'):
+                if fix.get(key):
+                    return str(fix[key])
+            commands = fix.get('terminal_commands')
+            if isinstance(commands, dict) and commands:
+                return '\n'.join(f'{platform}: {command}' for platform, command in commands.items())
+        for key in ('suggested_code', 'code_fix', 'fix_suggestion', 'patch', 'safe_example'):
+            if vuln.get(key):
+                return str(vuln[key])
+
+        finding_type = str(vuln.get('type') or vuln.get('title') or '').lower()
+        suggestions = [
+            (('sql injection',), "# Use consulta parametrizada; nunca concatene a entrada\ncursor.execute('SELECT * FROM users WHERE id = %s', (user_id,))"),
+            (('command injection',), "# Passe argumentos como lista e mantenha shell desativado\nsubprocess.run(['tool', validated_value], check=True, shell=False)"),
+            (('cross-site', 'xss'), "// Renderize entrada como texto; sanitize apenas quando HTML for necessário\nelement.textContent = userSuppliedValue;"),
+            (('path traversal',), "# Resolva o caminho e confirme que ele permanece no diretório permitido\npath = (BASE_DIR / filename).resolve()"),
+            (('hardcoded', 'secret', 'credential'), "# Carregue credenciais de um cofre ou variável de ambiente\napi_key = os.environ['API_KEY']"),
+            (('rate limit',), "# Exemplo conceitual: limite por identidade e janela de tempo\nrate_limit(key=user_id, limit=100, window_seconds=60)"),
+            (('cors',), "# Permita somente origens confiáveis\nallowed_origins = ['https://app.exemplo.com']"),
+            (('header',), "# Configure o cabeçalho na camada web apropriada\nresponse.headers['X-Content-Type-Options'] = 'nosniff'"),
+        ]
+        for terms, suggestion in suggestions:
+            if any(term in finding_type for term in terms):
+                return suggestion
+        return ''
+
+    def _create_vulnerability_detail(self, vuln: Dict, severity: str, index: int) -> List:
+        """Cria um cartão técnico completo para uma vulnerabilidade."""
+        color = self.SEVERITY_COLORS[severity]
+        title = vuln.get('type') or vuln.get('title') or 'Achado de segurança'
+        identifier = vuln.get('id') or f'{severity[:1]}-{index:03d}'
+        cves = self._finding_cves(vuln)
+        references = self._finding_references(vuln)
+
+        header = Table([[
+            Paragraph(f'<b>{self._safe(title)}</b><br/><font size="7">ID {self._safe(identifier)}</font>',
+                      ParagraphStyle('FindingTitle', parent=self.styles['InfoText'],
+                                     textColor=self.WHITE, leading=13)),
+            Paragraph(f'<b>{severity}</b>', ParagraphStyle(
+                'SeverityBadge', parent=self.styles['InfoText'], textColor=self.WHITE,
+                alignment=TA_RIGHT, fontSize=9))
+        ]], colWidths=[4.7*inch, 1.0*inch])
+        header.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, -1), color),
+            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+            ('LEFTPADDING', (0, 0), (-1, -1), 9),
+            ('RIGHTPADDING', (0, 0), (-1, -1), 9),
+            ('TOPPADDING', (0, 0), (-1, -1), 7),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 7),
+        ]))
+
+        cve_text = ', '.join(cves) if cves else 'Não identificada pelo scanner; não inferida sem evidência.'
+        reference_text = ' · '.join(references) if references else 'Sem CWE/OWASP/CVSS informado'
+        meta = Table([
+            [self._cell('LOCALIZAÇÃO', 'CardLabel'), self._cell('POSSÍVEL CVE', 'CardLabel')],
+            [self._cell(self._finding_location(vuln), 'SmallText'), self._cell(cve_text, 'SmallText')],
+            [self._cell('CLASSIFICAÇÕES', 'CardLabel'), self._cell('ORIGEM / CAMADA', 'CardLabel')],
+            [self._cell(reference_text, 'SmallText'),
+             self._cell(vuln.get('scanner') or vuln.get('layer') or vuln.get('service') or 'Scanner de segurança', 'SmallText')],
+        ], colWidths=[2.85*inch, 2.85*inch])
+        meta.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, -1), self.SURFACE),
+            ('BOX', (0, 0), (-1, -1), 0.5, self.BORDER),
+            ('INNERGRID', (0, 0), (-1, -1), 0.3, self.BORDER),
+            ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+            ('LEFTPADDING', (0, 0), (-1, -1), 8),
+            ('RIGHTPADDING', (0, 0), (-1, -1), 8),
+            ('TOPPADDING', (0, 0), (-1, -1), 5),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
+        ]))
+
+        elements = [header, meta, Spacer(1, 0.08*inch)]
+        description = vuln.get('description') or 'Descrição técnica não informada pelo scanner.'
+        elements.append(Paragraph(
+            f'<b>O que foi identificado</b><br/>{self._safe(description)}', self.styles['InfoText']))
+
+        evidence = vuln.get('evidence') or vuln.get('code') or vuln.get('code_snippet') or vuln.get('request')
+        if evidence:
+            elements.append(Paragraph('<b>Evidência observada</b>', self.styles['InfoText']))
+            elements.append(XPreformatted(self._safe(evidence), self.styles['MonospaceBlock']))
+
+        elements.append(Paragraph(
+            f'<b>O que corrigir</b><br/>{self._safe(self._finding_recommendation(vuln))}',
+            self.styles['InfoText']))
+
+        code_fix = self._finding_code_fix(vuln)
+        if code_fix:
+            elements.append(Paragraph(
+                '<b>Sugestão de ajuste no código/configuração</b>', self.styles['InfoText']))
+            elements.append(XPreformatted(self._safe(code_fix), self.styles['MonospaceBlock']))
+        else:
+            elements.append(Paragraph(
+                '<b>Sugestão de implementação</b><br/>Não há patch seguro e universal para este achado. '
+                'Aplique a recomendação no framework utilizado, acrescente teste de regressão e submeta a alteração à revisão técnica.',
+                self.styles['InfoText']))
+
+        validation = vuln.get('validation') or vuln.get('review_required')
+        if isinstance(vuln.get('fix'), dict):
+            validation = validation or vuln['fix'].get('review_required')
+        validation = validation or 'Reproduzir o cenário após a correção, executar testes automatizados e confirmar que o controle não introduziu regressões.'
+        elements.extend([
+            Paragraph(f'<b>Como validar a correção</b><br/>{self._safe(validation)}', self.styles['InfoText']),
+            Spacer(1, 0.14*inch),
+        ])
         return elements
     
     def _create_recommendations_section(self, scan_data: Dict) -> List:
         """Cria seção de recomendações"""
-        elements = []
-        
-        elements.append(Paragraph("Recomendações Gerais", self.styles['CustomSubtitle']))
-        elements.append(Spacer(1, 0.1 * inch))
-        
-        recommendations = [
-            "Priorize a correção de vulnerabilidades críticas e altas imediatamente",
-            "Implemente code review obrigatório antes de merge para produção",
-            "Configure ferramentas de análise estática no CI/CD pipeline",
-            "Mantenha todas as dependências atualizadas regularmente",
-            "Realize testes de segurança periódicos (mensal ou trimestral)",
-            "Implemente logging e monitoring de eventos de segurança",
-            "Ofereça treinamento de secure coding para a equipe",
-            "Estabeleça um processo de resposta a incidentes de segurança"
+        elements = self._section_title(
+            'Plano de ação recomendado',
+            'Etapas de governança para transformar os achados em correções verificáveis.'
+        )
+        actions = [
+            ('IMEDIATO', 'Conter e confirmar', 'Validar achados críticos/altos, reduzir exposição e definir responsáveis.'),
+            ('CURTO PRAZO', 'Corrigir e testar', 'Aplicar as remediações, incluir testes de regressão e realizar revisão de código.'),
+            ('ANTES DO DEPLOY', 'Revalidar', 'Executar novo scan, confirmar o fechamento dos achados e registrar evidências.'),
+            ('CONTÍNUO', 'Prevenir recorrência', 'Integrar análise no CI/CD, atualizar dependências e acompanhar métricas de segurança.'),
         ]
-        
-        for i, rec in enumerate(recommendations, 1):
-            elements.append(Paragraph(f"{i}. {rec}", self.styles['InfoText']))
-        
+        data = [['PRAZO', 'ETAPA', 'CRITÉRIO DE CONCLUSÃO']]
+        for deadline, stage, criterion in actions:
+            data.append([self._cell(deadline, 'SmallText'), self._cell(stage), self._cell(criterion)])
+        elements.append(self._standard_table(data, [1.15*inch, 1.45*inch, 3.1*inch]))
         return elements
 
     def _create_tools_responses_section(self, scans: List[Dict[str, Any]]) -> List:
-        elements = []
-        elements.append(Paragraph("Respostas das Ferramentas", self.styles['CustomSubtitle']))
-        elements.append(Spacer(1, 0.1 * inch))
+        elements = self._section_title(
+            'Apêndice técnico — evidências brutas',
+            'Extratos preservados para rastreabilidade. O conteúdo pode estar truncado para manter a legibilidade.'
+        )
 
         groups: Dict[str, List[Dict[str, Any]]] = {}
         for s in scans:
@@ -466,58 +668,40 @@ class PDFReportGenerator:
             groups.setdefault(t, []).append(s)
 
         for tool, items in groups.items():
-            banner = Table([[tool]], colWidths=[6*inch])
+            banner = Table([[self._cell(tool, 'CardValue')]], colWidths=[5.7*inch])
             banner.setStyle(TableStyle([
-                ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor('#7c3aed')),
-                ('TEXTCOLOR', (0, 0), (-1, -1), colors.whitesmoke),
-                ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
-                ('FONTNAME', (0, 0), (-1, -1), 'Helvetica-Bold'),
-                ('FONTSIZE', (0, 0), (-1, -1), 12),
-                ('LEFTPADDING', (0, 0), (-1, -1), 8),
+                ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor('#E2E8F0')),
+                ('LINEBEFORE', (0, 0), (0, -1), 4, self.BLUE),
+                ('LEFTPADDING', (0, 0), (-1, -1), 10),
                 ('RIGHTPADDING', (0, 0), (-1, -1), 8),
-                ('TOPPADDING', (0, 0), (-1, -1), 6),
-                ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
+                ('TOPPADDING', (0, 0), (-1, -1), 7),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 7),
             ]))
             elements.append(banner)
             elements.append(Spacer(1, 0.08 * inch))
 
             total_scans = len(items)
             total_vulns = sum(int(i.get('total_vulnerabilities', 0)) for i in items)
-            summary_table = Table(
-                [["Scans", str(total_scans)], ["Vulnerabilidades", str(total_vulns)]],
-                colWidths=[2.5*inch, 3.5*inch]
-            )
-            summary_table.setStyle(TableStyle([
-                ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#ecf0f1')),
-                ('TEXTCOLOR', (0, 0), (-1, -1), colors.HexColor('#2c3e50')),
-                ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
-                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-                ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#bdc3c7')),
-                ('LEFTPADDING', (0, 0), (-1, -1), 6),
-                ('RIGHTPADDING', (0, 0), (-1, -1), 6),
-                ('TOPPADDING', (0, 0), (-1, -1), 4),
-                ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
-            ]))
-            elements.append(summary_table)
+            elements.append(Paragraph(
+                f'<b>{total_scans}</b> scan(s) · <b>{total_vulns}</b> achado(s)',
+                self.styles['SmallText']))
             elements.append(Spacer(1, 0.12 * inch))
 
             for s in items:
                 sc = s.get('severity_count', {'CRITICAL': 0, 'HIGH': 0, 'MEDIUM': 0, 'LOW': 0})
                 meta_table = Table(
                     [
-                        [f"Scan {s.get('id', '')}", s.get('created_at', '')],
-                        [f"Target: {s.get('target', '')}", ""],
+                        [self._cell(f"Scan {s.get('id', '')}", 'CardValue'),
+                         self._cell(self._format_date(s.get('created_at')), 'SmallText')],
+                        [self._cell(f"Alvo: {s.get('target', '')}", 'SmallText'), ""],
                     ],
-                    colWidths=[3.2*inch, 2.8*inch]
+                    colWidths=[3.5*inch, 2.2*inch]
                 )
                 meta_table.setStyle(TableStyle([
-                    ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#f7f9fc')),
-                    ('TEXTCOLOR', (0, 0), (-1, -1), colors.HexColor('#2c3e50')),
-                    ('ALIGN', (0, 0), (0, 0), 'LEFT'),
-                    ('ALIGN', (1, 0), (1, 0), 'RIGHT'),
-                    ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-                    ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#bdc3c7')),
+                    ('BACKGROUND', (0, 0), (-1, -1), self.SURFACE),
+                    ('BOX', (0, 0), (-1, -1), 0.5, self.BORDER),
                     ('SPAN', (0, 1), (1, 1)),
+                    ('VALIGN', (0, 0), (-1, -1), 'TOP'),
                     ('LEFTPADDING', (0, 0), (-1, -1), 6),
                     ('RIGHTPADDING', (0, 0), (-1, -1), 6),
                     ('TOPPADDING', (0, 0), (-1, -1), 4),
@@ -527,20 +711,16 @@ class PDFReportGenerator:
                 elements.append(Spacer(1, 0.06 * inch))
 
                 severity_table = Table(
-                    [
-                        ["Críticas", str(sc.get('CRITICAL', 0))],
-                        ["Altas", str(sc.get('HIGH', 0))],
-                        ["Médias", str(sc.get('MEDIUM', 0))],
-                        ["Baixas", str(sc.get('LOW', 0))],
-                    ],
-                    colWidths=[2.2*inch, 1.0*inch]
+                    [[self._cell('CRÍTICAS', 'CardLabel'), self._cell('ALTAS', 'CardLabel'),
+                      self._cell('MÉDIAS', 'CardLabel'), self._cell('BAIXAS', 'CardLabel')],
+                     [self._cell(sc.get('CRITICAL', 0)), self._cell(sc.get('HIGH', 0)),
+                      self._cell(sc.get('MEDIUM', 0)), self._cell(sc.get('LOW', 0))]],
+                    colWidths=[1.2*inch, 1.2*inch, 1.2*inch, 1.2*inch]
                 )
                 severity_table.setStyle(TableStyle([
-                    ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#ecf0f1')),
-                    ('TEXTCOLOR', (0, 0), (-1, -1), colors.HexColor('#2c3e50')),
-                    ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
-                    ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
-                    ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#bdc3c7')),
+                    ('BACKGROUND', (0, 0), (-1, -1), self.WHITE),
+                    ('GRID', (0, 0), (-1, -1), 0.35, self.BORDER),
+                    ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
                     ('LEFTPADDING', (0, 0), (-1, -1), 6),
                     ('RIGHTPADDING', (0, 0), (-1, -1), 6),
                     ('TOPPADDING', (0, 0), (-1, -1), 4),
@@ -551,7 +731,9 @@ class PDFReportGenerator:
 
                 raw = s.get('raw_excerpt', '')
                 if raw:
-                    text_str = str(raw)
+                    # XPreformatted também interpreta tags do ReportLab. Resultados
+                    # de scans podem conter HTML capturado e devem ser texto literal.
+                    text_str = escape(str(raw))
                     elements.append(XPreformatted(text_str, self.styles['MonospaceBlock']))
                     elements.append(Spacer(1, 0.06 * inch))
                 elements.append(Spacer(1, 0.12 * inch))
@@ -560,23 +742,10 @@ class PDFReportGenerator:
     
     def _create_footer(self) -> List:
         """Cria rodapé do relatório"""
-        elements = []
-        
-        elements.append(Spacer(1, 0.5 * inch))
-        elements.append(self._create_line())
-        
-        footer_text = """
-        <para alignment='center'>
-        <font size=8 color='#95a5a6'>
-        Este relatório foi gerado automaticamente pela plataforma Iron Net<br/>
-        © 2025 Iron Net - Professional Security Analysis Tool<br/>
-        <b>⚠️ CONFIDENCIAL - Para uso interno apenas</b>
-        </font>
-        </para>
-        """
-        elements.append(Paragraph(footer_text, self.styles['Normal']))
-        
-        return elements
+        return [Spacer(1, 0.3*inch), self._create_line(), Paragraph(
+            f'Relatório gerado automaticamente pela plataforma Iron Net · {datetime.now().year}<br/>'
+            '<b>CONFIDENCIAL — Uso interno. Validar os achados antes de alterações em produção.</b>',
+            ParagraphStyle('DocumentFooter', parent=self.styles['SmallText'], alignment=TA_CENTER))]
     
     def _create_line(self):
         """Cria linha separadora"""
@@ -585,7 +754,7 @@ class PDFReportGenerator:
             width="100%",
             thickness=1,
             lineCap='round',
-            color=colors.HexColor('#bdc3c7'),
+            color=self.BORDER,
             spaceBefore=6,
             spaceAfter=6
         )
@@ -593,17 +762,67 @@ class PDFReportGenerator:
     def _add_page_number(self, canvas, doc):
         """Adiciona número de página"""
         page_num = canvas.getPageNumber()
-        text = f"Página {page_num}"
-        canvas.setFont('Helvetica', 9)
-        canvas.setFillColor(colors.HexColor('#7f8c8d'))
-        canvas.drawRightString(
-            doc.pagesize[0] - 72,
-            30,
-            text
-        )
+        width, height = doc.pagesize
+        canvas.saveState()
+        canvas.setStrokeColor(self.BORDER)
+        canvas.setLineWidth(0.5)
+        canvas.line(42, 35, width - 42, 35)
+        canvas.setFont('Helvetica', 7.5)
+        canvas.setFillColor(self.MUTED)
+        canvas.drawString(42, 23, 'IRON NET · RELATÓRIO DE SEGURANÇA · CONFIDENCIAL')
+        canvas.drawRightString(width - 42, 23, f'Página {page_num}')
+        if page_num > 1:
+            canvas.setFont('Helvetica-Bold', 7.5)
+            canvas.setFillColor(self.NAVY)
+            canvas.drawString(42, height - 30, 'IRON NET / SECURITY')
+        canvas.restoreState()
 
 
 def generate_pdf_report(scan_data: Dict[str, Any], output_path: str = None) -> bytes:
-    """Função helper para gerar relatório PDF"""
-    generator = PDFReportGenerator()
-    return generator.generate_scan_report(scan_data, output_path)
+    """Gera o relatório e mantém uma saída válida mesmo com dados inesperados."""
+    try:
+        generator = PDFReportGenerator()
+        return generator.generate_scan_report(scan_data if isinstance(scan_data, dict) else {}, output_path)
+    except Exception:
+        # O relatório não deve deixar de ser emitido por causa de um campo atípico
+        # retornado por algum scanner. A contingência preserva os dados essenciais.
+        buffer = output_path or io.BytesIO()
+        safe_data = scan_data if isinstance(scan_data, dict) else {}
+        doc = SimpleDocTemplate(
+            buffer, pagesize=A4, rightMargin=48, leftMargin=48,
+            topMargin=54, bottomMargin=46,
+            title='Relatório de Segurança', author='Iron Net',
+        )
+        styles = getSampleStyleSheet()
+        title_style = ParagraphStyle(
+            'FallbackTitle', parent=styles['Title'], fontName='Helvetica-Bold',
+            fontSize=22, leading=27, textColor=PDFReportGenerator.NAVY,
+            alignment=TA_LEFT, spaceAfter=18,
+        )
+        body_style = ParagraphStyle(
+            'FallbackBody', parent=styles['BodyText'], fontSize=9, leading=13,
+            textColor=PDFReportGenerator.SLATE, spaceAfter=8,
+        )
+        safe = lambda value: escape(str(value if value not in (None, '') else 'Não informado'))
+        summary = safe_data.get('summary') if isinstance(safe_data.get('summary'), dict) else {}
+        story = [
+            Paragraph('IRON NET / SECURITY', styles['Heading3']),
+            Paragraph('Relatório de Segurança', title_style),
+            Paragraph(f"<b>Scan:</b> {safe(safe_data.get('scan_id'))}", body_style),
+            Paragraph(f"<b>Tipo:</b> {safe(safe_data.get('scan_type'))}", body_style),
+            Paragraph(f"<b>Alvo:</b> {safe(safe_data.get('target'))}", body_style),
+            Spacer(1, 12),
+            Paragraph('Resumo da análise', styles['Heading2']),
+            Paragraph(
+                f"Total: <b>{safe(summary.get('total', 0))}</b> · "
+                f"Críticas: <b>{safe(summary.get('critical', 0))}</b> · "
+                f"Altas: <b>{safe(summary.get('high', 0))}</b> · "
+                f"Médias: <b>{safe(summary.get('medium', 0))}</b> · "
+                f"Baixas: <b>{safe(summary.get('low', 0))}</b>", body_style),
+            Spacer(1, 12),
+            Paragraph(
+                'O relatório foi emitido em modo de compatibilidade porque o resultado contém '
+                'um formato não padronizado. Os dados essenciais foram preservados.', body_style),
+        ]
+        doc.build(story)
+        return buffer.getvalue() if isinstance(buffer, io.BytesIO) else None

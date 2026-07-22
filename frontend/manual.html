@@ -37,6 +37,7 @@
             <ul class="nav-list">
                 <li><a href="#intro" class="nav-link active">Introdução</a></li>
                 <li><a href="#tools" class="nav-link">Ferramentas</a></li>
+                <li><a href="#viggio-shield" class="nav-link">Viggio</a></li>
                 <li><a href="#plans" class="nav-link">Planos</a></li>
                 <li><a href="#responsibility" class="nav-link">Responsabilidade</a></li>
                 <li><a href="#support" class="nav-link">Suporte</a></li>
@@ -1170,6 +1171,157 @@
 
             </section>
 
+            <!-- Viggio Shield -->
+            <section id="viggio-shield" class="content-section">
+                <div class="section-header">
+                    <i class="fas fa-shield-alt"></i>
+                    <h2>Viggio Shield</h2>
+                </div>
+
+                <div class="tool-card">
+                    <div class="tool-header">
+                        <div class="tool-icon">
+                            <i class="fas fa-satellite-dish"></i>
+                        </div>
+                        <div>
+                            <h3>Viggio Shield</h3>
+                            <span class="badge badge-premium">Monitoramento</span>
+                        </div>
+                    </div>
+
+                    <div class="tool-content">
+                        <h4>O que faz?</h4>
+                        <p>O Viggio Shield é o módulo de monitoramento contínuo da Iron Net. Ele acompanha servidores, redes, APIs e aplicações web para medir disponibilidade, detectar incidentes e registrar eventos de segurança em tempo real.</p>
+
+                        <h4>O que pode ser monitorado?</h4>
+                        <ul class="feature-list">
+                            <li><i class="fas fa-check-circle"></i> Servidores e infraestrutura de rede</li>
+                            <li><i class="fas fa-check-circle"></i> APIs HTTP/HTTPS e endpoints de saúde</li>
+                            <li><i class="fas fa-check-circle"></i> Sites e aplicações web</li>
+                            <li><i class="fas fa-check-circle"></i> Portas TCP importantes, como 80, 443, 22 e 3306</li>
+                        </ul>
+
+                        <h4>Principais recursos</h4>
+                        <ul class="feature-list">
+                            <li><i class="fas fa-chart-line"></i> Dashboard com alvos monitorados, uptime, incidentes abertos, incidentes críticos e IPs bloqueados</li>
+                            <li><i class="fas fa-clock"></i> Verificações periódicas configuráveis por intervalo</li>
+                            <li><i class="fas fa-bolt"></i> Verificação manual sob demanda para testar um alvo imediatamente</li>
+                            <li><i class="fas fa-exclamation-triangle"></i> Registro de incidentes com severidade baixa, média, alta ou crítica</li>
+                            <li><i class="fas fa-ban"></i> Bloqueio e gestão de IPs suspeitos ou maliciosos</li>
+                            <li><i class="fas fa-envelope"></i> Alertas por e-mail quando configurados</li>
+                        </ul>
+
+                        <h4>O que ele ajuda a detectar?</h4>
+                        <ul class="feature-list">
+                            <li><i class="fas fa-search"></i> Indícios de port scanning e varreduras de serviços</li>
+                            <li><i class="fas fa-key"></i> Tentativas repetidas de brute force</li>
+                            <li><i class="fas fa-cloud-bolt"></i> Possíveis padrões de DDoS ou excesso anormal de requisições</li>
+                            <li><i class="fas fa-user-lock"></i> Tentativas de acesso não autorizado</li>
+                            <li><i class="fas fa-wave-square"></i> Anomalias de disponibilidade, latência ou comportamento do alvo</li>
+                        </ul>
+
+                        <h4>Métricas exibidas</h4>
+                        <ul class="feature-list">
+                            <li><i class="fas fa-bullseye"></i> Total de alvos monitorados</li>
+                            <li><i class="fas fa-percent"></i> Uptime médio dos alvos</li>
+                            <li><i class="fas fa-triangle-exclamation"></i> Incidentes abertos e incidentes críticos</li>
+                            <li><i class="fas fa-ban"></i> Total de IPs bloqueados</li>
+                            <li><i class="fas fa-calendar-check"></i> Última verificação e incidentes ativos por alvo</li>
+                        </ul>
+
+                        <h4>Como usar?</h4>
+                        <div class="steps">
+                            <div class="step">
+                                <span class="step-number">1</span>
+                                <div class="step-content">
+                                    <strong>Acesse o Viggio Shield</strong>
+                                    <p>No dashboard, clique em "Viggio Shield" no menu lateral ou acesse diretamente <code>/viggio-shield.html</code>.</p>
+                                </div>
+                            </div>
+                            <div class="step">
+                                <span class="step-number">2</span>
+                                <div class="step-content">
+                                    <strong>Adicione um alvo</strong>
+                                    <p>Clique em "Adicionar Alvo" e informe nome, tipo, endereço, portas, intervalo de verificação e limite de falhas.</p>
+                                </div>
+                            </div>
+                            <div class="step">
+                                <span class="step-number">3</span>
+                                <div class="step-content">
+                                    <strong>Acompanhe as métricas</strong>
+                                    <p>Use os cards do dashboard para visualizar disponibilidade, incidentes em aberto, incidentes críticos e IPs bloqueados.</p>
+                                </div>
+                            </div>
+                            <div class="step">
+                                <span class="step-number">4</span>
+                                <div class="step-content">
+                                    <strong>Investigue incidentes</strong>
+                                    <p>Abra a lista de incidentes, filtre por severidade e atualize o status quando o problema for tratado.</p>
+                                </div>
+                            </div>
+                            <div class="step">
+                                <span class="step-number">5</span>
+                                <div class="step-content">
+                                    <strong>Bloqueie IPs quando necessário</strong>
+                                    <p>Use a área de IPs bloqueados para impedir acessos suspeitos e manter o histórico de bloqueios.</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <h4>Campos ao adicionar um alvo</h4>
+                        <ul class="feature-list">
+                            <li><i class="fas fa-tag"></i> <strong>Nome:</strong> identificação interna do alvo, como "API Produção" ou "Servidor Web"</li>
+                            <li><i class="fas fa-layer-group"></i> <strong>Tipo:</strong> servidor, rede, API ou aplicação web</li>
+                            <li><i class="fas fa-link"></i> <strong>Endereço:</strong> IP, domínio ou URL completa</li>
+                            <li><i class="fas fa-plug"></i> <strong>Portas:</strong> lista opcional de portas a verificar</li>
+                            <li><i class="fas fa-stopwatch"></i> <strong>Intervalo:</strong> frequência das verificações automáticas</li>
+                            <li><i class="fas fa-triangle-exclamation"></i> <strong>Threshold:</strong> quantidade de falhas antes de gerar alerta</li>
+                        </ul>
+
+                        <h4>Exemplo de uso (API)</h4>
+                        <div class="api-example">
+                            <div class="endpoint-header">
+                                <span class="http-method get">GET</span>
+                                <code>/api/viggio-shield/dashboard</code>
+                            </div>
+                            <h5>curl</h5>
+                            <pre><code>curl -X GET http://localhost:8000/api/viggio-shield/dashboard \
+ -H 'Authorization: Bearer TOKEN'</code></pre>
+                        </div>
+
+                        <div class="api-example">
+                            <div class="endpoint-header">
+                                <span class="http-method post">POST</span>
+                                <code>/api/viggio-shield/targets</code>
+                            </div>
+                            <h5>curl</h5>
+                            <pre><code>curl -X POST http://localhost:8000/api/viggio-shield/targets \
+ -H 'Authorization: Bearer TOKEN' \
+ -H 'Content-Type: application/json' \
+ -d '{"name":"API Produção","target_type":"api","target_address":"https://api.exemplo.com/health","monitoring_ports":[],"check_interval":300,"alert_threshold":3}'</code></pre>
+                        </div>
+
+                        <h4>Endpoints principais</h4>
+                        <ul class="feature-list">
+                            <li><i class="fas fa-code"></i> <code>GET /api/viggio-shield/dashboard</code> - estatísticas gerais</li>
+                            <li><i class="fas fa-code"></i> <code>GET /api/viggio-shield/targets</code> - lista de alvos monitorados</li>
+                            <li><i class="fas fa-code"></i> <code>POST /api/viggio-shield/targets</code> - criação de alvo</li>
+                            <li><i class="fas fa-code"></i> <code>POST /api/viggio-shield/targets/{id}/check</code> - verificação manual</li>
+                            <li><i class="fas fa-code"></i> <code>GET /api/viggio-shield/incidents</code> - consulta de incidentes</li>
+                            <li><i class="fas fa-code"></i> <code>POST /api/viggio-shield/blocked-ips</code> - bloqueio de IP</li>
+                        </ul>
+
+                        <div class="info-box warning">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            <div>
+                                <strong>Uso autorizado</strong>
+                                <p>Monitore apenas sistemas próprios ou ambientes para os quais você possui autorização explícita. O Viggio Shield deve ser usado para defesa, disponibilidade e resposta a incidentes.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
             <!-- Planos -->
             <section id="plans" class="content-section">
                 <div class="section-header">
@@ -1223,15 +1375,16 @@
                     <div class="plan-card enterprise">
                         <div class="plan-badge">Premium</div>
                         <h3>Enterprise</h3>
-                        <div class="plan-price">R$ 499<span>/mês</span></div>
+                        <div class="plan-price">Sob Consulta</div>
                         <ul class="plan-features">
                             <li><i class="fas fa-check"></i> Tudo do Professional</li>
-                            <li><i class="fas fa-check"></i> Scans ilimitados</li>
-                            <li><i class="fas fa-check"></i> White-label reports</li>
-                            <li><i class="fas fa-check"></i> Suporte 24/7</li>
-                            <li><i class="fas fa-check"></i> Custom integrations</li>
+                            <li><i class="fas fa-check"></i> Multi-usuário (até 10)</li>
+                            <li><i class="fas fa-check"></i> Integrações personalizadas</li>
+                            <li><i class="fas fa-check"></i> SLA garantido</li>
+                            <li><i class="fas fa-check"></i> Gerente de conta dedicado</li>
+                            <li><i class="fas fa-check"></i> Consultoria mensal</li>
                         </ul>
-                        <p class="plan-note">Para empresas e grandes equipes</p>
+                        <p class="plan-note">Solução completa e personalizada</p>
                     </div>
                 </div>
 

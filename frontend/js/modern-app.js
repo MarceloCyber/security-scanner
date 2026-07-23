@@ -2907,6 +2907,8 @@ async function generateToolReport(toolName, toolData, resultData) {
 // Cria modal de preview do relatório
 function createReportPreviewModal(reportHtml, toolName) {
     const isXSSReport = /xss/i.test(String(toolName));
+    const isSQLiReport = /sql\s*injection/i.test(String(toolName));
+    const reportKind = isXSSReport ? 'xss' : (isSQLiReport ? 'sqli' : 'generic');
     const modal = document.createElement('div');
     modal.className = 'modal-overlay';
     modal.innerHTML = `
@@ -2929,7 +2931,7 @@ function createReportPreviewModal(reportHtml, toolName) {
                         <i class="fas fa-copy"></i> Copiar HTML
                     </button>
                 </div>
-                <div id="report-content" class="report-preview${isXSSReport ? ' xss-report-preview' : ''}" data-report-kind="${isXSSReport ? 'xss' : 'generic'}" style="background: ${isXSSReport ? '#ffffff' : 'var(--bg-secondary)'}; color: ${isXSSReport ? '#172033' : 'var(--text)'}; padding: ${isXSSReport ? '0' : '25px'}; border-radius: var(--border-radius); border: 1px solid var(--border);">
+                <div id="report-content" class="report-preview${isXSSReport ? ' xss-report-preview' : ''}${isSQLiReport ? ' sqli-report-preview' : ''}" data-report-kind="${reportKind}" style="background: ${isXSSReport || isSQLiReport ? '#ffffff' : 'var(--bg-secondary)'}; color: ${isXSSReport || isSQLiReport ? '#172033' : 'var(--text)'}; padding: ${isXSSReport || isSQLiReport ? '0' : '25px'}; border-radius: var(--border-radius); border: 1px solid var(--border);">
                     ${reportHtml}
                 </div>
             </div>
@@ -2951,7 +2953,7 @@ function createReportPreviewModal(reportHtml, toolName) {
 function printReport() {
     const reportContent = document.getElementById('report-content');
     if (!reportContent) return;
-    const isXSSReport = reportContent.dataset.reportKind === 'xss';
+    const isStyledReport = ['xss', 'sqli'].includes(reportContent.dataset.reportKind);
     const printWindow = window.open('', '_blank');
     const stylesheet = document.querySelector('link[href*="modern-style.css"]');
     const stylesheetUrl = stylesheet ? stylesheet.href : '/css/modern-style.css';
@@ -2959,7 +2961,7 @@ function printReport() {
         <html>
             <head>
                 <title>Relatório de Segurança</title>
-                ${isXSSReport ? `<link rel="stylesheet" href="${stylesheetUrl}">` : ''}
+                ${isStyledReport ? `<link rel="stylesheet" href="${stylesheetUrl}">` : ''}
                 <style>
                     body { font-family: Arial, sans-serif; padding: 20px; background: #fff; color: #172033; }
                     table { border-collapse: collapse; width: 100%; margin: 20px 0; }
@@ -2979,7 +2981,7 @@ function printReport() {
     setTimeout(() => {
         printWindow.print();
         printWindow.close();
-    }, isXSSReport ? 500 : 250);
+    }, isStyledReport ? 500 : 250);
 }
 
 // Download relatório como PDF
@@ -2993,22 +2995,24 @@ async function downloadReportPDF(toolName) {
         // Usar html2pdf se estiver disponível, senão usar print
         if (typeof html2pdf !== 'undefined') {
             const isXSSReport = /xss/i.test(String(toolName));
+            const isSQLiReport = /sql\s*injection/i.test(String(toolName));
+            const isStyledReport = isXSSReport || isSQLiReport;
             const opt = {
-                margin: isXSSReport ? [0.35, 0.35, 0.35, 0.35] : 1,
+                margin: isStyledReport ? [0.35, 0.35, 0.35, 0.35] : 1,
                 filename: `relatorio-${toolName.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}.pdf`,
                 image: { type: 'jpeg', quality: 0.98 },
-                html2canvas: isXSSReport ? {
+                html2canvas: isStyledReport ? {
                     scale: 2,
                     backgroundColor: '#ffffff',
                     useCORS: true,
                     windowWidth: 1100
                 } : { scale: 2 },
-                jsPDF: { unit: 'in', format: isXSSReport ? 'a4' : 'letter', orientation: 'portrait' }
+                jsPDF: { unit: 'in', format: isStyledReport ? 'a4' : 'letter', orientation: 'portrait' }
             };
-            if (isXSSReport) {
+            if (isStyledReport) {
                 opt.pagebreak = {
                     mode: ['css', 'legacy'],
-                    avoid: ['.xss-finding-card', '.xss-guidance-grid > div']
+                    avoid: ['.xss-finding-card', '.xss-guidance-grid > div', '.sqli-finding-card', '.sqli-guidance-card']
                 };
             }
             
@@ -3202,71 +3206,45 @@ function generateSQLInjectionReport() {
     const results = window.lastSQLInjectionResults;
     const vulnerableResults = results.results.filter(r => r.vulnerable);
     
+    const analyst = escapeHtml(localStorage.getItem('username') || 'Usuário');
+    const target = escapeHtml(results.target || 'Não informado');
     const reportHtml = `
-        <div style="font-family: Arial, sans-serif;">
-            <h1 style="color: #7c3aed; border-bottom: 3px solid #7c3aed; padding-bottom: 10px;">
-                Relatório de Teste SQL Injection
-            </h1>
-            <div style="background: #f5f5f5; padding: 15px; margin: 20px 0; border-radius: 5px;">
-                <p><strong>Data:</strong> ${new Date().toLocaleString('pt-BR')}</p>
-                <p><strong>Analista:</strong> ${localStorage.getItem('username') || 'Usuário'}</p>
-                <p><strong>URL Testada:</strong> ${results.target || 'N/A'}</p>
-                <p><strong>Parâmetros Testados:</strong> ${results.parameters_tested}</p>
-                <p><strong>Payloads Testados:</strong> ${results.payloads_tested}</p>
-                <p><strong>Vulnerabilidades Encontradas:</strong> ${results.vulnerabilities_found}</p>
-            </div>
-            
-            <h2 style="color: #333; margin-top: 30px;">Resumo do Teste</h2>
-            <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
-                <tr style="background: #7c3aed; color: white;">
-                    <th style="padding: 10px; text-align: left;">Métrica</th>
-                    <th style="padding: 10px; text-align: center;">Valor</th>
-                </tr>
-                <tr style="border-bottom: 1px solid #ddd;">
-                    <td style="padding: 10px;">Parâmetros Testados</td>
-                    <td style="padding: 10px; text-align: center;"><strong>${results.parameters_tested}</strong></td>
-                </tr>
-                <tr style="border-bottom: 1px solid #ddd;">
-                    <td style="padding: 10px;">Payloads Testados</td>
-                    <td style="padding: 10px; text-align: center;"><strong>${results.payloads_tested}</strong></td>
-                </tr>
-                <tr style="border-bottom: 1px solid #ddd; background: ${results.vulnerabilities_found > 0 ? '#ffe6e6' : '#e6ffe6'};">
-                    <td style="padding: 10px;">Vulnerabilidades Encontradas</td>
-                    <td style="padding: 10px; text-align: center;"><strong style="color: ${results.vulnerabilities_found > 0 ? '#d32f2f' : '#388e3c'};">${results.vulnerabilities_found}</strong></td>
-                </tr>
-            </table>
-            
+        <article class="sqli-report-document">
+            <header class="sqli-report-header">
+                <div class="sqli-report-brand">IRON NET <span>/ SECURITY</span></div>
+                <div class="sqli-report-label">RELATÓRIO TÉCNICO</div>
+                <h1>Teste de SQL Injection</h1>
+                <p>Análise de parâmetros, evidências encontradas e recomendações de correção.</p>
+            </header>
+            <section class="sqli-report-metadata">
+                <div><span>Data da análise</span><strong>${new Date().toLocaleString('pt-BR')}</strong></div>
+                <div><span>Analista</span><strong>${analyst}</strong></div>
+                <div class="sqli-report-target"><span>URL testada</span><strong>${target}</strong></div>
+            </section>
+            <section class="sqli-report-summary">
+                <div><span>Parâmetros testados</span><strong>${results.parameters_tested}</strong></div>
+                <div><span>Payloads testados</span><strong>${results.payloads_tested}</strong></div>
+                <div class="${results.vulnerabilities_found > 0 ? 'is-danger' : 'is-safe'}"><span>Vulnerabilidades</span><strong>${results.vulnerabilities_found}</strong></div>
+            </section>
             ${vulnerableResults.length > 0 ? `
-                <h2 style="color: #d32f2f; margin-top: 30px;">⚠️ Vulnerabilidades Detectadas</h2>
-                ${vulnerableResults.map((v, i) => `
-                    <div style="border: 2px solid #d32f2f; padding: 15px; margin: 15px 0; border-radius: 5px; background: #ffe6e6;">
-                        <h3 style="margin: 0 0 10px 0; color: #d32f2f;">
-                            Vulnerabilidade ${i + 1} - Parâmetro: ${v.parameter}
-                        </h3>
-                        <p><strong>Payload:</strong></p>
-                        <pre style="background: #f5f5f5; padding: 10px; border-radius: 5px; overflow-x: auto;"><code>${escapeHtml(v.payload)}</code></pre>
-                        ${v.error_message ? `<p><strong>Mensagem de Erro:</strong> ${v.error_message}</p>` : ''}
-                    </div>
-                `).join('')}
-            ` : `
-                <div style="margin-top: 30px; padding: 20px; background: #e6ffe6; border-radius: 5px; border: 2px solid #388e3c;">
-                    <h3 style="color: #388e3c;">✓ Nenhuma vulnerabilidade SQL Injection detectada</h3>
-                    <p>O sistema testado parece estar protegido contra ataques SQL Injection.</p>
-                </div>
-            `}
-            
-            <div style="margin-top: 40px; padding: 20px; background: #f0f0f0; border-radius: 5px;">
-                <h3>Recomendações de Segurança</h3>
-                <ul>
-                    <li>Utilize prepared statements ou consultas parametrizadas</li>
-                    <li>Implemente validação de entrada rigorosa</li>
-                    <li>Aplique sanitização adequada de dados</li>
-                    <li>Utilize ORMs com proteção integrada contra SQL Injection</li>
-                    <li>Mantenha logs de tentativas de SQL Injection</li>
-                    <li>Configure mensagens de erro genéricas em produção</li>
-                </ul>
-            </div>
-        </div>
+                <section class="sqli-report-section">
+                    <div class="sqli-section-heading"><span>01</span><div><h2>Vulnerabilidades detectadas</h2><p>Achados que exigem validação e correção.</p></div></div>
+                    ${vulnerableResults.map((v, i) => `
+                        <article class="sqli-finding-card">
+                            <header><span>ACHADO ${String(i + 1).padStart(2, '0')}</span><strong>SQL INJECTION</strong></header>
+                            <div class="sqli-finding-body"><div><span>Parâmetro</span><strong>${escapeHtml(v.parameter || 'Não informado')}</strong></div><div><span>Severidade</span><strong class="sqli-danger">${escapeHtml(v.severity || 'HIGH')}</strong></div></div>
+                            <div class="sqli-evidence-label">Payload utilizado</div><pre class="sqli-evidence">${escapeHtml(v.payload || 'Não informado')}</pre>
+                            ${v.error_message ? `<p class="sqli-error"><strong>Mensagem de erro:</strong> ${escapeHtml(v.error_message)}</p>` : ''}
+                        </article>
+                    `).join('')}
+                </section>
+            ` : `<section class="sqli-safe-result"><strong>✓ Nenhuma vulnerabilidade SQL Injection detectada</strong><p>Os testes executados não confirmaram exposição neste alvo.</p></section>`}
+            <section class="sqli-report-section">
+                <div class="sqli-section-heading"><span>02</span><div><h2>Recomendações de segurança</h2><p>Controles para reduzir a superfície de ataque.</p></div></div>
+                <div class="sqli-guidance-grid"><div>Utilize prepared statements ou consultas parametrizadas.</div><div>Valide e sanitize rigorosamente as entradas.</div><div>Use ORMs com proteção contra SQL Injection.</div><div>Evite expor mensagens detalhadas de erro em produção.</div></div>
+            </section>
+            <footer class="sqli-report-footer">IRON NET · RELATÓRIO DE SEGURANÇA <strong>CONFIDENCIAL — USO INTERNO</strong></footer>
+        </article>
     `;
     
     createReportPreviewModal(reportHtml, 'SQL Injection Tester');

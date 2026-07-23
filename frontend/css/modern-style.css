@@ -683,6 +683,19 @@ body {
     border: 1px solid var(--border);
 }
 
+.card-header button[onclick*="clearAutomationIncidentHistory"],
+.section-header button[onclick*="clearViggioIncidentHistory"] {
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    min-height: 34px;
+    cursor: pointer;
+    visibility: visible !important;
+    opacity: 1 !important;
+    white-space: nowrap;
+}
+
 /* Mobile: botões full width */
 @media (max-width: 768px) {
     .btn {

@@ -984,6 +984,39 @@ async def list_incidents(
         "display_limit": display_limit
     }
 
+@router.post("/incidents/clear-open")
+async def clear_open_incidents(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Marca como resolvidos todos os incidentes abertos do usuário."""
+    incidents = db.query(MonitorIncident).filter(
+        MonitorIncident.user_id == current_user.id,
+        MonitorIncident.status == "open"
+    ).all()
+    resolved_at = datetime.utcnow()
+    for incident in incidents:
+        incident.status = "resolved"
+        incident.resolved_at = resolved_at
+        incident.resolved_by = current_user.username
+    db.commit()
+    return {"success": True, "resolved_count": len(incidents), "message": "Incidentes abertos zerados"}
+
+@router.post("/incidents/clear-history")
+async def clear_incident_history(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Remove todo o histórico de incidentes do usuário."""
+    incidents = db.query(MonitorIncident).filter(
+        MonitorIncident.user_id == current_user.id
+    ).all()
+    removed_count = len(incidents)
+    for incident in incidents:
+        db.delete(incident)
+    db.commit()
+    return {"success": True, "removed_count": removed_count, "message": "Histórico de incidentes limpo"}
+
 @router.patch("/incidents/{incident_id}")
 async def update_incident(
     incident_id: int,

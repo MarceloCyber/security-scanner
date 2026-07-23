@@ -791,6 +791,28 @@ async function loadAutomationData() {
     } catch (error) { list.innerHTML = `<div class="alert alert-danger">${escapeAutomationHtml(error.message)}</div>`; }
 }
 
+async function clearAutomationOpenIncidents() {
+    if (!await confirmDeletion('Zerar incidentes abertos', 'Todos os incidentes abertos serão marcados como resolvidos.', 'Sim, zerar')) return;
+    try {
+        const response = await apiRequest('/viggio-shield/incidents/clear-open', {method:'POST'});
+        showToast(`${response.resolved_count || 0} incidente(s) aberto(s) zerado(s).`, 'success');
+        await loadAutomationData();
+    } catch (error) {
+        showToast('Erro ao zerar incidentes: ' + error.message, 'error');
+    }
+}
+
+async function clearAutomationIncidentHistory() {
+    if (!await confirmDeletion('Limpar histórico de incidentes', 'Todo o histórico de incidentes será apagado. Esta ação não pode ser desfeita.', 'Sim, limpar')) return;
+    try {
+        const response = await apiRequest('/viggio-shield/incidents/clear-history', {method:'POST'});
+        showToast(`${response.removed_count || 0} incidente(s) removido(s).`, 'success');
+        await loadAutomationData();
+    } catch (error) {
+        showToast('Erro ao limpar histórico: ' + error.message, 'error');
+    }
+}
+
 async function createAutomation(event) {
     event.preventDefault();
     const ports = document.getElementById('automation-ports').value.split(',').map(v => v.trim()).filter(Boolean).map(Number);

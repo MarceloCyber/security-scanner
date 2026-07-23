@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Viggio Shield - Monitoramento de Segurança</title>
-    <link rel="stylesheet" href="/css/modern-style.css?v=6.2">
+    <link rel="stylesheet" href="/css/modern-style.css?v=6.4">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         /* Melhorias visuais avançadas */
@@ -972,13 +972,21 @@
                 <h2 class="section-title">
                     <i class="fas fa-exclamation-circle"></i> Incidentes Recentes
                 </h2>
-                <select id="severityFilter" class="form-select" style="width: auto;" onchange="loadIncidents()">
-                    <option value="">Todas as Severidades</option>
-                    <option value="critical">Crítico</option>
-                    <option value="high">Alto</option>
-                    <option value="medium">Médio</option>
-                    <option value="low">Baixo</option>
-                </select>
+                <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:flex-end;">
+                    <select id="severityFilter" class="form-select" style="width: auto;" onchange="loadIncidents()">
+                        <option value="">Todas as Severidades</option>
+                        <option value="critical">Crítico</option>
+                        <option value="high">Alto</option>
+                        <option value="medium">Médio</option>
+                        <option value="low">Baixo</option>
+                    </select>
+                    <button class="btn-sm btn-warning" type="button" onclick="clearViggioOpenIncidents()" title="Marcar todos os incidentes abertos como resolvidos">
+                        <i class="fas fa-check-circle"></i> Zerar Abertos
+                    </button>
+                    <button class="btn-sm btn-danger" type="button" onclick="clearViggioIncidentHistory()" title="Apagar todo o histórico de incidentes">
+                        <i class="fas fa-trash-alt"></i> Limpar histórico
+                    </button>
+                </div>
             </div>
             <div class="incident-list" id="incidentsList">
                 <div class="loading">
@@ -1577,6 +1585,28 @@
                     </div>
                 `;
                 showToast('Erro ao carregar incidentes: ' + error.message, 'error');
+            }
+        }
+
+        async function clearViggioOpenIncidents() {
+            if (!window.confirm('Deseja zerar todos os incidentes abertos? Eles serão marcados como resolvidos.')) return;
+            try {
+                const response = await apiRequest('/viggio-shield/incidents/clear-open', { method: 'POST' });
+                showToast(`${response.resolved_count || 0} incidente(s) aberto(s) zerado(s).`, 'success');
+                await Promise.all([loadDashboard(), loadIncidents()]);
+            } catch (error) {
+                showToast('Erro ao zerar incidentes: ' + error.message, 'error');
+            }
+        }
+
+        async function clearViggioIncidentHistory() {
+            if (!window.confirm('Deseja apagar todo o histórico de incidentes? Esta ação não pode ser desfeita.')) return;
+            try {
+                const response = await apiRequest('/viggio-shield/incidents/clear-history', { method: 'POST' });
+                showToast(`${response.removed_count || 0} incidente(s) removido(s).`, 'success');
+                await Promise.all([loadDashboard(), loadIncidents()]);
+            } catch (error) {
+                showToast('Erro ao limpar histórico: ' + error.message, 'error');
             }
         }
 

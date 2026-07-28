@@ -11,7 +11,7 @@ from middleware.subscription import upgrade_user_plan
 from utils.email_service import email_service
 import json
 import stripe
-from pydantic import BaseModel
+from pydantic import BaseModel, EmailStr
 import os
 import stripe
 from pathlib import Path
@@ -58,6 +58,31 @@ class BootstrapAdminRequest(BaseModel):
     username: str
     email: str
     password: str
+
+
+class EmailTestRequest(BaseModel):
+    email: EmailStr
+
+
+@router.post('/test-email')
+def test_email(
+    request: EmailTestRequest,
+    admin: User = Depends(require_admin),
+):
+    is_connected, message = email_service.test_connection()
+    if not is_connected:
+        raise HTTPException(status_code=503, detail=f'Falha na conexao SMTP: {message}')
+
+    sent = email_service.send_email(
+        request.email,
+        'Teste de email - Iron Net',
+        f'<p>Ola, {admin.username}.</p><p>O servico de email da Iron Net esta funcionando.</p>',
+        f'Ola, {admin.username}. O servico de email da Iron Net esta funcionando.',
+    )
+    if not sent:
+        raise HTTPException(status_code=502, detail='Conexao SMTP funcionou, mas o email de teste nao foi enviado. Consulte email.log.')
+    return {'message': 'Email de teste enviado com sucesso'}
+
 
 @router.post("/bootstrap")
 def bootstrap_admin(

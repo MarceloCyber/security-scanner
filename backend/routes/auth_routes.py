@@ -2,6 +2,8 @@ from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks, 
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from datetime import timedelta
+import logging
+import os
 from database import get_db
 from models.user import User
 from auth import get_password_hash, verify_password, create_access_token
@@ -13,6 +15,15 @@ from datetime import datetime
 from jose import jwt
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
+
+
+def send_email_in_background(email_method, recipient: str, *args) -> None:
+    try:
+        if not email_method(recipient, *args):
+            logger.error("Email nao enviado para %s pelo metodo %s", recipient, email_method.__name__)
+    except Exception:
+        logger.exception("Falha inesperada ao enviar email para %s pelo metodo %s", recipient, email_method.__name__)
 
 class UserCreate(BaseModel):
     username: str
@@ -73,6 +84,7 @@ def register(user: UserCreate, background_tasks: BackgroundTasks, db: Session = 
         
         # Enviar email de boas-vindas em background
         background_tasks.add_task(
+            send_email_in_background,
             email_service.send_welcome_email,
             new_user.email,
             new_user.username,
@@ -160,17 +172,20 @@ def forgot_password(request: ForgotPasswordRequest, background_tasks: Background
         db.commit()
         
         # Envia email com link de reset (admin e usuário comum)
+        frontend_url = os.getenv("FRONTEND_URL", "http://localhost:8000").rstrip("/")
         if user.is_admin:
-            reset_link = f"http://localhost:8000/admin-reset-password.html?token={reset_token}"
+            reset_link = f"{frontend_url}/admin-reset-password.html?token={reset_token}"
             background_tasks.add_task(
+                send_email_in_background,
                 email_service.send_password_reset_email,
                 user.email,
                 user.username,
                 reset_link
             )
         else:
-            reset_link = f"http://localhost:8000/reset-password.html?token={reset_token}"
+            reset_link = f"{frontend_url}/reset-password.html?token={reset_token}"
             background_tasks.add_task(
+                send_email_in_background,
                 email_service.send_user_password_reset_email,
                 user.email,
                 user.username,

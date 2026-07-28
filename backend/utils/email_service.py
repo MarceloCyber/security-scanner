@@ -1,4 +1,5 @@
 import smtplib
+import logging
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from email.mime.application import MIMEApplication
@@ -19,6 +20,9 @@ from reportlab.lib.pagesizes import A4
 project_env = Path(__file__).resolve().parents[2] / '.env'
 load_dotenv(dotenv_path=project_env, override=False)
 
+logger = logging.getLogger(__name__)
+
+
 class EmailService:
     def __init__(self):
         self.smtp_host = os.getenv('SMTP_HOST', 'smtp.gmail.com').strip()
@@ -30,8 +34,43 @@ class EmailService:
         self.from_email = os.getenv('FROM_EMAIL', self.smtp_user).strip()
         self.from_name = os.getenv('FROM_NAME', 'Iron Net').strip()
 
+    def validate_config(self) -> tuple[bool, str]:
+        if not self.smtp_host:
+            return False, 'SMTP_HOST nao foi configurado'
+        if not self.smtp_user:
+            return False, 'SMTP_USER nao foi configurado'
+        if not self.smtp_password:
+            return False, 'SMTP_PASSWORD nao foi configurado'
+        if not self.from_email:
+            return False, 'FROM_EMAIL nao foi configurado'
+        if not 1 <= self.smtp_port <= 65535:
+            return False, 'SMTP_PORT deve estar entre 1 e 65535'
+        return True, 'Configuracao SMTP valida'
+
+    def test_connection(self) -> tuple[bool, str]:
+        is_valid, message = self.validate_config()
+        if not is_valid:
+            logger.error('Configuracao SMTP invalida: %s', message)
+            return False, message
+
+        try:
+            with smtplib.SMTP(self.smtp_host, self.smtp_port, timeout=15) as server:
+                server.ehlo()
+                server.starttls()
+                server.ehlo()
+                server.login(self.smtp_user, self.smtp_password)
+            logger.info('Conexao SMTP autenticada com sucesso para %s', self.smtp_user)
+            return True, 'Conexao SMTP autenticada com sucesso'
+        except (smtplib.SMTPException, OSError) as exc:
+            logger.exception('Falha ao autenticar no servidor SMTP %s:%s', self.smtp_host, self.smtp_port)
+            return False, str(exc)
+
     def send_email(self, to_email: str, subject: str, html_content: str, text_content: str = None, attachments: List[tuple] = None):
         """Send an email"""
+        is_valid, message = self.validate_config()
+        if not is_valid:
+            logger.error('Email para %s nao enviado: %s', to_email, message)
+            return False
         try:
             message = MIMEMultipart('mixed')
             message['Subject'] = subject
@@ -63,23 +102,25 @@ class EmailService:
                         message.attach(part)
 
             # Send email
-            with smtplib.SMTP(self.smtp_host, self.smtp_port) as server:
+            with smtplib.SMTP(self.smtp_host, self.smtp_port, timeout=15) as server:
+                server.ehlo()
                 server.starttls()
+                server.ehlo()
                 server.login(self.smtp_user, self.smtp_password)
                 server.sendmail(self.from_email, to_email, message.as_string())
 
-            print(f"Email enviado com sucesso para {to_email}")
+            logger.info('Email enviado para %s com assunto %r', to_email, subject)
             return True
         except Exception as e:
             error_text = str(e)
             if '535' in error_text or 'BadCredentials' in error_text:
-                print(
-                    f"Erro de autenticação SMTP para {to_email}: o Gmail rejeitou "
-                    "SMTP_USER/SMTP_PASSWORD. Use uma senha de app válida da "
-                    "mesma conta do SMTP_USER."
+                logger.error(
+                    'Autenticacao SMTP recusada ao enviar email para %s. '
+                    'Use uma senha de app valida da mesma conta configurada em SMTP_USER.',
+                    to_email,
                 )
             else:
-                print(f"Erro ao enviar email para {to_email}: {error_text}")
+                logger.exception('Erro ao enviar email para %s: %s', to_email, error_text)
             return False
 
     def generate_lgpd_contract_pdf(self, plan: str) -> bytes:

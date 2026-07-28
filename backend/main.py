@@ -8,6 +8,8 @@ import os
 import sys
 import time
 import json
+import logging
+from logging.handlers import RotatingFileHandler
 from jose import jwt
 from datetime import datetime
 from pathlib import Path
@@ -25,6 +27,14 @@ from sqlalchemy import inspect, text
 from routes import auth_routes, scan_routes, extended_scan_routes, tools_routes, redteam_routes, blueteam_routes, payment_routes, user_routes, admin_routes, viggio_shield_routes
 from utils.email_service import email_service
 from models.public_stats import PublicStats
+
+email_log_path = Path(__file__).resolve().parent / 'email.log'
+email_handler = RotatingFileHandler(email_log_path, maxBytes=10 * 1024 * 1024, backupCount=5)
+email_handler.setFormatter(logging.Formatter('%(asctime)s %(levelname)s %(name)s: %(message)s'))
+email_logger = logging.getLogger('utils.email_service')
+if not any(isinstance(handler, RotatingFileHandler) and handler.baseFilename == str(email_log_path) for handler in email_logger.handlers):
+    email_logger.addHandler(email_handler)
+email_logger.setLevel(logging.INFO)
 
 tables = []
 try:
@@ -46,6 +56,15 @@ app = FastAPI(
 )
 
 UPTIME_START = time.time()
+
+
+@app.on_event('startup')
+async def validate_email_configuration():
+    is_valid, message = email_service.validate_config()
+    if is_valid:
+        email_logger.info('Configuracao SMTP carregada para %s:%s', email_service.smtp_host, email_service.smtp_port)
+    else:
+        email_logger.error('Configuracao SMTP invalida: %s', message)
 
 # Configuração CORS para produção
 ALLOWED_ORIGINS = [

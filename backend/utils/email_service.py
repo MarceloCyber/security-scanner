@@ -6,22 +6,29 @@ from email.mime.base import MIMEBase
 from email import encoders
 from typing import List
 import os
+from pathlib import Path
 from dotenv import load_dotenv
 from io import BytesIO
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
 from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.lib.pagesizes import A4
 
-load_dotenv()
+# Carrega o .env da raiz do projeto, independentemente do diretório usado
+# para iniciar o Uvicorn. Em produção, as variáveis do ambiente continuam
+# tendo prioridade quando já estiverem definidas pelo provedor.
+project_env = Path(__file__).resolve().parents[2] / '.env'
+load_dotenv(dotenv_path=project_env, override=False)
 
 class EmailService:
     def __init__(self):
-        self.smtp_host = os.getenv('SMTP_HOST', 'smtp.gmail.com')
+        self.smtp_host = os.getenv('SMTP_HOST', 'smtp.gmail.com').strip()
         self.smtp_port = int(os.getenv('SMTP_PORT', '587'))
-        self.smtp_user = os.getenv('SMTP_USER', '')
-        self.smtp_password = os.getenv('SMTP_PASSWORD', '')
-        self.from_email = os.getenv('FROM_EMAIL', self.smtp_user)
-        self.from_name = os.getenv('FROM_NAME', 'Iron Net')
+        self.smtp_user = os.getenv('SMTP_USER', '').strip()
+        # Senhas de app às vezes são copiadas com espaços de formatação.
+        # O Gmail espera os 16 caracteres sem espaços.
+        self.smtp_password = ''.join(os.getenv('SMTP_PASSWORD', '').split())
+        self.from_email = os.getenv('FROM_EMAIL', self.smtp_user).strip()
+        self.from_name = os.getenv('FROM_NAME', 'Iron Net').strip()
 
     def send_email(self, to_email: str, subject: str, html_content: str, text_content: str = None, attachments: List[tuple] = None):
         """Send an email"""
@@ -61,9 +68,18 @@ class EmailService:
                 server.login(self.smtp_user, self.smtp_password)
                 server.sendmail(self.from_email, to_email, message.as_string())
 
+            print(f"Email enviado com sucesso para {to_email}")
             return True
         except Exception as e:
-            print(f"Error sending email: {str(e)}")
+            error_text = str(e)
+            if '535' in error_text or 'BadCredentials' in error_text:
+                print(
+                    f"Erro de autenticação SMTP para {to_email}: o Gmail rejeitou "
+                    "SMTP_USER/SMTP_PASSWORD. Use uma senha de app válida da "
+                    "mesma conta do SMTP_USER."
+                )
+            else:
+                print(f"Erro ao enviar email para {to_email}: {error_text}")
             return False
 
     def generate_lgpd_contract_pdf(self, plan: str) -> bytes:
@@ -262,7 +278,7 @@ class EmailService:
                     </div>
 
                     <div style="text-align: center;">
-                        <a href="http://localhost:8000/index.html" class="button">
+                        <a href="{base}/index.html" class="button">
                             Acessar Plataforma
                         </a>
                     </div>
@@ -309,7 +325,7 @@ class EmailService:
         3. Execute suas primeiras varreduras
         4. Explore todas as ferramentas disponíveis
 
-        Acesse: http://localhost:8000/index.html
+        Acesse: {base}/index.html
 
         Iron Net - Proteção Profissional para Suas Aplicações
         """

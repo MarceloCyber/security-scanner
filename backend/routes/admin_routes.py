@@ -101,9 +101,9 @@ def bootstrap_admin(
     if user:
         user.is_admin = True
         user.hashed_password = get_password_hash(password)
-        user.subscription_plan = user.subscription_plan or "free"
+        user.subscription_plan = user.subscription_plan or "enterprise"
         user.subscription_status = user.subscription_status or "active"
-        user.scans_limit = user.scans_limit or 10
+        user.scans_limit = user.scans_limit or -1
         db.commit()
         db.refresh(user)
         return {"success": True, "message": "Administrador habilitado", "user_id": user.id}
@@ -111,9 +111,9 @@ def bootstrap_admin(
         username=username,
         email=email,
         hashed_password=get_password_hash(password),
-        subscription_plan="free",
+        subscription_plan="enterprise",
         subscription_status="active",
-        scans_limit=10,
+        scans_limit=-1,
         is_admin=True
     )
     db.add(new_user)
@@ -183,7 +183,6 @@ def get_admin_stats(
         "new_users_7_days": new_users_7_days,
         "monthly_revenue": monthly_revenue,
         "users_by_plan": {
-            "free": plans_dict.get('free', 0),
             "starter": plans_dict.get('starter', 0),
             "professional": plans_dict.get('professional', 0),
             "enterprise": plans_dict.get('enterprise', 0)
@@ -237,6 +236,29 @@ def get_all_users(
                 "scans_this_month": user.scans_this_month or 0,
                 "scans_limit": user.scans_limit or 0,
                 "is_admin": user.is_admin or False
+            }
+            for user in users
+        ]
+    }
+
+@router.get("/access-keys")
+def list_access_keys(
+    db: Session = Depends(get_db),
+    admin: User = Depends(require_admin),
+):
+    """Lista o inventário de chaves sem expor os segredos armazenados."""
+    users = db.query(User).filter(User.access_key_hash.isnot(None)).order_by(desc(User.access_key_issued_at)).all()
+    return {
+        "keys": [
+            {
+                "user_id": user.id,
+                "username": user.username,
+                "email": user.email,
+                "plan": user.subscription_plan,
+                "key_mask": f"IRON-••••••••{user.access_key_last4 or '----'}",
+                "issued_at": user.access_key_issued_at,
+                "used_at": user.access_key_used_at,
+                "status": "utilizada" if user.access_key_used_at else "aguardando primeiro login",
             }
             for user in users
         ]
@@ -301,9 +323,7 @@ def update_user(
         user.subscription_plan = user_update.subscription_plan
         
         # Atualizar limite de scans baseado no plano
-        if user_update.subscription_plan == 'free':
-            user.scans_limit = 10
-        elif user_update.subscription_plan == 'starter':
+        if user_update.subscription_plan == 'starter':
             user.scans_limit = 100
         else:  # professional, enterprise
             user.scans_limit = -1  # ilimitado
@@ -572,25 +592,12 @@ def change_plan(
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="Usuário não encontrado")
-    if new_plan not in ["free", "starter", "professional", "enterprise"]:
+    if new_plan not in ["starter", "professional", "enterprise"]:
         raise HTTPException(status_code=400, detail="Plano inválido")
     upgrade_user_plan(user, new_plan, 1, db)
     try:
-        if new_plan == 'free':
-            email_service.send_email(
-                user.email,
-                'Plano alterado para Free',
-                f'<p>Olá, {user.username}!</p><p>Seu plano foi alterado para Free. Você pode fazer upgrade a qualquer momento.</p>',
-                f'Olá, {user.username}! Seu plano foi alterado para Free. Você pode fazer upgrade a qualquer momento.'
-            )
-        else:
-            plan_prices = {'starter': 189.90, 'professional': 439.90}
-            email_service.send_subscription_confirmation(
-                user.email,
-                user.username,
-                new_plan,
-                plan_prices.get(new_plan, 0)
-            )
+        plan_prices = {'starter': 289.90, 'professional': 439.90}
+        email_service.send_subscription_confirmation(user.email, user.username, new_plan, plan_prices.get(new_plan, 0))
     except Exception:
         pass
     try:
@@ -637,8 +644,8 @@ def cancel_subscription_admin(
             stripe.api_key = os.getenv("STRIPE_SECRET_KEY", "sk_test_...")
             stripe.Subscription.delete(user.stripe_subscription_id)
         user.subscription_status = 'cancelled'
-        user.subscription_plan = 'free'
-        user.scans_limit = 10
+        user.subscription_plan = 'starter'
+        user.scans_limit = 100
         user.scans_this_month = 0
         db.commit()
         try:
@@ -655,11 +662,11 @@ def cancel_subscription_admin(
                 "id": notif_id,
                 "type": "system",
                 "event": "plan_change",
-                "message": "Assinatura cancelada. Plano alterado para free",
+                "message": "Assinatura cancelada. Escolha um plano para continuar.",
                 "timestamp": datetime.utcnow().isoformat(),
                 "target_user_id": user.id,
                 "target_username": user.username,
-                "new_plan": "free",
+                "new_plan": "starter",
                 "read": False
             })
             notifications = notifications[-50:]
@@ -892,10 +899,10 @@ def import_data(
                 username=username,
                 email=email,
                 hashed_password=u.get("hashed_password") or "",
-                subscription_plan=u.get("subscription_plan") or "free",
-                subscription_status=u.get("subscription_status") or "active",
+                subscription_plan=u.get("subscription_plan") or "starter",
+                subscription_status=u.get("subscription_status") or "pending",
                 scans_this_month=u.get("scans_this_month") or 0,
-                scans_limit=u.get("scans_limit") or 10,
+                scans_limit=u.get("scans_limit") or 100,
                 stripe_customer_id=u.get("stripe_customer_id"),
                 stripe_subscription_id=u.get("stripe_subscription_id"),
                 mercadopago_customer_id=u.get("mercadopago_customer_id"),

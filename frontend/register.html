@@ -384,10 +384,9 @@
             <h1>Criar Conta</h1>
             <p>Cadastre-se na Iron Net</p>
             <div class="plan-badge" id="planBadge">
-                <i class="fas fa-crown"></i> Plano Free
+                <i class="fas fa-crown"></i> Plano Starter — R$ 289,90/mês
             </div>
             <div class="plan-selector" style="margin-top: 10px; display: flex; gap: 8px; justify-content: center;">
-                <button type="button" class="btn-select" data-plan="free" style="padding:8px 12px; border-radius:8px; border:1px solid #374151; background:#1f2937; color:#e5e7eb; cursor:pointer;">Free</button>
                 <button type="button" class="btn-select" data-plan="starter" style="padding:8px 12px; border-radius:8px; border:1px solid #374151; background:#1f2937; color:#e5e7eb; cursor:pointer;">Starter</button>
                 <button type="button" class="btn-select" data-plan="professional" style="padding:8px 12px; border-radius:8px; border:1px solid #374151; background:#1f2937; color:#e5e7eb; cursor:pointer;">Professional</button>
                 <button type="button" class="btn-select" data-plan="enterprise" style="padding:8px 12px; border-radius:8px; border:1px solid #374151; background:#1f2937; color:#e5e7eb; cursor:pointer;">Enterprise</button>
@@ -398,12 +397,12 @@
             <div class="modal-content">
                 <div class="modal-header">
                     <i class="fas fa-check-circle"></i>
-                    <div class="modal-title">Conta Free criada com sucesso</div>
+                    <div class="modal-title">Conta criada com sucesso</div>
                 </div>
                 <p style="color: var(--text-dark);">Enviamos um email com suas credenciais de acesso.</p>
                 <div class="modal-details">
                     <p><strong>Usuário:</strong> <span id="successUsernameText"></span></p>
-                    <p><strong>Plano:</strong> <span id="successPlanText">Free</span></p>
+                    <p><strong>Plano:</strong> <span id="successPlanText">Starter</span></p>
                     <p><strong>Email:</strong> <span id="successEmailText"></span></p>
                 </div>
                 <div class="modal-actions">
@@ -537,12 +536,12 @@
     <script>
         // Get plan from URL / selector
         const urlParams = new URLSearchParams(window.location.search);
-        let selectedPlan = urlParams.get('plan') || 'free';
+        let selectedPlan = urlParams.get('plan') || 'starter';
+        if (!['starter', 'professional', 'enterprise'].includes(selectedPlan)) selectedPlan = 'starter';
         
         const planNames = {
-            'free': 'Free',
-            'starter': 'Starter',
-            'professional': 'Professional',
+            'starter': 'Starter — R$ 289,90/mês',
+            'professional': 'Professional — R$ 439,90/mês',
             'enterprise': 'Enterprise'
         };
 
@@ -731,29 +730,8 @@
             document.getElementById('submitBtn').disabled = true;
 
             try {
-                if (selectedPlan === 'free') {
-                    const response = await fetch('/api/auth/register', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({
-                            username: inputs.username.value.trim(),
-                            email: inputs.email.value.trim(),
-                            password: inputs.password.value,
-                            full_name: inputs.fullName.value.trim(),
-                            selected_plan: selectedPlan
-                        })
-                    });
-                    const data = await response.json();
-                    if (response.ok) {
-                        document.getElementById('successUsernameText').textContent = inputs.username.value.trim();
-                        document.getElementById('successEmailText').textContent = inputs.email.value.trim();
-                        document.getElementById('successPlanText').textContent = 'Free';
-                        document.getElementById('successModal').style.display = 'flex';
-                    } else {
-                        throw new Error(data.detail || 'Erro ao criar conta');
-                    }
+                if (selectedPlan === 'enterprise') {
+                    throw new Error('O plano Enterprise é personalizado. Fale com o time de vendas para concluir o cadastro.');
                 } else {
                     const response = await fetch('/api/payments/create-checkout-registration', {
                         method: 'POST',

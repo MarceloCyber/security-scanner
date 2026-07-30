@@ -8,16 +8,15 @@
 <body>
     <h1>Fazendo logout...</h1>
     <script>
-        // Clear all localStorage
-        localStorage.clear();
-        
-        // Clear sessionStorage
-        sessionStorage.clear();
-        
-        // Redirect to login
-        setTimeout(() => {
+        (async () => {
+            const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+            if (token) {
+                try { await fetch('/api/auth/logout', { method: 'POST', headers: { 'Authorization': `Bearer ${token}` } }); } catch (_) {}
+            }
+            localStorage.clear();
+            sessionStorage.clear();
             window.location.href = '/index.html';
-        }, 500);
+        })();
     </script>
 </body>
 </html>

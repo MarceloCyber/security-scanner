@@ -22,6 +22,7 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
     
     const username = document.getElementById('username').value;
     const password = document.getElementById('password').value;
+    const accessKey = document.getElementById('access_key')?.value.trim() || '';
     const messageEl = document.getElementById('message');
     const submitBtn = document.querySelector('#loginForm button[type="submit"]');
     const originalBtnHTML = submitBtn ? submitBtn.innerHTML : '';
@@ -35,6 +36,7 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
         const formData = new URLSearchParams();
         formData.append('username', username);
         formData.append('password', password);
+        formData.append('access_key', accessKey);
         
         const response = await fetch(`${API_URL}/auth/token`, {
             method: 'POST',
@@ -130,7 +132,7 @@ if (localStorage.getItem('access_token')) {
 document.addEventListener('DOMContentLoaded', () => {
     const params = new URLSearchParams(window.location.search);
     const flash = localStorage.getItem('flash_success');
-    const msg = params.get('registered') === 'free_success' ? 'Conta Free criada com sucesso! Faça login para acessar.' : flash;
+    const msg = flash;
     if (msg) {
         const messageEl = document.getElementById('message');
         if (messageEl) {

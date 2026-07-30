@@ -19,19 +19,28 @@ def migrate_database():
     
     try:
         print("🔄 Iniciando migração do banco de dados...")
+        datetime_type = "TIMESTAMP" if engine.dialect.name == "postgresql" else "DATETIME"
         
         # Lista de colunas a adicionar
         columns_to_add = [
-            ("subscription_plan", "VARCHAR DEFAULT 'free'"),
+            ("subscription_plan", "VARCHAR DEFAULT 'starter'"),
             ("subscription_status", "VARCHAR DEFAULT 'active'"),
-            ("subscription_start", "DATETIME"),
-            ("subscription_end", "DATETIME"),
+            ("subscription_start", datetime_type),
+            ("subscription_end", datetime_type),
             ("scans_this_month", "INTEGER DEFAULT 0"),
             ("scans_limit", "INTEGER DEFAULT 10"),
             ("stripe_customer_id", "VARCHAR"),
             ("stripe_subscription_id", "VARCHAR"),
             ("mercadopago_customer_id", "VARCHAR"),
             ("is_trial", "BOOLEAN DEFAULT 0"),
+            ("trial_started_at", datetime_type),
+            ("access_key_hash", "VARCHAR"),
+            ("access_key_last4", "VARCHAR"),
+            ("access_key_issued_at", datetime_type),
+            ("access_key_used_at", datetime_type),
+            ("active_session_hash", "VARCHAR"),
+            ("active_session_last_activity", datetime_type),
+            ("trial_started_at", "DATETIME"),
         ]
         
         for column_name, column_type in columns_to_add:
@@ -56,7 +65,7 @@ def migrate_database():
             updated = False
             
             if not hasattr(user, 'subscription_plan') or user.subscription_plan is None:
-                user.subscription_plan = 'free'
+                user.subscription_plan = 'starter'
                 updated = True
             
             if not hasattr(user, 'subscription_status') or user.subscription_status is None:
@@ -73,6 +82,14 @@ def migrate_database():
             
             if not hasattr(user, 'is_trial') or user.is_trial is None:
                 user.is_trial = False
+                updated = True
+
+            # O plano Free foi removido. Usuários legados ficam sem acesso pago
+            # até escolherem um dos planos disponíveis.
+            if user.subscription_plan == 'free':
+                user.subscription_plan = 'starter'
+                user.subscription_status = 'pending'
+                user.scans_limit = 100
                 updated = True
             
             if updated:

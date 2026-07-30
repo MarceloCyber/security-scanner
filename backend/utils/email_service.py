@@ -374,7 +374,7 @@ class EmailService:
         text_content = f"{text_content}\n\nContrato (LGPD): {contract_base}/contrato/lgpd?plan={plan_names.get(plan, 'Free')}\nBaixar PDF no link acima."
         return self.send_email(to_email, subject, html_content, text_content)
 
-    def send_paid_welcome_email(self, to_email: str, username: str, plan: str, manual_url: str):
+    def send_paid_welcome_email(self, to_email: str, username: str, plan: str, manual_url: str, access_key: str = ""):
         plan_names = {
             'starter': 'Starter',
             'professional': 'Professional',
@@ -412,7 +412,9 @@ class EmailService:
                         <p><strong>Usuário:</strong> {username}</p>
                         <p><strong>Email:</strong> {to_email}</p>
                         <p><strong>Plano:</strong> {plan_names.get(plan, '')}</p>
+                        <p><strong>Chave de acesso:</strong> <code>{access_key or 'Já enviada anteriormente'}</code></p>
                     </div>
+                    <p><strong>Importante:</strong> use esta chave no primeiro login e não a compartilhe. Ela é exclusiva e intransferível.</p>
                     <p>Para começar, acesse o manual da plataforma com guias e melhores práticas:</p>
                     <div style="text-align: center;">
                         <a href="{manual_url}" class="button">Acessar Manual</a>
@@ -451,6 +453,9 @@ class EmailService:
         - Usuário: {username}
         - Email: {to_email}
         - Plano: {plan_names.get(plan, '')}
+        - Chave de acesso: {access_key or 'Já enviada anteriormente'}
+
+        Use a chave no primeiro login. Não compartilhe esta chave.
 
         Manual da plataforma: {manual_url}
         Login: {os.getenv('FRONTEND_URL', 'http://localhost:8000')}/index.html
@@ -461,7 +466,7 @@ class EmailService:
         text_content = f"{text_content}\n\nContrato (LGPD): {contract_base}/contrato/lgpd?plan={plan_names.get(plan, '')}\nBaixar PDF no link acima."
         return self.send_email(to_email, subject, html_content, text_content)
 
-    def send_subscription_confirmation(self, to_email: str, username: str, plan: str, amount: float):
+    def send_subscription_confirmation(self, to_email: str, username: str, plan: str, amount: float, access_key: str = ""):
         """Send subscription confirmation email"""
         plan_names = {
             'starter': 'Starter',
@@ -543,7 +548,9 @@ class EmailService:
                         <p><strong>Plano:</strong> {plan_names.get(plan, '')}</p>
                         <p><strong>Valor:</strong> R$ {amount:.2f}/mês</p>
                         <p><strong>Status:</strong> Ativa</p>
+                        <p><strong>Chave de acesso:</strong> <code>{access_key or 'Já enviada anteriormente'}</code></p>
                     </div>
+                    <p><strong>Importante:</strong> use esta chave apenas no primeiro login e não a compartilhe.</p>
                     
                     <div style="margin: 30px 0;">
                         <h3>🎁 O que você ganhou:</h3>
@@ -587,6 +594,7 @@ class EmailService:
         - Plano: {plan_names.get(plan, '')}
         - Valor: R$ {amount:.2f}/mês
         - Status: Ativa
+        - Chave de acesso: {access_key or 'Já enviada anteriormente'}
 
         O que você ganhou:
         - Acesso ilimitado a todas as ferramentas premium

@@ -106,6 +106,7 @@ function initNavigation() {
                 // Carrega dados da página
                 if (pageId === 'dashboard') loadDashboard();
                 else if (pageId === 'users') loadUsers();
+                else if (pageId === 'access-keys') loadAccessKeys();
                 else if (pageId === 'payments') loadPayments();
                 else if (pageId === 'cancelled') loadCancelled();
                 else if (pageId === 'activity') loadActivity();
@@ -113,6 +114,27 @@ function initNavigation() {
             }
         });
     });
+}
+
+async function loadAccessKeys() {
+    try {
+        const response = await fetchAPI('/api/admin/access-keys');
+        const data = await response.json();
+        const tbody = document.getElementById('accessKeysTableBody');
+        if (!tbody) return;
+        const keys = data.keys || [];
+        tbody.innerHTML = keys.length ? keys.map(key => `
+            <tr>
+                <td>${escapeHtml(key.username || '')}</td>
+                <td>${escapeHtml(key.email || '')}</td>
+                <td>${escapeHtml(key.plan || '')}</td>
+                <td><code>${escapeHtml(key.key_mask || '')}</code></td>
+                <td>${formatDate(key.issued_at)}</td>
+                <td>${escapeHtml(key.status || '')}</td>
+            </tr>`).join('') : '<tr><td colspan="6" class="loading-cell">Nenhuma chave emitida</td></tr>';
+    } catch (error) {
+        showToast('Erro ao carregar chaves de usuários', 'error');
+    }
 }
 
 function showPage(pageId) {
@@ -208,7 +230,6 @@ function updatePlanStats(plans) {
     const totalUsers = Object.values(plans).reduce((sum, count) => sum + count, 0) || 1;
     
     const planData = [
-        { id: 'free', count: plans.free || 0, label: 'Gratuito' },
         { id: 'starter', count: plans.starter || 0, label: 'Starter' },
         { id: 'professional', count: plans.professional || 0, label: 'Professional' },
         { id: 'enterprise', count: plans.enterprise || 0, label: 'Enterprise' }
@@ -217,7 +238,7 @@ function updatePlanStats(plans) {
     planData.forEach(plan => {
         const percentage = totalUsers > 0 ? (plan.count / totalUsers * 100) : 0;
         
-        // IDs corretos do HTML: planFree, planStarter, planProfessional, planEnterprise
+        // IDs correspondentes aos três planos disponíveis.
         const planName = plan.id.charAt(0).toUpperCase() + plan.id.slice(1); // Capitaliza primeira letra
         const countElem = document.getElementById(`plan${planName}`);
         if (countElem) countElem.textContent = plan.count;
@@ -267,7 +288,7 @@ function renderUsersTable(users) {
             <td>${escapeHtml(user.username)}</td>
             <td>${escapeHtml(user.email)}</td>
             <td>
-                <span class="plan-badge ${(user.subscription_plan || 'free').toLowerCase()}">
+                <span class="plan-badge ${(user.subscription_plan || 'starter').toLowerCase()}">
                     ${getPlanLabel(user.subscription_plan)}
                 </span>
             </td>
@@ -345,7 +366,7 @@ async function openEditModal(userId) {
         if (editEmail) editEmail.value = user.email || '';
         
         const editPlan = document.getElementById('editUserPlan');
-        if (editPlan) editPlan.value = user.subscription_plan || 'free';
+        if (editPlan) editPlan.value = user.subscription_plan || 'starter';
         
         const editStatus = document.getElementById('editUserStatus');
         if (editStatus) editStatus.value = user.subscription_status || 'active';
@@ -449,7 +470,7 @@ async function confirmDeleteUser() {
 }
 
 async function promptChangePlan(userId) {
-    const plan = prompt('Informe o novo plano: free | starter | professional | enterprise');
+    const plan = prompt('Informe o novo plano: starter | professional | enterprise');
     if (!plan) return;
     try {
         await fetchAPI(`/api/admin/subscriptions/${userId}/change-plan?new_plan=${encodeURIComponent(plan)}`, { method: 'POST' });
@@ -833,12 +854,11 @@ function formatDateTime(dateString) {
 
 function getPlanLabel(plan) {
     const labels = {
-        'free': 'Gratuito',
         'starter': 'Starter',
         'professional': 'Professional',
         'enterprise': 'Enterprise'
     };
-    return labels[plan?.toLowerCase()] || 'Gratuito';
+    return labels[plan?.toLowerCase()] || 'Starter';
 }
 
 function getStatusLabel(status) {

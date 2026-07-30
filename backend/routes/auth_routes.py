@@ -6,11 +6,12 @@ import logging
 import os
 from database import get_db
 from models.user import User
-from auth import get_password_hash, verify_password, create_access_token
+from auth import get_password_hash, verify_password, create_session_token, get_current_user, session_hash, verify_access_key, SESSION_IDLE_TIMEOUT
 from config import settings
 from pydantic import BaseModel, EmailStr
 from utils.email_service import email_service
 import secrets
+import hmac
 from datetime import datetime
 from jose import jwt
 
@@ -30,7 +31,7 @@ class UserCreate(BaseModel):
     email: EmailStr
     password: str
     full_name: str = None
-    selected_plan: str = 'free'
+    selected_plan: str = 'starter'
 
 class Token(BaseModel):
     access_token: str
@@ -61,15 +62,15 @@ def register(user: UserCreate, background_tasks: BackgroundTasks, db: Session = 
                 detail="Email already registered"
             )
         
-        # Cria novo usuário com plano free inicialmente
+        # Não existe mais cadastro no plano Free; a assinatura é ativada pelo Stripe.
         hashed_password = get_password_hash(user.password)
         new_user = User(
             username=user.username,
             email=user.email,
             hashed_password=hashed_password,
-            subscription_plan='free',
-            subscription_status='active',
-            scans_limit=10,
+            subscription_plan='starter',
+            subscription_status='pending',
+            scans_limit=100,
             scans_this_month=0
         )
         db.add(new_user)
@@ -77,10 +78,11 @@ def register(user: UserCreate, background_tasks: BackgroundTasks, db: Session = 
         db.refresh(new_user)
         
         # Criar token de acesso automático
-        access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
-        access_token = create_access_token(
-            data={"sub": new_user.username}, expires_delta=access_token_expires
-        )
+        session_id = secrets.token_urlsafe(32)
+        new_user.active_session_hash = session_hash(session_id)
+        new_user.active_session_last_activity = datetime.utcnow()
+        db.commit()
+        access_token = create_session_token(new_user.username, session_id)
         
         # Enviar email de boas-vindas em background
         background_tasks.add_task(
@@ -88,7 +90,7 @@ def register(user: UserCreate, background_tasks: BackgroundTasks, db: Session = 
             email_service.send_welcome_email,
             new_user.email,
             new_user.username,
-            'free'
+            'starter'
         )
         
         return {
@@ -112,6 +114,7 @@ def register(user: UserCreate, background_tasks: BackgroundTasks, db: Session = 
 def login(
     username: str = Form(...),
     password: str = Form(...),
+    access_key: str = Form(default=""),
     db: Session = Depends(get_db)
 ):
     user = db.query(User).filter(User.username == username).first()
@@ -121,13 +124,33 @@ def login(
             detail="Incorrect username or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
+
+    if user.access_key_hash and not user.access_key_used_at:
+        if not verify_access_key(access_key, user.access_key_hash):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Informe a chave de acesso enviada para o seu email no primeiro login.",
+            )
+
+    now = datetime.utcnow()
+    if user.active_session_hash and user.active_session_last_activity and now - user.active_session_last_activity <= SESSION_IDLE_TIMEOUT:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Esta conta já está conectada em outro dispositivo. Encerre a sessão anterior antes de entrar.",
+        )
+
+    # O prazo de 10 dias começa no primeiro login após uma assinatura paga.
+    if user.is_trial and user.subscription_plan in ('starter', 'professional') and not user.trial_started_at:
+        user.trial_started_at = datetime.utcnow()
+    session_id = secrets.token_urlsafe(32)
+    user.active_session_hash = session_hash(session_id)
+    user.active_session_last_activity = now
+    if user.access_key_hash and not user.access_key_used_at:
+        user.access_key_used_at = now
+    db.commit()
+    access_token = create_session_token(user.username, session_id)
     
-    access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
-    access_token = create_access_token(
-        data={"sub": user.username}, expires_delta=access_token_expires
-    )
-    
-    return {"access_token": access_token, "token_type": "bearer"}
+    return {"access_token": access_token, "token_type": "bearer", "access_key_required": False}
 
 @router.post("/refresh", response_model=Token)
 def refresh_token(request: Request, db: Session = Depends(get_db)):
@@ -143,11 +166,27 @@ def refresh_token(request: Request, db: Session = Depends(get_db)):
         user = db.query(User).filter(User.username == username).first()
         if not user:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
-        access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
-        new_token = create_access_token(data={"sub": user.username}, expires_delta=access_token_expires)
+        session_id = payload.get("sid")
+        if not session_id or not user.active_session_hash or not hmac.compare_digest(session_hash(session_id), user.active_session_hash):
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Sessão encerrada. Faça login novamente.")
+        if not user.active_session_last_activity or datetime.utcnow() - user.active_session_last_activity > SESSION_IDLE_TIMEOUT:
+            user.active_session_hash = None
+            user.active_session_last_activity = None
+            db.commit()
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Sessão expirada por inatividade. Faça login novamente.")
+        user.active_session_last_activity = datetime.utcnow()
+        db.commit()
+        new_token = create_session_token(user.username, session_id)
         return {"access_token": new_token, "token_type": "bearer"}
     except Exception:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
+
+@router.post("/logout")
+def logout(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    current_user.active_session_hash = None
+    current_user.active_session_last_activity = None
+    db.commit()
+    return {"success": True}
 
 @router.post("/forgot-password", response_model=dict)
 def forgot_password(request: ForgotPasswordRequest, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):

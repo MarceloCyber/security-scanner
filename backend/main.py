@@ -47,6 +47,27 @@ try:
 except Exception:
     pass
 
+# Compatibilidade com bancos existentes: create_all não adiciona colunas novas.
+try:
+    from sqlalchemy import inspect as _inspect
+    with engine.begin() as _conn:
+        _columns = {column["name"] for column in _inspect(engine).get_columns("users")}
+        _datetime_type = "TIMESTAMP" if engine.dialect.name == "postgresql" else "DATETIME"
+        _security_columns = {
+            "trial_started_at": _datetime_type,
+            "access_key_hash": "VARCHAR",
+            "access_key_last4": "VARCHAR",
+            "access_key_issued_at": _datetime_type,
+            "access_key_used_at": _datetime_type,
+            "active_session_hash": "VARCHAR",
+            "active_session_last_activity": _datetime_type,
+        }
+        for _name, _type in _security_columns.items():
+            if _name not in _columns:
+                _conn.execute(text(f"ALTER TABLE users ADD COLUMN {_name} {_type}"))
+except Exception as _migration_error:
+    logging.getLogger(__name__).warning("Migração de segurança de usuários não aplicada: %s", _migration_error)
+
 app = FastAPI(
     title="Iron Net API",
     description="API para análise de segurança de código e APIs baseada no OWASP Top 10",

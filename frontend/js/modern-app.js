@@ -97,7 +97,7 @@ async function checkSubscription() {
                     'active': '',
                     'pending': 'Pagamento pendente. Conclua o pagamento para ativar sua assinatura.',
                     'expired': 'Assinatura expirada. Renove para continuar usando os recursos premium.',
-                    'cancelled': 'Assinatura cancelada. Você está no plano Free.',
+                    'cancelled': 'Assinatura cancelada. Escolha um plano para continuar.',
                     'rejected': 'Pagamento rejeitado. Verifique seus dados e tente novamente.',
                     'payment_failed': 'Pagamento falhou. Atualize seu método de pagamento.'
                 };
@@ -141,9 +141,8 @@ async function checkSubscription() {
 
         // Lock Tools - Define quais ferramentas cada plano pode acessar
         const toolAccess = {
-            'free': ['port-scan', 'intelligent-automation'],
-            'starter': ['port-scan', 'scanner', 'encoder', 'subdomain', 'hash-analyzer', 'password-strength', 'intelligent-automation'],
-            'professional': ['port-scan', 'scanner', 'encoder', 'phishing', 'payloads', 'subdomain', 'sql-injection', 'xss-tester', 'brute-force', 'log-analyzer', 'threat-intel', 'hash-analyzer', 'password-strength', 'reports', 'ai-assistant', 'api-scanner', 'dependency-scanner', 'docker-scanner', 'graphql-scanner', 'intelligent-automation'],
+            'starter': ['port-scan', 'scanner', 'encoder', 'subdomain', 'hash-analyzer'],
+            'professional': ['port-scan', 'scanner', 'encoder', 'subdomain', 'hash-analyzer', 'password-strength', 'sql-injection', 'xss-tester', 'phishing', 'log-analyzer'],
             'enterprise': ['port-scan', 'scanner', 'encoder', 'phishing', 'payloads', 'subdomain', 'sql-injection', 'xss-tester', 'brute-force', 'log-analyzer', 'threat-intel', 'hash-analyzer', 'password-strength', 'reports', 'ai-assistant', 'api-scanner', 'dependency-scanner', 'docker-scanner', 'graphql-scanner', 'intelligent-automation']
         };
 
@@ -330,11 +329,10 @@ async function sendAiMessage() {
 }
 
 function prelockTools() {
-    const plan = (localStorage.getItem('userPlan') || 'free').toLowerCase();
+    const plan = (localStorage.getItem('userPlan') || 'starter').toLowerCase();
     const toolAccess = {
-        'free': ['port-scan', 'intelligent-automation'],
-        'starter': ['port-scan', 'scanner', 'encoder', 'subdomain', 'hash-analyzer', 'password-strength', 'intelligent-automation'],
-        'professional': ['port-scan', 'scanner', 'encoder', 'phishing', 'payloads', 'subdomain', 'directory-enum', 'sql-injection', 'xss-tester', 'brute-force', 'log-analyzer', 'ioc-analyzer', 'threat-intel', 'hash-analyzer', 'password-strength', 'reports', 'ai-assistant', 'api-scanner', 'dependency-scanner', 'docker-scanner', 'graphql-scanner'],
+        'starter': ['port-scan', 'scanner', 'encoder', 'subdomain', 'hash-analyzer'],
+        'professional': ['port-scan', 'scanner', 'encoder', 'subdomain', 'hash-analyzer', 'password-strength', 'sql-injection', 'xss-tester', 'phishing', 'log-analyzer'],
         'enterprise': ['port-scan', 'scanner', 'encoder', 'phishing', 'payloads', 'subdomain', 'directory-enum', 'sql-injection', 'xss-tester', 'brute-force', 'log-analyzer', 'ioc-analyzer', 'threat-intel', 'hash-analyzer', 'password-strength', 'reports', 'ai-assistant', 'api-scanner', 'dependency-scanner', 'docker-scanner', 'graphql-scanner']
     };
     const allowedTools = toolAccess[plan] || [];
@@ -352,10 +350,9 @@ function prelockTools() {
 }
 
 function prelockToolCards() {
-    const plan = (localStorage.getItem('userPlan') || 'free').toLowerCase();
+    const plan = (localStorage.getItem('userPlan') || 'starter').toLowerCase();
     const toolAccess = {
-        'free': ['port-scan', 'intelligent-automation'],
-        'starter': ['port-scan', 'scanner', 'encoder', 'subdomain', 'hash-analyzer', 'password-strength', 'intelligent-automation'],
+        'starter': ['port-scan', 'scanner', 'encoder', 'subdomain', 'hash-analyzer'],
         'professional': ['port-scan', 'scanner', 'encoder', 'phishing', 'payloads', 'subdomain', 'sql-injection', 'xss-tester', 'brute-force', 'log-analyzer', 'threat-intel', 'hash-analyzer', 'password-strength', 'reports', 'ai-assistant', 'api-scanner', 'dependency-scanner', 'docker-scanner', 'graphql-scanner'],
         'enterprise': ['port-scan', 'scanner', 'encoder', 'phishing', 'payloads', 'subdomain', 'sql-injection', 'xss-tester', 'brute-force', 'log-analyzer', 'threat-intel', 'hash-analyzer', 'password-strength', 'reports', 'ai-assistant', 'api-scanner', 'dependency-scanner', 'docker-scanner', 'graphql-scanner']
     };
@@ -392,7 +389,7 @@ function prelockToolCards() {
 }
 
 function prepopulateSubscriptionCard() {
-    const plan = (localStorage.getItem('userPlan') || 'free').toLowerCase();
+    const plan = (localStorage.getItem('userPlan') || 'starter').toLowerCase();
     const scansThisMonth = parseInt(localStorage.getItem('scansThisMonth') || '0', 10);
     const scansLimit = parseInt(localStorage.getItem('scansLimit') || '10', 10);
     const card = document.getElementById('subscriptionCard');
@@ -729,14 +726,6 @@ function navigateTo(pageName) {
         return;
     }
     const plan = (localStorage.getItem('userPlan') || 'free').toLowerCase();
-    if (plan === 'free') {
-        const allowed = ['dashboard', 'port-scan', 'intelligent-automation'];
-        if (!allowed.includes(pageName)) {
-            showToast('Esta ferramenta requer um plano superior. Faça upgrade!', 'info');
-            setTimeout(() => window.location.href = 'pricing.html', 1500);
-            return;
-        }
-    }
     // Update navigation
     document.querySelectorAll('.nav-item').forEach(item => {
         item.classList.remove('active');
@@ -992,7 +981,11 @@ function toggleTheme() {
     return;
 }
 
-function logout() {
+async function logout() {
+    const token = getToken();
+    if (token) {
+        try { await fetch(`${API_URL}/auth/logout`, { method: 'POST', headers: { 'Authorization': `Bearer ${token}` } }); } catch (_) {}
+    }
     localStorage.removeItem('access_token');
     localStorage.removeItem('username');
     window.location.href = '/index.html';

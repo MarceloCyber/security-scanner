@@ -182,20 +182,18 @@
             starter: {
                 name: "Starter",
                 features: [
-                    "100 scans por mês",
-                    "Ferramentas Red/Blue Team básicas",
-                    "Relatórios em PDF",
-                    "Suporte prioritário"
+                    "Acesso a 5 ferramentas",
+                    "Trial de 10 dias após o primeiro login",
+                    "Cancelamento com estorno dentro do prazo"
                 ]
             },
             professional: {
                 name: "Professional",
                 features: [
                     "Scans ilimitados",
-                    "Todas as ferramentas disponíveis",
-                    "API Access completo",
-                    "Relatórios avançados",
-                    "Suporte 24/7"
+                    "Acesso a 10 ferramentas",
+                    "Trial de 10 dias após o primeiro login",
+                    "Cancelamento com estorno dentro do prazo"
                 ]
             },
             enterprise: {
@@ -246,13 +244,13 @@
                 // Buscar informações da assinatura
                 const response = await apiRequest('/user/subscription-info');
                 
-                if (response.subscription_plan !== 'free') {
+                if (['starter', 'professional', 'enterprise'].includes(response.subscription_plan)) {
                     showSuccess(response);
                 } else {
                     await new Promise(resolve => setTimeout(resolve, 2000));
                     const retryResponse = await apiRequest('/user/subscription-info');
                     
-                    if (retryResponse.subscription_plan !== 'free') {
+                    if (['starter', 'professional', 'enterprise'].includes(retryResponse.subscription_plan)) {
                         showSuccess(retryResponse);
                     } else {
                         showError('Ainda processando... Verifique o dashboard em alguns minutos.');

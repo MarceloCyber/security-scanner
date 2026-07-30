@@ -13,24 +13,12 @@ import inspect
 
 # Definição de ferramentas por plano
 TOOL_PERMISSIONS = {
-    "free": [
-        "port_scanner",
-        "ssl_checker",
-        "dns_lookup",
-        "whois_lookup",
-        "header_analyzer"
-    ],
     "starter": [
         "port_scanner",
         "ssl_checker",
         "dns_lookup",
         "whois_lookup",
-        "header_analyzer",
-        "code_scanner",
-        "sqli_tester",
-        "xss_tester",
-        "phishing_simulator",
-        "subdomain_finder"
+        "header_analyzer"
     ],
     "professional": [
         "port_scanner",
@@ -43,23 +31,13 @@ TOOL_PERMISSIONS = {
         "xss_tester",
         "phishing_simulator",
         "subdomain_finder",
-        "directory_enumerator",
-        "network_mapper",
-        "vulnerability_scanner",
-        "exploit_finder",
-        "password_auditor",
-        "log_analyzer",
-        "ioc_analyzer",
-        "threat_intelligence",
-        "api_security_tester",
-        "container_scanner"
+        # As 10 primeiras ferramentas são liberadas no plano Professional.
     ],
     "enterprise": "all"  # Acesso ilimitado
 }
 
 # Limites de scans por plano
 SCAN_LIMITS = {
-    "free": 10,
     "starter": 100,
     "professional": -1,  # Ilimitado
     "enterprise": -1     # Ilimitado
@@ -83,7 +61,7 @@ def check_subscription_status(user: User) -> dict:
         }
     
     # Verificar se está cancelada
-    if user.subscription_status == "cancelled":
+    if user.subscription_status in ("cancelled", "pending", "payment_failed", "expired"):
         return {
             "valid": False,
             "active": False,
@@ -245,21 +223,9 @@ def get_plan_info(plan_name: str) -> dict:
     Retorna informações sobre um plano específico
     """
     plans = {
-        "free": {
-            "name": "Free",
-            "price": 0,
-            "currency": "BRL",
-            "scans_limit": 10,
-            "features": [
-                "10 scans por mês",
-                "Ferramentas básicas",
-                "Suporte via email"
-            ],
-            "tools": TOOL_PERMISSIONS["free"]
-        },
         "starter": {
             "name": "Starter",
-            "price": 189.90,
+            "price": 289.90,
             "currency": "BRL",
             "scans_limit": 100,
             "features": [
@@ -300,7 +266,7 @@ def get_plan_info(plan_name: str) -> dict:
         }
     }
     
-    return plans.get(plan_name, plans["free"])
+    return plans.get(plan_name, plans["starter"])
 
 
 def upgrade_user_plan(user: User, new_plan: str, duration_months: int, db: Session):
@@ -313,7 +279,7 @@ def upgrade_user_plan(user: User, new_plan: str, duration_months: int, db: Sessi
     user.subscription_status = "active"
     user.subscription_start = now
     user.subscription_end = now + timedelta(days=30 * duration_months)
-    user.scans_limit = SCAN_LIMITS.get(new_plan, 10)
+    user.scans_limit = SCAN_LIMITS.get(new_plan, SCAN_LIMITS["starter"])
     user.scans_this_month = 0
     
     db.commit()

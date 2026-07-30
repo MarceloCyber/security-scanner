@@ -9,6 +9,7 @@ import os
 import stripe
 import hmac
 import hashlib
+import secrets
 import requests
 import time
 
@@ -39,10 +40,47 @@ MERCADOPAGO_WEBHOOK_SECRET = os.getenv("MERCADOPAGO_WEBHOOK_SECRET", "")
 
 # Preços dos planos (em centavos para Stripe)
 PLAN_PRICES = {
-    "starter": 18990,       # R$ 189.90
+    "starter": 28990,       # R$ 289.90
     "professional": 43990,  # R$ 439.90
     "enterprise": None       # Preço personalizado
 }
+
+TRIAL_DAYS = 10
+
+def _issue_access_key(user: User, db: Session) -> str:
+    """Cria uma chave única; apenas o hash fica armazenado no banco."""
+    if user.access_key_hash:
+        return ""
+    raw_key = f"IRON-{secrets.token_urlsafe(32)}"
+    user.access_key_hash = hashlib.sha256(raw_key.encode("utf-8")).hexdigest()
+    user.access_key_last4 = raw_key[-4:]
+    user.access_key_issued_at = datetime.utcnow()
+    db.commit()
+    return raw_key
+
+def _trial_is_active(user: User) -> bool:
+    return bool(
+        user.is_trial and user.subscription_plan in ("starter", "professional")
+        and user.trial_started_at
+        and datetime.utcnow() <= user.trial_started_at + timedelta(days=TRIAL_DAYS)
+    )
+
+def _refund_initial_stripe_payment(subscription_id: str):
+    """Reembolsa a primeira cobrança paga da assinatura."""
+    invoices = stripe.Invoice.list(subscription=subscription_id, limit=10)
+    for invoice in invoices.data:
+        if getattr(invoice, "status", None) != "paid":
+            continue
+        payment_intent_id = getattr(invoice, "payment_intent", None)
+        if payment_intent_id:
+            payment_intent = stripe.PaymentIntent.retrieve(payment_intent_id)
+            charge_id = getattr(payment_intent, "latest_charge", None)
+            if charge_id:
+                return stripe.Refund.create(charge=charge_id)
+        charge_id = getattr(invoice, "charge", None)
+        if charge_id:
+            return stripe.Refund.create(charge=charge_id)
+    return None
 
 # Rate limiting simples por usuário
 _RATE_COUNTERS = {}
@@ -117,6 +155,10 @@ async def get_subscription_info(
         "scans_limit": current_user.scans_limit,
         "subscription_start": current_user.subscription_start.isoformat() if current_user.subscription_start else None,
         "subscription_end": current_user.subscription_end.isoformat() if current_user.subscription_end else None,
+        "is_trial": _trial_is_active(current_user),
+        "trial_started_at": current_user.trial_started_at.isoformat() if current_user.trial_started_at else None,
+        "trial_ends_at": (current_user.trial_started_at + timedelta(days=TRIAL_DAYS)).isoformat()
+            if current_user.trial_started_at else None,
         "status": status,
         "plan_info": plan_info
     }
@@ -305,7 +347,7 @@ async def create_checkout_registration(request: Request, db: Session = Depends(g
     full_name = (data.get("full_name") or "").strip()
     plan = data.get("selected_plan") or "starter"
 
-    if plan == "free" or plan not in PLAN_PRICES or PLAN_PRICES[plan] is None:
+    if plan not in PLAN_PRICES or PLAN_PRICES[plan] is None:
         if plan == "enterprise":
             raise HTTPException(status_code=400, detail="O plano Enterprise possui preço personalizado. Entre em contato com vendas.")
         raise HTTPException(status_code=400, detail="Plano inválido para checkout")
@@ -381,8 +423,9 @@ async def create_checkout_registration(request: Request, db: Session = Depends(g
 @router.get("/verify-session")
 async def verify_checkout_session(
     session_id: str,
+    background_tasks: BackgroundTasks,
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     try:
         if not STRIPE_CONFIGURED:
@@ -402,8 +445,18 @@ async def verify_checkout_session(
                 if plan and (user.subscription_plan != plan or not user.stripe_subscription_id):
                     upgrade_user_plan(user, plan, 1, db)
                     user.stripe_subscription_id = subscription_id
+                    user.is_trial = plan in ('starter', 'professional')
+                    user.trial_started_at = None
                     user.subscription_status = "active"
+                    access_key = _issue_access_key(user, db)
                     db.commit()
+                    if access_key and background_tasks:
+                        background_tasks.add_task(
+                            email_service.send_subscription_confirmation,
+                            user.email, user.username, plan,
+                            PLAN_PRICES.get(plan, 0) / 100,
+                            access_key,
+                        )
             return {"verified": True, "plan": plan, "subscription_id": subscription_id}
         return {"verified": False, "status": status, "payment_status": payment_status}
     except stripe.error.StripeError as e:
@@ -456,9 +509,9 @@ async def stripe_webhook(request: Request, background_tasks: BackgroundTasks, db
                     username=username,
                     email=email,
                     hashed_password=password_hash,
-                    subscription_plan='free',
-                    subscription_status='active',
-                    scans_limit=10,
+                    subscription_plan='starter',
+                    subscription_status='pending',
+                    scans_limit=100,
                     scans_this_month=0
                 )
                 db.add(user)
@@ -468,18 +521,23 @@ async def stripe_webhook(request: Request, background_tasks: BackgroundTasks, db
             if plan:
                 upgrade_user_plan(user, plan, 1, db)
             user.subscription_status = 'active'
+            user.is_trial = plan in ('starter', 'professional')
+            user.trial_started_at = None
             user.stripe_subscription_id = subscription_id
             user.stripe_customer_id = customer_id
+            access_key = _issue_access_key(user, db)
             db.commit()
 
             manual_url = f"{FRONTEND_ORIGIN}/documentation.html"
-            background_tasks.add_task(
-                email_service.send_paid_welcome_email,
-                user.email,
-                user.username,
-                plan,
-                manual_url
-            )
+            if access_key:
+                background_tasks.add_task(
+                    email_service.send_paid_welcome_email,
+                    user.email,
+                    user.username,
+                    plan,
+                    manual_url,
+                    access_key
+                )
             print(f"✅ Cadastro pós-pagamento ativado para usuário {user.username} - Plano: {plan}")
         else:
             user_id = meta.get('user_id')
@@ -489,15 +547,20 @@ async def stripe_webhook(request: Request, background_tasks: BackgroundTasks, db
                     if plan:
                         upgrade_user_plan(user, plan, 1, db)
                     user.stripe_subscription_id = subscription_id
+                    user.is_trial = plan in ('starter', 'professional')
+                    user.trial_started_at = None
+                    access_key = _issue_access_key(user, db)
                     db.commit()
-                    plan_prices = {'starter': 189.90, 'professional': 439.90}
-                    background_tasks.add_task(
-                        email_service.send_subscription_confirmation,
-                        user.email,
-                        user.username,
-                        plan,
-                        plan_prices.get(plan, 0)
-                    )
+                    plan_prices = {'starter': 289.90, 'professional': 439.90}
+                    if access_key:
+                        background_tasks.add_task(
+                            email_service.send_subscription_confirmation,
+                            user.email,
+                            user.username,
+                            plan,
+                            plan_prices.get(plan, 0),
+                            access_key
+                        )
                     print(f"✅ Assinatura ativada para usuário {user.username} - Plano: {plan}")
     
     elif event['type'] == 'customer.subscription.deleted':
@@ -508,8 +571,9 @@ async def stripe_webhook(request: Request, background_tasks: BackgroundTasks, db
         user = db.query(User).filter(User.stripe_subscription_id == subscription_id).first()
         if user:
             user.subscription_status = 'cancelled'
-            user.subscription_plan = 'free'
-            user.scans_limit = 10
+            user.subscription_plan = 'starter'
+            user.scans_limit = 100
+            user.is_trial = False
             db.commit()
             
             print(f"❌ Assinatura cancelada para usuário {user.username}")
@@ -721,20 +785,27 @@ async def cancel_subscription(
     Cancela a assinatura do usuário
     """
     try:
+        trial_refunded = False
+        if _trial_is_active(current_user) and current_user.stripe_subscription_id:
+            _refund_initial_stripe_payment(current_user.stripe_subscription_id)
+            trial_refunded = True
+
         if current_user.stripe_subscription_id:
             # Cancelar no Stripe
             stripe.Subscription.delete(current_user.stripe_subscription_id)
         
-        # Atualizar status e rebaixar plano/limites
+        # O Free foi removido: usuário cancelado fica sem acesso até assinar novamente.
         current_user.subscription_status = 'cancelled'
-        current_user.subscription_plan = 'free'
-        current_user.scans_limit = 10
+        current_user.subscription_plan = 'starter'
+        current_user.scans_limit = 100
         current_user.scans_this_month = 0
+        current_user.is_trial = False
         db.commit()
         
         return {
             "success": True,
-            "message": "Assinatura cancelada com sucesso. Você terá acesso até o final do período pago."
+            "message": "Assinatura cancelada e valor estornado com sucesso." if trial_refunded else "Assinatura cancelada com sucesso.",
+            "refunded": trial_refunded
         }
         
     except Exception as e:
@@ -747,7 +818,7 @@ async def get_all_plans():
     """
     Retorna informações sobre todos os planos disponíveis
     """
-    plans = ["free", "starter", "professional", "enterprise"]
+    plans = ["starter", "professional", "enterprise"]
     return {
         "plans": [get_plan_info(plan) for plan in plans]
     }
@@ -763,9 +834,9 @@ async def upgrade_plan(
     Upgrade imediato de plano (para testes ou admin)
     """
     data = await request.json()
-    new_plan = data.get("plan", "free")
+    new_plan = data.get("plan", "starter")
     
-    if new_plan not in ["free", "starter", "professional", "enterprise"]:
+    if new_plan not in ["starter", "professional", "enterprise"]:
         raise HTTPException(status_code=400, detail="Plano inválido")
     
     if not getattr(current_user, "is_admin", False):

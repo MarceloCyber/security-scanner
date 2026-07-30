@@ -46,6 +46,10 @@
                     <i class="fas fa-users"></i>
                     <span>Usuários</span>
                 </a>
+                <a href="#access-keys" class="nav-item" data-page="access-keys">
+                    <i class="fas fa-key"></i>
+                    <span>Chaves de Usuários</span>
+                </a>
                 <a href="#payments" class="nav-item" data-page="payments">
                     <i class="fas fa-credit-card"></i>
                     <span>Pagamentos</span>
@@ -151,15 +155,6 @@
                         <div class="plan-stats">
                             <div class="plan-stat">
                                 <div class="plan-label">
-                                    <span class="plan-badge free">FREE</span>
-                                    <span class="plan-count" id="planFree">0</span>
-                                </div>
-                                <div class="plan-bar">
-                                    <div class="plan-fill free" id="planBarFree"></div>
-                                </div>
-                            </div>
-                            <div class="plan-stat">
-                                <div class="plan-label">
                                     <span class="plan-badge starter">STARTER</span>
                                     <span class="plan-count" id="planStarter">0</span>
                                 </div>
@@ -218,7 +213,6 @@
                         <input type="text" id="userSearch" class="search-input" placeholder="Buscar usuário...">
                         <select id="planFilter" class="filter-select">
                             <option value="">Todos os planos</option>
-                            <option value="free">FREE</option>
                             <option value="starter">Starter</option>
                             <option value="professional">Professional</option>
                             <option value="enterprise">Enterprise</option>
@@ -266,6 +260,21 @@
                     <button id="nextPage" class="btn-pagination" disabled>
                         Próxima <i class="fas fa-chevron-right"></i>
                     </button>
+                </div>
+            </div>
+
+            <!-- Payments -->
+            <div id="access-keys-page" class="admin-page">
+                <div class="page-header">
+                    <h2>Chaves de Usuários</h2>
+                    <button class="btn-refresh" onclick="loadAccessKeys()"><i class="fas fa-sync-alt"></i> Atualizar</button>
+                </div>
+                <p style="color:#94a3b8; margin-bottom:18px;">As chaves são armazenadas com hash. Por segurança, o segredo completo não é exibido no painel.</p>
+                <div class="table-container">
+                    <table class="users-table">
+                        <thead><tr><th>Usuário</th><th>Email</th><th>Plano</th><th>Chave</th><th>Emitida em</th><th>Status</th></tr></thead>
+                        <tbody id="accessKeysTableBody"><tr><td colspan="6" class="loading-cell">Carregando...</td></tr></tbody>
+                    </table>
                 </div>
             </div>
 
@@ -454,7 +463,6 @@
                 <div class="form-group">
                     <label>Plano de Assinatura</label>
                     <select id="editUserPlan" class="form-input">
-                        <option value="free">FREE</option>
                         <option value="starter">Starter</option>
                         <option value="professional">Professional</option>
                         <option value="enterprise">Enterprise</option>
@@ -463,7 +471,6 @@
                 <div class="form-group">
                     <label>Ações de Plano</label>
                     <div class="page-actions">
-                        <button class="btn-secondary" onclick="changePlanAction('free')">Free</button>
                         <button class="btn-primary" onclick="changePlanAction('starter')">Starter</button>
                         <button class="btn-primary" onclick="changePlanAction('professional')">Professional</button>
                         <button class="btn-primary" onclick="changePlanAction('enterprise')">Enterprise</button>

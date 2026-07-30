@@ -31,6 +31,8 @@ async def get_user_subscription_info(
         "subscription_start": current_user.subscription_start.isoformat() if current_user.subscription_start else None,
         "subscription_end": current_user.subscription_end.isoformat() if current_user.subscription_end else None,
         "is_trial": current_user.is_trial,
+        "trial_started_at": current_user.trial_started_at.isoformat() if current_user.trial_started_at else None,
+        "trial_days": 10 if current_user.is_trial and current_user.trial_started_at else 0,
         "is_admin": current_user.is_admin or False,
         "status": status,
         "plan_info": plan_info

@@ -83,7 +83,16 @@ async function checkAdminAuth() {
     }
 }
 
-function logout() {
+async function logout() {
+    const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+    if (token) {
+        try {
+            await fetch(`${API_URL}/api/auth/logout`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+        } catch (_) {}
+    }
     localStorage.removeItem('token');
     sessionStorage.removeItem('token');
     showToast('Logout realizado com sucesso', 'success');

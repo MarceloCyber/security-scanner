@@ -37,16 +37,31 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
         formData.append('username', username);
         formData.append('password', password);
         formData.append('access_key', accessKey);
+        const activeToken = localStorage.getItem('access_token');
         
-        const response = await fetch(`${API_URL}/auth/token`, {
+        let response = await fetch(`${API_URL}/auth/token`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/x-www-form-urlencoded',
+                ...(activeToken ? { 'Authorization': `Bearer ${activeToken}` } : {}),
             },
             body: formData
         });
         
-        const data = await response.json();
+        let data = await response.json();
+        
+        if (!response.ok && response.status === 409) {
+            const recover = confirm(`${data.detail || 'Esta conta já está conectada em outro dispositivo.'}\n\nDeseja encerrar a sessão anterior e entrar neste dispositivo?`);
+            if (recover) {
+                formData.append('force_session', 'true');
+                response = await fetch(`${API_URL}/auth/token`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: formData
+                });
+                data = await response.json();
+            }
+        }
         
         if (response.ok) {
             // Store token and username

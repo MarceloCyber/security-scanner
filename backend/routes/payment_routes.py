@@ -19,7 +19,9 @@ from auth import get_current_user, get_password_hash
 from middleware.subscription import (
     check_subscription_status,
     get_plan_info,
+    normalize_subscription_plan,
     upgrade_user_plan,
+    get_allowed_dashboard_tools,
     SCAN_LIMITS
 )
 from utils.email_service import email_service
@@ -50,11 +52,15 @@ TRIAL_DAYS = 10
 def _issue_access_key(user: User, db: Session) -> str:
     """Cria uma chave única; apenas o hash fica armazenado no banco."""
     if user.access_key_hash:
+        if not user.access_key_used_at and not user.access_key_required:
+            user.access_key_required = True
+            db.commit()
         return ""
     raw_key = f"IRON-{secrets.token_urlsafe(32)}"
     user.access_key_hash = hashlib.sha256(raw_key.encode("utf-8")).hexdigest()
     user.access_key_last4 = raw_key[-4:]
     user.access_key_issued_at = datetime.utcnow()
+    user.access_key_required = True
     db.commit()
     return raw_key
 
@@ -146,10 +152,12 @@ async def get_subscription_info(
     Retorna informações da assinatura do usuário
     """
     status = check_subscription_status(current_user)
-    plan_info = get_plan_info(current_user.subscription_plan)
+    plan = normalize_subscription_plan(current_user.subscription_plan)
+    plan_info = get_plan_info(plan)
+    subscription_active = status.get("valid", False)
     
     return {
-        "subscription_plan": current_user.subscription_plan,
+        "subscription_plan": plan,
         "subscription_status": current_user.subscription_status,
         "scans_used": current_user.scans_this_month,
         "scans_limit": current_user.scans_limit,
@@ -160,7 +168,9 @@ async def get_subscription_info(
         "trial_ends_at": (current_user.trial_started_at + timedelta(days=TRIAL_DAYS)).isoformat()
             if current_user.trial_started_at else None,
         "status": status,
-        "plan_info": plan_info
+        "plan_info": plan_info,
+        "allowed_dashboard_tools": get_allowed_dashboard_tools(plan) if subscription_active else [],
+        "tools_count": plan_info.get("tools_count"),
     }
 
 

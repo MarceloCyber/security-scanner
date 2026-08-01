@@ -2,6 +2,51 @@
 
 const API_URL = '/api';
 
+function normalizePlan(plan) {
+    const normalizedPlan = String(plan || '').trim().toLowerCase();
+    return ['starter', 'professional', 'enterprise'].includes(normalizedPlan)
+        ? normalizedPlan
+        : 'starter';
+}
+
+// Starter: 5 ferramentas  |  Professional: 10 ferramentas  |  Enterprise: todas
+// Os IDs aqui devem corresponder ao data-page do menu lateral.
+const PLAN_TOOL_ACCESS = {
+    starter:      ['port-scan', 'subdomain', 'hash-analyzer', 'encoder', 'password-strength'],
+    professional: ['port-scan', 'subdomain', 'hash-analyzer', 'encoder', 'password-strength',
+                   'scanner', 'sql-injection', 'xss-tester', 'phishing', 'directory-enum'],
+    enterprise: null
+};
+
+const DASHBOARD_TOOL_IDS = ['dashboard', 'phishing', 'payloads', 'encoder', 'scanner', 'port-scan', 'api-scanner', 'dependency-scanner', 'docker-scanner', 'graphql-scanner', 'sql-injection', 'xss-tester', 'brute-force', 'subdomain', 'directory-enum', 'log-analyzer', 'threat-intel', 'hash-analyzer', 'ioc-analyzer', 'password-strength', 'reports', 'ai-assistant', 'intelligent-automation'];
+
+function getDefaultAllowedTools(plan) {
+    const normalizedPlan = normalizePlan(plan);
+    if (normalizedPlan === 'enterprise') {
+        return DASHBOARD_TOOL_IDS.filter((toolId) => toolId !== 'dashboard');
+    }
+    return PLAN_TOOL_ACCESS[normalizedPlan] || PLAN_TOOL_ACCESS.starter;
+}
+
+function resolveAllowedTools(plan, subscriptionValid, apiAllowedTools) {
+    if (!subscriptionValid) return [];
+    if (Array.isArray(apiAllowedTools) && apiAllowedTools.length) {
+        return apiAllowedTools;
+    }
+    return getDefaultAllowedTools(plan);
+}
+
+function getStoredAllowedTools() {
+    try {
+        const stored = localStorage.getItem('allowedTools');
+        if (stored) {
+            const parsed = JSON.parse(stored);
+            if (Array.isArray(parsed)) return parsed;
+        }
+    } catch (_) {}
+    return getDefaultAllowedTools(localStorage.getItem('userPlan'));
+}
+
 // Get token function to always have fresh token
 function getToken() {
     return (
@@ -75,7 +120,7 @@ setInterval(loadNotifications, 5000);
 async function checkSubscription() {
     try {
         const response = await apiRequest('/user/subscription-info');
-        const plan = response.subscription_plan;
+        const plan = normalizePlan(response.subscription_plan);
         
         // Mostrar link admin se for administrador
         if (response.is_admin) {
@@ -140,16 +185,11 @@ async function checkSubscription() {
         }
 
         // Lock Tools - Define quais ferramentas cada plano pode acessar
-        const toolAccess = {
-            'starter': ['port-scan', 'scanner', 'encoder', 'subdomain', 'hash-analyzer'],
-            'professional': ['port-scan', 'scanner', 'encoder', 'subdomain', 'hash-analyzer', 'password-strength', 'sql-injection', 'xss-tester', 'phishing', 'log-analyzer'],
-            'enterprise': ['port-scan', 'scanner', 'encoder', 'phishing', 'payloads', 'subdomain', 'sql-injection', 'xss-tester', 'brute-force', 'log-analyzer', 'threat-intel', 'hash-analyzer', 'password-strength', 'reports', 'ai-assistant', 'api-scanner', 'dependency-scanner', 'docker-scanner', 'graphql-scanner', 'intelligent-automation']
-        };
-
-        const allowedTools = toolAccess[plan] || [];
+        const subscriptionValid = Boolean(response.status && response.status.valid);
+        const allowedTools = resolveAllowedTools(plan, subscriptionValid, response.allowed_dashboard_tools);
         
         // Bloquear todas as ferramentas que não estão na lista permitida
-    const allTools = ['dashboard', 'phishing', 'payloads', 'encoder', 'scanner', 'port-scan', 'api-scanner', 'dependency-scanner', 'docker-scanner', 'graphql-scanner', 'sql-injection', 'xss-tester', 'brute-force', 'subdomain', 'log-analyzer', 'threat-intel', 'hash-analyzer', 'password-strength', 'reports', 'ai-assistant', 'intelligent-automation'];
+    const allTools = DASHBOARD_TOOL_IDS;
         
         allTools.forEach(toolId => {
             if (toolId === 'dashboard') return; // Dashboard sempre acessível
@@ -234,6 +274,8 @@ async function checkSubscription() {
         // Store plan and subscription info for other checks e detectar mudança de plano
         const prevPlan = localStorage.getItem('userPlan');
         localStorage.setItem('userPlan', plan);
+        localStorage.setItem('subscriptionValid', subscriptionValid ? '1' : '0');
+        localStorage.setItem('allowedTools', JSON.stringify(allowedTools));
         localStorage.setItem('scansThisMonth', response.scans_this_month || 0);
         localStorage.setItem('scansLimit', response.scans_limit || 0);
 
@@ -329,14 +371,10 @@ async function sendAiMessage() {
 }
 
 function prelockTools() {
-    const plan = (localStorage.getItem('userPlan') || 'starter').toLowerCase();
-    const toolAccess = {
-        'starter': ['port-scan', 'scanner', 'encoder', 'subdomain', 'hash-analyzer'],
-        'professional': ['port-scan', 'scanner', 'encoder', 'subdomain', 'hash-analyzer', 'password-strength', 'sql-injection', 'xss-tester', 'phishing', 'log-analyzer'],
-        'enterprise': ['port-scan', 'scanner', 'encoder', 'phishing', 'payloads', 'subdomain', 'directory-enum', 'sql-injection', 'xss-tester', 'brute-force', 'log-analyzer', 'ioc-analyzer', 'threat-intel', 'hash-analyzer', 'password-strength', 'reports', 'ai-assistant', 'api-scanner', 'dependency-scanner', 'docker-scanner', 'graphql-scanner']
-    };
-    const allowedTools = toolAccess[plan] || [];
-    const allTools = ['dashboard', 'phishing', 'payloads', 'encoder', 'scanner', 'port-scan', 'api-scanner', 'dependency-scanner', 'docker-scanner', 'graphql-scanner', 'sql-injection', 'xss-tester', 'brute-force', 'subdomain', 'directory-enum', 'log-analyzer', 'ioc-analyzer', 'threat-intel', 'hash-analyzer', 'password-strength', 'reports', 'ai-assistant'];
+    const plan = normalizePlan(localStorage.getItem('userPlan'));
+    const subscriptionValid = localStorage.getItem('subscriptionValid') !== '0';
+    const allowedTools = resolveAllowedTools(plan, subscriptionValid, getStoredAllowedTools());
+    const allTools = DASHBOARD_TOOL_IDS;
     allTools.forEach(toolId => {
         if (toolId === 'dashboard') return;
         if (!allowedTools.includes(toolId)) {
@@ -350,13 +388,9 @@ function prelockTools() {
 }
 
 function prelockToolCards() {
-    const plan = (localStorage.getItem('userPlan') || 'starter').toLowerCase();
-    const toolAccess = {
-        'starter': ['port-scan', 'scanner', 'encoder', 'subdomain', 'hash-analyzer'],
-        'professional': ['port-scan', 'scanner', 'encoder', 'phishing', 'payloads', 'subdomain', 'sql-injection', 'xss-tester', 'brute-force', 'log-analyzer', 'threat-intel', 'hash-analyzer', 'password-strength', 'reports', 'ai-assistant', 'api-scanner', 'dependency-scanner', 'docker-scanner', 'graphql-scanner'],
-        'enterprise': ['port-scan', 'scanner', 'encoder', 'phishing', 'payloads', 'subdomain', 'sql-injection', 'xss-tester', 'brute-force', 'log-analyzer', 'threat-intel', 'hash-analyzer', 'password-strength', 'reports', 'ai-assistant', 'api-scanner', 'dependency-scanner', 'docker-scanner', 'graphql-scanner']
-    };
-    const allowedTools = toolAccess[plan] || [];
+    const plan = normalizePlan(localStorage.getItem('userPlan'));
+    const subscriptionValid = localStorage.getItem('subscriptionValid') !== '0';
+    const allowedTools = resolveAllowedTools(plan, subscriptionValid, getStoredAllowedTools());
     const toolCards = document.querySelectorAll('.tool-card');
     toolCards.forEach(card => {
         const button = card.querySelector('button');
@@ -1914,14 +1948,9 @@ function escapeHtml(text) {
 }
 
 function isToolAllowed(toolId) {
-    const plan = (localStorage.getItem('userPlan') || 'free').toLowerCase();
-    const toolAccess = {
-        'free': ['port-scan', 'intelligent-automation'],
-        'starter': ['port-scan', 'scanner', 'encoder', 'subdomain', 'hash-analyzer', 'password-strength', 'intelligent-automation'],
-        'professional': ['port-scan', 'scanner', 'encoder', 'phishing', 'payloads', 'subdomain', 'sql-injection', 'xss-tester', 'brute-force', 'log-analyzer', 'threat-intel', 'hash-analyzer', 'password-strength', 'reports', 'ai-assistant', 'api-scanner', 'dependency-scanner', 'docker-scanner', 'graphql-scanner'],
-        'enterprise': ['port-scan', 'scanner', 'encoder', 'phishing', 'payloads', 'subdomain', 'sql-injection', 'xss-tester', 'brute-force', 'log-analyzer', 'threat-intel', 'hash-analyzer', 'password-strength', 'reports', 'ai-assistant', 'api-scanner', 'dependency-scanner', 'docker-scanner', 'graphql-scanner']
-    };
-    const allowedTools = toolAccess[plan] || [];
+    const plan = normalizePlan(localStorage.getItem('userPlan'));
+    const subscriptionValid = localStorage.getItem('subscriptionValid') !== '0';
+    const allowedTools = resolveAllowedTools(plan, subscriptionValid, getStoredAllowedTools());
     return allowedTools.includes(toolId);
 }
 

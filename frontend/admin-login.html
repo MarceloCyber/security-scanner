@@ -20,15 +20,20 @@
             align-items: center;
             justify-content: center;
             position: relative;
-            overflow: hidden;
+            overflow-x: hidden;
+            overflow-y: auto;
         }
 
         /* Efeito de partículas no fundo */
         body::before {
             content: '';
-            position: absolute;
+            position: fixed;
             width: 100%;
             height: 100%;
+            top: 0;
+            left: 0;
+            pointer-events: none;
+            z-index: 0;
             background-image: 
                 radial-gradient(circle at 20% 50%, rgba(102, 126, 234, 0.1) 0%, transparent 50%),
                 radial-gradient(circle at 80% 80%, rgba(118, 75, 162, 0.1) 0%, transparent 50%),
@@ -47,6 +52,7 @@
             width: 100%;
             max-width: 480px;
             padding: 20px;
+            margin: auto;
         }
 
         .admin-login-box {
@@ -383,6 +389,21 @@
             }
         }
 
+        @media (max-width: 360px) {
+            .admin-login-container {
+                padding: 12px;
+            }
+
+            .admin-login-box {
+                padding: 30px 18px;
+                border-radius: 14px;
+            }
+
+            .admin-header {
+                margin-bottom: 25px;
+            }
+        }
+
         /* Loading overlay */
         .loading-overlay {
             display: none;
@@ -550,7 +571,25 @@
 
                 const data = await response.json();
 
-                if (!response.ok) {
+                if (!response.ok && response.status === 409) {
+                    const recover = confirm('Esta conta possui uma sessão administrativa anterior. Deseja encerrá-la e entrar neste dispositivo?');
+                    if (recover) {
+                        formData.append('force_session', 'true');
+                        const retryResponse = await fetch(`${API_URL}/api/auth/token`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                            body: formData
+                        });
+                        const retryData = await retryResponse.json();
+                        if (retryResponse.ok) {
+                            data.access_token = retryData.access_token;
+                        } else {
+                            throw new Error(retryData.detail || 'Não foi possível encerrar a sessão anterior');
+                        }
+                    } else {
+                        throw new Error(data.detail || 'Sessão ativa em outro dispositivo');
+                    }
+                } else if (!response.ok) {
                     throw new Error(data.detail || 'Erro ao fazer login');
                 }
 

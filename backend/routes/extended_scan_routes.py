@@ -12,7 +12,7 @@ from auth import get_current_user
 from models.user import User
 from models.scan import Scan
 from pydantic import BaseModel
-from middleware.subscription import increment_scan_count, check_subscription_status, check_tool_access
+from middleware.subscription import increment_scan_count, check_subscription_status, check_tool_access, ensure_tool_access
 
 # Import novos scanners
 from scanners.multilang_scanner import scan_code as multilang_scan
@@ -42,6 +42,7 @@ async def scan_dependencies_endpoint(
 ):
     """Escaneia dependências em busca de CVEs"""
     try:
+        ensure_tool_access("vulnerability_scanner", current_user)
         if not check_tool_access("vulnerability_scanner", current_user):
             raise HTTPException(
                 status_code=403,
@@ -71,6 +72,8 @@ async def scan_dependencies_endpoint(
             "scan_id": scan.id,
             "results": results
         }
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -148,6 +151,7 @@ async def scan_docker_endpoint(
 ):
     """Escaneia Dockerfile ou docker-compose.yml"""
     try:
+        ensure_tool_access("container_scanner", current_user)
         if not check_tool_access("container_scanner", current_user):
             raise HTTPException(
                 status_code=403,
@@ -182,6 +186,8 @@ async def scan_docker_endpoint(
             "scan_id": scan.id,
             "results": results
         }
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -201,6 +207,7 @@ async def scan_graphql_endpoint(
 ):
     """Escaneia API GraphQL"""
     try:
+        ensure_tool_access("api_security_tester", current_user)
         if not check_tool_access("api_security_tester", current_user):
             raise HTTPException(
                 status_code=403,
@@ -230,6 +237,8 @@ async def scan_graphql_endpoint(
             "scan_id": scan.id,
             "results": results
         }
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -248,6 +257,7 @@ async def scan_with_ml_endpoint(
 ):
     """Escaneia código com Machine Learning"""
     try:
+        ensure_tool_access("vulnerability_scanner", current_user)
         if not check_tool_access("vulnerability_scanner", current_user):
             raise HTTPException(
                 status_code=403,
@@ -283,6 +293,8 @@ async def scan_with_ml_endpoint(
             "scan_id": scan.id,
             "results": combined_results
         }
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

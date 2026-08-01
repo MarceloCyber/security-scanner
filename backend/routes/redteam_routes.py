@@ -294,6 +294,8 @@ async def test_sql_injection(
         
         return response_data
     
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Error in SQL Injection test: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Erro ao executar teste: {str(e)}")
@@ -415,6 +417,8 @@ async def test_xss(
         
         return response_data
     
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Error in XSS test: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Erro ao executar teste: {str(e)}")
@@ -489,6 +493,8 @@ async def start_brute_force(
         
         return results
     
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Error in brute force: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Erro ao executar brute force: {str(e)}")
@@ -573,6 +579,8 @@ async def enumerate_subdomains(
             "timestamp": datetime.now().isoformat()
         }
     
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Error in subdomain enumeration: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Erro ao enumerar subdomínios: {str(e)}")

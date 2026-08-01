@@ -71,18 +71,16 @@ def register(user: UserCreate, background_tasks: BackgroundTasks, db: Session = 
             subscription_plan='starter',
             subscription_status='pending',
             scans_limit=100,
-            scans_this_month=0
+            scans_this_month=0,
+            access_key_required=True,
         )
         db.add(new_user)
         db.commit()
         db.refresh(new_user)
         
         # Criar token de acesso automático
-        session_id = secrets.token_urlsafe(32)
-        new_user.active_session_hash = session_hash(session_id)
-        new_user.active_session_last_activity = datetime.utcnow()
-        db.commit()
-        access_token = create_session_token(new_user.username, session_id)
+        # Conta nova não recebe sessão antes da validação do primeiro acesso.
+        access_token = None
         
         # Enviar email de boas-vindas em background
         background_tasks.add_task(
@@ -112,9 +110,11 @@ def register(user: UserCreate, background_tasks: BackgroundTasks, db: Session = 
 
 @router.post("/token", response_model=Token)
 def login(
+    request: Request,
     username: str = Form(...),
     password: str = Form(...),
     access_key: str = Form(default=""),
+    force_session: bool = Form(default=False),
     db: Session = Depends(get_db)
 ):
     user = db.query(User).filter(User.username == username).first()
@@ -125,7 +125,7 @@ def login(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    if user.access_key_hash and not user.access_key_used_at:
+    if user.access_key_required and not user.access_key_used_at:
         if not verify_access_key(access_key, user.access_key_hash):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
@@ -134,10 +134,30 @@ def login(
 
     now = datetime.utcnow()
     if user.active_session_hash and user.active_session_last_activity and now - user.active_session_last_activity <= SESSION_IDLE_TIMEOUT:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Esta conta já está conectada em outro dispositivo. Encerre a sessão anterior antes de entrar.",
-        )
+        current_session = False
+        auth_header = request.headers.get("authorization") or request.headers.get("Authorization")
+        if auth_header and auth_header.lower().startswith("bearer "):
+            try:
+                active_token = auth_header.split(" ", 1)[1]
+                payload = jwt.decode(active_token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+                session_id = payload.get("sid")
+                current_session = (
+                    payload.get("sub") == user.username
+                    and bool(session_id)
+                    and hmac.compare_digest(session_hash(session_id), user.active_session_hash)
+                )
+            except Exception:
+                current_session = False
+
+        if not (current_session or force_session):
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Esta conta já está conectada em outro dispositivo. Encerre a sessão anterior antes de entrar.",
+            )
+        # Recuperação explícita: a senha já comprova a identidade do usuário,
+        # então invalida a sessão anterior e mantém exatamente uma sessão ativa.
+        user.active_session_hash = None
+        user.active_session_last_activity = None
 
     # O prazo de 10 dias começa no primeiro login após uma assinatura paga.
     if user.is_trial and user.subscription_plan in ('starter', 'professional') and not user.trial_started_at:
@@ -145,8 +165,9 @@ def login(
     session_id = secrets.token_urlsafe(32)
     user.active_session_hash = session_hash(session_id)
     user.active_session_last_activity = now
-    if user.access_key_hash and not user.access_key_used_at:
+    if user.access_key_required and not user.access_key_used_at:
         user.access_key_used_at = now
+        user.access_key_required = False
     db.commit()
     access_token = create_session_token(user.username, session_id)
     

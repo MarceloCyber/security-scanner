@@ -17,7 +17,7 @@ from config import settings
 from database import get_db
 
 from auth import get_current_user
-from middleware.subscription import check_subscription_status, require_plan
+from middleware.subscription import check_subscription_status, require_plan, ensure_tool_access
 from models.user import User
 from tools.phishing_generator import PhishingPageGenerator
 from tools.payload_generator import PayloadGenerator
@@ -31,11 +31,27 @@ phishing_gen = PhishingPageGenerator()
 payload_gen = PayloadGenerator()
 encoder_decoder = EncoderDecoder()
 
-def _plan_in(user, required):
-    plan = (getattr(user, 'subscription_plan', '') or '').strip().lower()
-    if getattr(user, 'is_admin', False):
+def _require_tool(user: User, tool_name: str) -> None:
+    ensure_tool_access(tool_name, user)
+
+def _page_belongs_to_user(page_id: str, user: User) -> bool:
+    if getattr(user, "is_admin", False):
         return True
-    return plan in [p.strip().lower() for p in required]
+
+    metadata_file = "/tmp/phishing_pages_meta.json"
+    if not os.path.exists(metadata_file):
+        return False
+
+    try:
+        with open(metadata_file, "r") as file:
+            pages = json.load(file)
+    except (OSError, ValueError):
+        return False
+
+    return any(
+        page.get("page_id") == page_id and page.get("owner_user_id") == user.id
+        for page in pages
+    )
 
 
 # Pydantic models
@@ -150,8 +166,7 @@ class PhishingCaptureData(BaseModel):
 
 @router.get("/phishing/templates", tags=["Phishing Generator"])
 async def list_phishing_templates(current_user: dict = Depends(get_current_user)):
-    if not _plan_in(current_user, ["starter", "professional", "enterprise"]):
-        raise HTTPException(status_code=403, detail="Plano insuficiente para acessar esta ferramenta")
+    _require_tool(current_user, "phishing_simulator")
     """List all available phishing page templates"""
     return {
         "templates": phishing_gen.list_templates(),
@@ -164,8 +179,7 @@ async def generate_phishing_page(
     request: PhishingPageRequest,
     current_user: dict = Depends(get_current_user)
 ):
-    if not _plan_in(current_user, ["starter", "professional", "enterprise"]):
-        raise HTTPException(status_code=403, detail="Plano insuficiente para acessar esta ferramenta")
+    _require_tool(current_user, "phishing_simulator")
     """
     Generate a phishing page for security testing
     
@@ -197,6 +211,7 @@ async def generate_phishing_page(
         pages_meta.append({
             "filename": result['filename'],
             "page_id": result['page_id'],
+            "owner_user_id": current_user.id,
             "created_at": datetime.now().isoformat(),
             "expires_at": expiration_time,
             "template": request.template,
@@ -282,8 +297,7 @@ async def generate_phishing_page(
 
 @router.get("/phishing/pages", tags=["Phishing Generator"])
 async def list_generated_pages(current_user: dict = Depends(get_current_user)):
-    if not _plan_in(current_user, ["starter", "professional", "enterprise"]):
-        raise HTTPException(status_code=403, detail="Plano insuficiente para acessar esta ferramenta")
+    _require_tool(current_user, "phishing_simulator")
     """List all generated phishing pages (filters expired ones)"""
     import json
     from datetime import datetime
@@ -318,7 +332,7 @@ async def list_generated_pages(current_user: dict = Depends(get_current_user)):
         # Merge metadata with pages
         for page in pages:
             for meta in active_meta:
-                if page['filename'] == meta['filename']:
+                if page['filename'] == meta['filename'] and _page_belongs_to_user(meta['page_id'], current_user):
                     page['expires_at'] = meta.get('expires_at')
                     page['created_at'] = meta.get('created_at')
                     page['redirect_url'] = meta.get('redirect_url', 'https://google.com')
@@ -353,6 +367,7 @@ async def list_generated_pages(current_user: dict = Depends(get_current_user)):
 @router.delete("/phishing/pages/clear-all", tags=["Phishing Generator"])
 async def clear_all_phishing_pages(current_user: dict = Depends(get_current_user)):
     """Delete ALL generated phishing pages and metadata"""
+    _require_tool(current_user, "phishing_simulator")
     import json
     import shutil
     
@@ -362,18 +377,23 @@ async def clear_all_phishing_pages(current_user: dict = Depends(get_current_user
         
         deleted_count = 0
         
-        # Delete all HTML files in phishing pages directory
-        if os.path.exists(pages_dir):
-            for filename in os.listdir(pages_dir):
-                if filename.endswith('.html'):
-                    filepath = os.path.join(pages_dir, filename)
-                    os.remove(filepath)
-                    deleted_count += 1
-        
-        # Clear metadata file
+        pages_meta = []
         if os.path.exists(pages_meta_file):
             with open(pages_meta_file, 'w') as f:
-                json.dump([], f)
+                pages_meta = json.load(f)
+
+        remaining_pages = []
+        for page in pages_meta:
+            if _page_belongs_to_user(page.get('page_id', ''), current_user):
+                filepath = os.path.join(pages_dir, page.get('filename', ''))
+                if os.path.isfile(filepath):
+                    os.remove(filepath)
+                    deleted_count += 1
+            else:
+                remaining_pages.append(page)
+
+        with open(pages_meta_file, 'w') as f:
+            json.dump(remaining_pages, f, indent=2)
         
         return {
             "success": True,
@@ -389,8 +409,7 @@ async def clear_all_phishing_pages(current_user: dict = Depends(get_current_user
 
 @router.get("/phishing/captures", tags=["Phishing Generator"])
 async def list_phishing_captures(current_user: dict = Depends(get_current_user)):
-    if not _plan_in(current_user, ["starter", "professional", "enterprise"]):
-        raise HTTPException(status_code=403, detail="Plano insuficiente para acessar esta ferramenta")
+    _require_tool(current_user, "phishing_simulator")
     """List all captured phishing data (photos, locations)"""
     captures_dir = "/tmp/phishing_captures"
     captures = []
@@ -475,7 +494,10 @@ async def list_phishing_captures(current_user: dict = Depends(get_current_user))
     except Exception as e:
         print(f"DEBUG: Error reading index: {e}")
 
-    captures = list(by_id.values())
+    captures = [
+        capture for capture in by_id.values()
+        if _page_belongs_to_user(capture.get('page_id', ''), current_user)
+    ]
     # Robust sort - handle missing timestamps
     captures.sort(key=lambda x: x.get('timestamp', '') or '', reverse=True)
 
@@ -490,6 +512,15 @@ async def list_phishing_captures(current_user: dict = Depends(get_current_user))
 @router.get("/phishing/captures/{capture_id}/photo", tags=["Phishing Generator"])
 async def get_capture_photo(capture_id: str, current_user: dict = Depends(get_current_user)):
     """Get the photo from a specific capture"""
+    _require_tool(current_user, "phishing_simulator")
+    capture_path = f"/tmp/phishing_captures/capture_{capture_id}.json"
+    try:
+        with open(capture_path, "r") as file:
+            capture = json.load(file)
+    except (OSError, ValueError):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Capture not found")
+    if not _page_belongs_to_user(capture.get("page_id", ""), current_user):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Capture not found")
     photo_path = f"/tmp/phishing_captures/photo_{capture_id}.jpg"
     
     if not os.path.exists(photo_path):
@@ -504,8 +535,17 @@ async def get_capture_photo(capture_id: str, current_user: dict = Depends(get_cu
 @router.delete("/phishing/captures/{capture_id}", tags=["Phishing Generator"])
 async def delete_capture(capture_id: str, current_user: dict = Depends(get_current_user)):
     """Delete a specific capture (JSON and photo files)"""
+    _require_tool(current_user, "phishing_simulator")
     import json
     captures_dir = "/tmp/phishing_captures"
+    capture_path = os.path.join(captures_dir, f"capture_{capture_id}.json")
+    try:
+        with open(capture_path, "r") as file:
+            capture = json.load(file)
+    except (OSError, ValueError):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Capture not found")
+    if not _page_belongs_to_user(capture.get("page_id", ""), current_user):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Capture not found")
     
     # Find and delete capture JSON file
     deleted = False
@@ -801,8 +841,7 @@ async def capture_phishing_data(data: PhishingCaptureData, request: Request):
 
 @router.get("/payloads/categories", tags=["Payload Generator"])
 async def list_payload_categories(current_user: dict = Depends(get_current_user)):
-    if not _plan_in(current_user, ["starter", "professional", "enterprise"]):
-        raise HTTPException(status_code=403, detail="Plano insuficiente para acessar esta ferramenta")
+    _require_tool(current_user, "payload_generator")
     """List all available payload categories"""
     return {
         "categories": payload_gen.list_categories(),
@@ -815,8 +854,7 @@ async def generate_payloads(
     request: PayloadRequest,
     current_user: dict = Depends(get_current_user)
 ):
-    if not _plan_in(current_user, ["starter", "professional", "enterprise"]):
-        raise HTTPException(status_code=403, detail="Plano insuficiente para acessar esta ferramenta")
+    _require_tool(current_user, "payload_generator")
     """
     Generate security testing payloads
     
@@ -851,8 +889,7 @@ async def get_payloads_by_category(
     encode_type: str = "url",
     current_user: dict = Depends(get_current_user)
 ):
-    if not _plan_in(current_user, ["starter", "professional", "enterprise"]):
-        raise HTTPException(status_code=403, detail="Plano insuficiente para acessar esta ferramenta")
+    _require_tool(current_user, "payload_generator")
     """Get payloads for a specific category"""
     try:
         payloads = payload_gen.generate_payloads(category, encode, encode_type)
@@ -873,8 +910,7 @@ async def get_payloads_by_category(
 
 @router.get("/encoder/types", tags=["Encoder/Decoder"])
 async def list_encoding_types(current_user: dict = Depends(get_current_user)):
-    if not _plan_in(current_user, ["starter", "professional", "enterprise"]):
-        raise HTTPException(status_code=403, detail="Plano insuficiente para acessar esta ferramenta")
+    _require_tool(current_user, "encoder_decoder")
     """List all available encoding/decoding types"""
     return encoder_decoder.list_encodings()
 
@@ -884,8 +920,7 @@ async def encode_text(
     request: EncodeRequest,
     current_user: dict = Depends(get_current_user)
 ):
-    if not _plan_in(current_user, ["starter", "professional", "enterprise"]):
-        raise HTTPException(status_code=403, detail="Plano insuficiente para acessar esta ferramenta")
+    _require_tool(current_user, "encoder_decoder")
     """Encode text with specified encoding"""
     try:
         result = encoder_decoder.encode(request.text, request.encoding_type)
@@ -905,8 +940,7 @@ async def decode_text(
     request: DecodeRequest,
     current_user: dict = Depends(get_current_user)
 ):
-    if not _plan_in(current_user, ["starter", "professional", "enterprise"]):
-        raise HTTPException(status_code=403, detail="Plano insuficiente para acessar esta ferramenta")
+    _require_tool(current_user, "encoder_decoder")
     """Decode text with specified encoding"""
     try:
         result = encoder_decoder.decode(request.text, request.encoding_type)
@@ -926,8 +960,7 @@ async def hash_text(
     request: HashRequest,
     current_user: dict = Depends(get_current_user)
 ):
-    if not _plan_in(current_user, ["starter", "professional", "enterprise"]):
-        raise HTTPException(status_code=403, detail="Plano insuficiente para acessar esta ferramenta")
+    _require_tool(current_user, "hash_analyzer")
     """Generate hash of text"""
     try:
         result = encoder_decoder.hash_text(request.text, request.hash_type)
@@ -1067,17 +1100,7 @@ async def ai_security_assistant(payload: AIChatRequest, request: Request, db: Se
         user = db.query(User).filter(User.username == username).first()
         if not user:
             raise HTTPException(status_code=401, detail="Could not validate credentials")
-        plan = (user.subscription_plan or "").strip().lower()
-        if plan not in ("professional", "enterprise"):
-            raise HTTPException(
-                status_code=403,
-                detail={
-                    "error": "upgrade_required",
-                    "message": "Esta funcionalidade requer o plano professional, enterprise",
-                    "current_plan": user.subscription_plan,
-                    "required_plans": ["professional", "enterprise"]
-                }
-            )
+        ensure_tool_access("ai_assistant", user)
     except HTTPException:
         raise
     except Exception:

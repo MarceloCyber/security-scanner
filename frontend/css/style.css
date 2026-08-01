@@ -40,12 +40,13 @@ body {
     min-height: 100vh;
     background: linear-gradient(135deg, #0f1419 0%, #1a1f2e 50%, #252b3b 100%);
     position: relative;
-    overflow: hidden;
+    overflow-x: hidden;
+    overflow-y: auto;
 }
 
 .login-page::before {
     content: '';
-    position: absolute;
+    position: fixed;
     width: 500px;
     height: 500px;
     background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(139, 92, 246, 0.1));
@@ -54,11 +55,13 @@ body {
     left: -250px;
     animation: float 6s ease-in-out infinite;
     filter: blur(60px);
+    pointer-events: none;
+    z-index: 0;
 }
 
 .login-page::after {
     content: '';
-    position: absolute;
+    position: fixed;
     width: 400px;
     height: 400px;
     background: linear-gradient(135deg, rgba(139, 92, 246, 0.1), rgba(99, 102, 241, 0.1));
@@ -67,6 +70,8 @@ body {
     right: -200px;
     animation: float 8s ease-in-out infinite;
     filter: blur(60px);
+    pointer-events: none;
+    z-index: 0;
 }
 
 @keyframes float {
@@ -80,6 +85,7 @@ body {
     width: 100%;
     max-width: 450px;
     padding: 20px;
+    margin: auto;
 }
 
 .login-box {

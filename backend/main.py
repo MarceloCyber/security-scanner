@@ -59,12 +59,23 @@ try:
             "access_key_last4": "VARCHAR",
             "access_key_issued_at": _datetime_type,
             "access_key_used_at": _datetime_type,
+            "access_key_required": "BOOLEAN DEFAULT 0",
             "active_session_hash": "VARCHAR",
             "active_session_last_activity": _datetime_type,
         }
         for _name, _type in _security_columns.items():
             if _name not in _columns:
                 _conn.execute(text(f"ALTER TABLE users ADD COLUMN {_name} {_type}"))
+        if "access_key_required" not in _columns:
+            _conn.execute(text("UPDATE users SET access_key_required = 0 WHERE access_key_required IS NULL"))
+        _conn.execute(text(
+            "UPDATE users SET access_key_required = 1 "
+            "WHERE access_key_hash IS NOT NULL AND access_key_used_at IS NULL AND COALESCE(is_admin, FALSE) = FALSE"
+        ))
+        _conn.execute(text(
+            "UPDATE users SET access_key_required = 0 "
+            "WHERE access_key_used_at IS NOT NULL"
+        ))
 except Exception as _migration_error:
     logging.getLogger(__name__).warning("Migração de segurança de usuários não aplicada: %s", _migration_error)
 

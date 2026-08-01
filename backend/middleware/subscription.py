@@ -12,28 +12,90 @@ from functools import wraps
 import inspect
 
 # Definição de ferramentas por plano
+# Starter: 5 ferramentas | Professional: 10 ferramentas | Enterprise: todas
+#
+# REGRA: todos os itens aqui DEVEM ter página dedicada no dashboard (data-page).
+# ssl_checker / dns_lookup / whois_lookup / header_analyzer são sub-features do
+# Port Scanner (deep scan) e não possuem página própria – por isso não aparecem.
 TOOL_PERMISSIONS = {
     "starter": [
-        "port_scanner",
-        "ssl_checker",
-        "dns_lookup",
-        "whois_lookup",
-        "header_analyzer"
+        "port_scanner",       # data-page="port-scan"
+        "subdomain_finder",   # data-page="subdomain"
+        "hash_analyzer",      # data-page="hash-analyzer"
+        "encoder_decoder",    # data-page="encoder"
+        "password_strength_checker",  # data-page="password-strength"
     ],
     "professional": [
+        # Ferramentas do Starter (5):
         "port_scanner",
-        "ssl_checker",
-        "dns_lookup",
-        "whois_lookup",
-        "header_analyzer",
-        "code_scanner",
-        "sqli_tester",
-        "xss_tester",
-        "phishing_simulator",
         "subdomain_finder",
-        # As 10 primeiras ferramentas são liberadas no plano Professional.
+        "hash_analyzer",
+        "encoder_decoder",
+        "password_strength_checker",
+        # Ferramentas exclusivas do Professional (5):
+        "code_scanner",       # data-page="scanner"
+        "sqli_tester",        # data-page="sql-injection"
+        "xss_tester",         # data-page="xss-tester"
+        "phishing_simulator", # data-page="phishing"
+        "directory_enumerator", # data-page="directory-enum"
     ],
-    "enterprise": "all"  # Acesso ilimitado
+    "enterprise": "all",  # Acesso ilimitado
+}
+
+# Páginas do dashboard (data-page) permitidas por plano
+PLAN_DASHBOARD_TOOLS = {
+    "starter": [
+        "port-scan",
+        "subdomain",
+        "hash-analyzer",
+        "encoder",
+        "password-strength",
+    ],
+    "professional": [
+        "port-scan",
+        "subdomain",
+        "hash-analyzer",
+        "encoder",
+        "password-strength",
+        "scanner",
+        "sql-injection",
+        "xss-tester",
+        "phishing",
+        "directory-enum",
+    ],
+    "enterprise": "all",
+}
+
+# Mapeamento das páginas do dashboard para nomes de ferramenta no backend
+DASHBOARD_TOOL_MAP = {
+    "port-scan": "port_scanner",
+    "scanner": "code_scanner",
+    "sql-injection": "sqli_tester",
+    "xss-tester": "xss_tester",
+    "phishing": "phishing_simulator",
+    "subdomain": "subdomain_finder",
+    "payloads": "payload_generator",
+    "encoder": "encoder_decoder",
+    "api-scanner": "api_security_tester",
+    "dependency-scanner": "dependency_scanner",
+    "docker-scanner": "container_scanner",
+    "graphql-scanner": "graphql_scanner",
+    "brute-force": "password_auditor",
+    "directory-enum": "directory_enumerator",
+    "log-analyzer": "log_analyzer",
+    "threat-intel": "threat_intelligence",
+    "hash-analyzer": "hash_analyzer",
+    "ioc-analyzer": "ioc_analyzer",
+    "password-strength": "password_auditor",
+    "reports": "reports_generator",
+    "ai-assistant": "ai_assistant",
+    "intelligent-automation": "intelligent_automation",
+}
+
+PLAN_TOOL_COUNTS = {
+    "starter": 5,
+    "professional": 10,
+    "enterprise": -1,
 }
 
 # Limites de scans por plano
@@ -42,6 +104,12 @@ SCAN_LIMITS = {
     "professional": -1,  # Ilimitado
     "enterprise": -1     # Ilimitado
 }
+
+
+def normalize_subscription_plan(plan: Optional[str]) -> str:
+    """Retorna apenas um plano reconhecido, tratando registros legados vazios como Starter."""
+    normalized_plan = (plan or "").strip().lower()
+    return normalized_plan if normalized_plan in TOOL_PERMISSIONS else "starter"
 
 
 def check_subscription_status(user: User) -> dict:
@@ -83,18 +151,30 @@ def check_subscription_status(user: User) -> dict:
     return {
         "valid": True,
         "active": True,
-        "plan": user.subscription_plan,
+        "plan": normalize_subscription_plan(user.subscription_plan),
         "scans_used": user.scans_this_month,
         "scans_limit": user.scans_limit,
         "expires_at": user.subscription_end.isoformat() if user.subscription_end else None
     }
 
 
+def get_allowed_dashboard_tools(plan: Optional[str]) -> list:
+    """Retorna os IDs de página do dashboard liberados para o plano."""
+    normalized_plan = normalize_subscription_plan(plan)
+    allowed = PLAN_DASHBOARD_TOOLS.get(normalized_plan, PLAN_DASHBOARD_TOOLS["starter"])
+    if allowed == "all":
+        return list(DASHBOARD_TOOL_MAP.keys())
+    return list(allowed)
+
+
 def check_tool_access(tool_name: str, user: User) -> bool:
     """
     Verifica se o usuário tem acesso à ferramenta
     """
-    plan = user.subscription_plan
+    if getattr(user, "is_admin", False):
+        return True
+
+    plan = normalize_subscription_plan(user.subscription_plan)
     
     # Enterprise tem acesso a tudo
     if plan == "enterprise":
@@ -107,6 +187,35 @@ def check_tool_access(tool_name: str, user: User) -> bool:
         return True
     
     return tool_name in allowed_tools
+
+
+def ensure_tool_access(tool_name: str, user: User) -> None:
+    """Interrompe a requisição quando a assinatura ou o plano não permite a ferramenta."""
+    if getattr(user, "is_admin", False):
+        return
+
+    subscription = check_subscription_status(user)
+    if not subscription["valid"]:
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "error": subscription["reason"],
+                "message": subscription["message"],
+                "current_plan": user.subscription_plan,
+            },
+        )
+
+    if not check_tool_access(tool_name, user):
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "error": "tool_locked",
+                "message": "Esta ferramenta não está disponível no seu plano atual",
+                "tool": tool_name,
+                "current_plan": user.subscription_plan,
+                "upgrade_url": "/pricing",
+            },
+        )
 
 
 def require_plan(required_plans: list):
@@ -228,41 +337,47 @@ def get_plan_info(plan_name: str) -> dict:
             "price": 289.90,
             "currency": "BRL",
             "scans_limit": 100,
+            "tools_count": PLAN_TOOL_COUNTS["starter"],
             "features": [
                 "100 scans por mês",
-                "Red/Blue Team básico",
+                "5 ferramentas de segurança",
                 "Relatórios em PDF",
                 "Suporte prioritário"
             ],
-            "tools": TOOL_PERMISSIONS["starter"]
+            "tools": TOOL_PERMISSIONS["starter"],
+            "dashboard_tools": get_allowed_dashboard_tools("starter"),
         },
         "professional": {
             "name": "Professional",
             "price": 439.90,
             "currency": "BRL",
             "scans_limit": -1,
+            "tools_count": PLAN_TOOL_COUNTS["professional"],
             "features": [
                 "Scans ilimitados",
-                "Todas as ferramentas",
+                "10 ferramentas de segurança",
                 "API access",
                 "Relatórios avançados",
                 "Suporte 24/7"
             ],
-            "tools": TOOL_PERMISSIONS["professional"]
+            "tools": TOOL_PERMISSIONS["professional"],
+            "dashboard_tools": get_allowed_dashboard_tools("professional"),
         },
         "enterprise": {
             "name": "Enterprise",
             "price": None,
             "currency": "BRL",
             "scans_limit": -1,
+            "tools_count": PLAN_TOOL_COUNTS["enterprise"],
             "features": [
-                "Tudo do Professional",
+                "Todas as ferramentas",
                 "Multi-usuário",
                 "White label",
                 "Custom integrations",
                 "Gerente dedicado"
             ],
-            "tools": "all"
+            "tools": "all",
+            "dashboard_tools": get_allowed_dashboard_tools("enterprise"),
         }
     }
     

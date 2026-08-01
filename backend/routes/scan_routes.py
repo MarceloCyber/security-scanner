@@ -10,7 +10,7 @@ from models.scan import Scan
 from scanners.code_scanner import scan_code
 from scanners.api_scanner import APISecurityScanner
 from pydantic import BaseModel
-from middleware.subscription import increment_scan_count, check_subscription_status, check_tool_access
+from middleware.subscription import increment_scan_count, check_subscription_status, check_tool_access, ensure_tool_access
 
 router = APIRouter()
 
@@ -41,6 +41,7 @@ async def scan_code_endpoint(
 ):
     """Escaneia código fonte em busca de vulnerabilidades"""
     try:
+        ensure_tool_access("code_scanner", current_user)
         # Verificar limite de scans
         check_result = check_subscription_status(current_user)
         if not check_result["active"]:
@@ -90,6 +91,8 @@ async def scan_code_endpoint(
             "scan_id": scan.id,
             "results": results
         }
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -101,6 +104,7 @@ async def scan_api_endpoint(
 ):
     """Escaneia API em busca de vulnerabilidades"""
     try:
+        ensure_tool_access("api_security_tester", current_user)
         check_result = check_subscription_status(current_user)
         if not check_result["active"]:
             raise HTTPException(status_code=403, detail=check_result["message"])
@@ -141,6 +145,8 @@ async def scan_api_endpoint(
             "scan_id": scan.id,
             "results": results
         }
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -152,6 +158,7 @@ async def upload_file_scan(
 ):
     """Upload e escaneia arquivo de código"""
     try:
+        ensure_tool_access("code_scanner", current_user)
         check_result = check_subscription_status(current_user)
         if not check_result["active"]:
             raise HTTPException(status_code=403, detail=check_result["message"])
@@ -191,6 +198,8 @@ async def upload_file_scan(
             "filename": file.filename,
             "results": results
         }
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

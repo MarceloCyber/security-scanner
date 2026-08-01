@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from database import get_db
 from models.user import User
 from auth import get_current_user
-from middleware.subscription import check_subscription_status, get_plan_info
+from middleware.subscription import check_subscription_status, get_plan_info, normalize_subscription_plan, get_allowed_dashboard_tools
 
 router = APIRouter(prefix="/user", tags=["user"])
 
@@ -20,11 +20,13 @@ async def get_user_subscription_info(
     Retorna informações completas da assinatura do usuário
     """
     status = check_subscription_status(current_user)
-    plan_info = get_plan_info(current_user.subscription_plan)
+    plan = normalize_subscription_plan(current_user.subscription_plan)
+    plan_info = get_plan_info(plan)
+    subscription_active = status.get("valid", False)
     
     return {
         "username": current_user.username,
-        "subscription_plan": current_user.subscription_plan,
+        "subscription_plan": plan,
         "subscription_status": current_user.subscription_status,
         "scans_this_month": current_user.scans_this_month or 0,
         "scans_limit": current_user.scans_limit or 0,
@@ -35,7 +37,9 @@ async def get_user_subscription_info(
         "trial_days": 10 if current_user.is_trial and current_user.trial_started_at else 0,
         "is_admin": current_user.is_admin or False,
         "status": status,
-        "plan_info": plan_info
+        "plan_info": plan_info,
+        "allowed_dashboard_tools": get_allowed_dashboard_tools(plan) if subscription_active else [],
+        "tools_count": plan_info.get("tools_count"),
     }
 
 
@@ -50,7 +54,7 @@ async def get_current_user_info(
         "id": current_user.id,
         "username": current_user.username,
         "email": current_user.email,
-        "subscription_plan": current_user.subscription_plan,
+        "subscription_plan": normalize_subscription_plan(current_user.subscription_plan),
         "subscription_status": current_user.subscription_status,
         "scans_used": current_user.scans_this_month,
         "scans_limit": current_user.scans_limit

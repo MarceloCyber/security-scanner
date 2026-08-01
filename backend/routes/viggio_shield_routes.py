@@ -8,6 +8,7 @@ from database import get_db
 from models.user import User
 from models.monitor import MonitorTarget, MonitorIncident, MonitorLog, BlockedIP
 from auth import get_current_user
+from middleware.subscription import ensure_tool_access
 from scanners.port_scanner import scan_ports
 from scanners.deep_security_scanner import deep_web_scan
 from scanners.appsec_platform_scanner import run_appsec_scan, add_governance
@@ -609,6 +610,7 @@ async def run_viggio_appsec_scan(
     current_user: User = Depends(get_current_user)
 ):
     """Executa um scanner real do workspace AppSec unificado do Viggio."""
+    ensure_tool_access("intelligent_automation", current_user)
     if request.scan_type == 'graphql' and not request.target_url:
         raise HTTPException(status_code=400, detail='Informe a URL do endpoint GraphQL')
     if request.scan_type != 'graphql' and not request.content.strip():
@@ -632,6 +634,7 @@ async def create_monitor_target(
     db: Session = Depends(get_db)
 ):
     """Cria um novo alvo de monitoramento"""
+    ensure_tool_access("intelligent_automation", current_user)
     
     # A cota contabiliza criacoes no mes, inclusive automacoes removidas, e renova
     # automaticamente no primeiro dia de cada novo mes UTC.

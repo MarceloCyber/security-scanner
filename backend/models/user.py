@@ -30,6 +30,7 @@ class User(Base):
     access_key_last4 = Column(String, nullable=True)
     access_key_issued_at = Column(DateTime, nullable=True)
     access_key_used_at = Column(DateTime, nullable=True)
+    access_key_required = Column(Boolean, default=False)
 
     # Sessão única por usuário e expiração por inatividade.
     active_session_hash = Column(String, nullable=True)

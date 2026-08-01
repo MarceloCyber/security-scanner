@@ -38,9 +38,9 @@ def migrate_database():
             ("access_key_last4", "VARCHAR"),
             ("access_key_issued_at", datetime_type),
             ("access_key_used_at", datetime_type),
+            ("access_key_required", "BOOLEAN DEFAULT FALSE"),
             ("active_session_hash", "VARCHAR"),
             ("active_session_last_activity", datetime_type),
-            ("trial_started_at", "DATETIME"),
         ]
         
         for column_name, column_type in columns_to_add:
@@ -60,6 +60,16 @@ def migrate_database():
         # Atualizar usuários existentes que não têm valores definidos
         print("\n🔄 Atualizando usuários existentes...")
         users = db.query(User).all()
+
+        # Contas já existentes antes da validação por chave permanecem válidas
+        # e não passam a exigir uma chave retroativamente.
+        db.execute(text("UPDATE users SET access_key_required = FALSE WHERE access_key_required IS NULL"))
+        db.execute(text(
+            "UPDATE users SET access_key_required = 1 "
+            "WHERE access_key_hash IS NOT NULL AND access_key_used_at IS NULL AND COALESCE(is_admin, FALSE) = FALSE"
+        ))
+        db.execute(text("UPDATE users SET access_key_required = FALSE WHERE access_key_used_at IS NOT NULL"))
+        db.commit()
         
         for user in users:
             updated = False
@@ -82,6 +92,10 @@ def migrate_database():
             
             if not hasattr(user, 'is_trial') or user.is_trial is None:
                 user.is_trial = False
+                updated = True
+
+            if not hasattr(user, 'access_key_required') or user.access_key_required is None:
+                user.access_key_required = False
                 updated = True
 
             # O plano Free foi removido. Usuários legados ficam sem acesso pago

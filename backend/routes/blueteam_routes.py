@@ -17,7 +17,7 @@ from sqlalchemy.orm import Session
 from auth import get_current_user
 from models.user import User
 from database import get_db
-from middleware.subscription import check_subscription_status, check_tool_access
+from middleware.subscription import check_subscription_status, check_tool_access, ensure_tool_access
 
 # Configurar logger
 logger = logging.getLogger(__name__)
@@ -473,6 +473,7 @@ async def analyze_hash(
     """
     
     try:
+        ensure_tool_access("hash_analyzer", current_user)
         logger.info(f"Hash analysis started. Count: {len(request.hashes)}")
         
         results = []
@@ -536,6 +537,8 @@ async def analyze_hash(
             "timestamp": datetime.now().isoformat()
         }
     
+    except HTTPException:
+        raise
     except ValueError as ve:
         logger.warning(f"Validation error in hash analysis: {str(ve)}")
         raise HTTPException(status_code=400, detail=str(ve))
@@ -556,6 +559,7 @@ async def check_password_strength(
     """
     
     try:
+        ensure_tool_access("password_strength_checker", current_user)
         logger.info("Password strength check started")
         
         password = request.password
@@ -671,6 +675,8 @@ async def check_password_strength(
             "timestamp": datetime.now().isoformat()
         }
     
+    except HTTPException:
+        raise
     except ValueError as ve:
         logger.warning(f"Validation error in password check: {str(ve)}")
         raise HTTPException(status_code=400, detail=str(ve))
@@ -689,6 +695,7 @@ async def generate_password(
     """
     
     try:
+        ensure_tool_access("password_strength_checker", current_user)
         logger.info(f"Password generation started. Length: {request.length}")
         
         charset = ""
@@ -718,6 +725,8 @@ async def generate_password(
             "timestamp": datetime.now().isoformat()
         }
     
+    except HTTPException:
+        raise
     except ValueError as ve:
         logger.warning(f"Validation error in password generation: {str(ve)}")
         raise HTTPException(status_code=400, detail=str(ve))

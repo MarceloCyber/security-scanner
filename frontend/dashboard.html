@@ -186,13 +186,6 @@
                 <i class="fas fa-external-link-alt" style="font-size: 12px; margin-left: auto;"></i>
             </a>
             
-            <!-- Painel Admin (apenas para administradores) -->
-            <a href="/admin.html" class="nav-item nav-item-admin nav-external" id="adminLink" style="display: none;" target="_blank" rel="noopener">
-                <i class="fas fa-user-shield"></i>
-                <span>Painel Admin</span>
-                <i class="fas fa-external-link-alt" style="font-size: 12px; margin-left: auto;"></i>
-            </a>
-            
             <!-- Red Team Tools -->
             <div class="nav-section">
                 <span class="nav-section-title">Red Team</span>
@@ -1306,10 +1299,14 @@
                         <div class="form-group">
                             <label><i class="fas fa-key"></i> Wordlist de Senhas</label>
                             <select id="bf-wordlist" class="form-control">
-                                <option value="common">Senhas Comuns (Top 100)</option>
-                                <option value="medium">Wordlist Média (Top 1000)</option>
+                                <option value="common">Senhas Comuns (lista interna)</option>
+                                <option value="medium">Wordlist Média (1000 entradas)</option>
+                                <option value="large">Wordlist Grande (5000 entradas)</option>
                                 <option value="custom">Custom (upload)</option>
                             </select>
+                            <input type="file" id="bf-wordlist-file" class="form-control" accept=".txt,.list,.lst" onchange="uploadBruteForceWordlist()" style="display:none; margin-top:8px;">
+                            <button type="button" id="bf-select-wordlist" class="btn-sm" onclick="document.getElementById('bf-wordlist-file').click()" style="display:none; margin-top:8px;">Selecionar arquivo</button>
+                            <small id="bf-wordlist-status" class="text-muted"></small>
                         </div>
                         <button class="btn-danger btn-block" onclick="startBruteForce()">
                             <i class="fas fa-bolt"></i>

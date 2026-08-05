@@ -27,6 +27,8 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
+            gap: 18px;
+            flex-wrap: wrap;
             margin-bottom: 20px;
             padding: clamp(16px, 2.2vw, 22px);
             background: rgba(26, 29, 41, 0.92);
@@ -34,6 +36,22 @@
             border: 1px solid rgba(148, 163, 184, 0.16);
             box-shadow: 0 12px 30px rgba(0, 0, 0, 0.28);
             backdrop-filter: blur(12px);
+        }
+
+        .viggio-header-actions {
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            flex-wrap: wrap;
+            gap: 10px;
+            min-width: min(100%, 320px);
+        }
+
+        .viggio-header-actions button {
+            flex: 0 1 auto;
+            min-height: 42px;
+            margin: 0 !important;
+            white-space: nowrap;
         }
 
         .viggio-title {
@@ -812,6 +830,23 @@
         }
 
         @media (max-width: 768px) {
+            .viggio-header {
+                align-items: stretch;
+            }
+
+            .viggio-title {
+                min-width: 0;
+            }
+
+            .viggio-header-actions {
+                width: 100%;
+                justify-content: stretch;
+            }
+
+            .viggio-header-actions button {
+                flex: 1 1 220px;
+            }
+
             .targets-grid {
                 grid-template-columns: 1fr;
             }
@@ -821,6 +856,15 @@
         }
 
         @media (max-width: 420px) {
+            .viggio-header-actions {
+                flex-direction: column;
+            }
+
+            .viggio-header-actions button {
+                width: 100%;
+                flex: 1 1 auto;
+            }
+
             .stat-card {
                 padding: 14px 16px;
                 border-radius: 14px;
@@ -855,7 +899,10 @@
                     <p style="color: #a0aec0; margin: 5px 0 0 0;">Monitoramento de Segurança em Tempo Real</p>
                 </div>
             </div>
-            <div>
+            <div class="viggio-header-actions">
+                <button class="btn-small" onclick="downloadViggioFullReport()">
+                    <i class="fas fa-file-pdf"></i> Relatório completo
+                </button>
                 <button class="btn-primary" onclick="openAddTargetModal()">
                     <i class="fas fa-plus"></i> Adicionar Alvo
                 </button>
@@ -1386,6 +1433,40 @@
             } catch (error) {
                 console.error('API Request Error:', error);
                 throw error;
+            }
+        }
+
+        async function downloadViggioFullReport() {
+            const includeResolved = window.confirm('Incluir incidentes resolvidos e falsos positivos no relatório?');
+            const includeLogs = window.confirm('Incluir histórico completo de verificações e atividades?');
+            const token = getToken();
+            try {
+                showLoading('Gerando relatório fidedigno...');
+                const params = new URLSearchParams({
+                    include_resolved: String(includeResolved),
+                    include_logs: String(includeLogs)
+                });
+                const response = await fetch(`/api/viggio-shield/report/full?${params}`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (!response.ok) {
+                    const data = await response.json().catch(() => ({}));
+                    throw new Error(data.detail || `Erro ao gerar relatório: ${response.status}`);
+                }
+                const blob = await response.blob();
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = `viggio-shield-relatorio-${new Date().toISOString().slice(0,10)}.pdf`;
+                document.body.appendChild(link);
+                link.click();
+                link.remove();
+                URL.revokeObjectURL(url);
+                showToast('Relatório completo gerado com sucesso.', 'success');
+            } catch (error) {
+                showToast(`Erro ao gerar relatório: ${error.message}`, 'error');
+            } finally {
+                hideLoading();
             }
         }
 

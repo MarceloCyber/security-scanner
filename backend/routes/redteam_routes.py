@@ -4,7 +4,7 @@ Ferramentas de Red Team para pentesting
 AVISO: Uso apenas para fins educacionais e testes autorizados
 """
 
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, UploadFile, File
 from pydantic import BaseModel, HttpUrl, validator
 from typing import List, Optional, Dict, Any
 from sqlalchemy.orm import Session
@@ -13,6 +13,12 @@ import hashlib
 from datetime import datetime
 import logging
 import json
+import os
+import socket
+import time
+import uuid
+from urllib.parse import urlparse, parse_qsl, urlencode, urlunparse
+import requests
 
 from database import get_db
 from auth import get_current_user
@@ -24,6 +30,67 @@ from middleware.subscription import check_subscription_status, check_tool_access
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/redteam", tags=["Red Team"])
+
+HTTP_TIMEOUT = (3.05, 10)
+MAX_ACTIVE_TESTS = 100
+BRUTE_FORCE_MAX_ATTEMPTS = int(os.getenv("REDTEAM_BRUTE_FORCE_MAX_ATTEMPTS", "10000"))
+
+BUILTIN_PASSWORD_SEEDS = [
+    "123456", "password", "123456789", "12345678", "qwerty", "abc123", "111111",
+    "123123", "admin", "letmein", "welcome", "monkey", "dragon", "master", "login",
+    "passw0rd", "iloveyou", " sunshine", "princess", "football", "baseball", "shadow",
+    "superman", "trustno1", "whatever", "freedom", "hello", "charlie", "donald",
+    "access", "secret", "test", "guest", "root", "toor", "changeme", "P@ssw0rd"
+]
+
+
+def _builtin_passwords(kind: str) -> List[str]:
+    """Return deterministic built-in candidates; counts are reported to the UI."""
+    if kind == "common":
+        return list(dict.fromkeys(BUILTIN_PASSWORD_SEEDS))
+    target = 1000 if kind == "medium" else 5000
+    values = list(dict.fromkeys(BUILTIN_PASSWORD_SEEDS))
+    for seed in BUILTIN_PASSWORD_SEEDS:
+        for suffix in [str(i) for i in range(0, 10000)]:
+            if len(values) >= target:
+                return values
+            candidate = f"{seed}{suffix}"
+            if candidate not in values:
+                values.append(candidate)
+    return values
+
+
+def _validate_scan_target(value: str) -> None:
+    """Reject ambiguous/unsafe targets before making an outbound request."""
+    parsed = urlparse(value)
+    if parsed.scheme not in {"http", "https"} or not parsed.hostname:
+        raise HTTPException(status_code=400, detail="Alvo HTTP(S) inválido")
+    host = parsed.hostname.lower().rstrip(".")
+    allowed = {h.strip().lower() for h in os.getenv("REDTEAM_ALLOWED_HOSTS", "").split(",") if h.strip()}
+    if allowed and host not in allowed:
+        raise HTTPException(status_code=403, detail="Alvo fora da allowlist REDTEAM_ALLOWED_HOSTS")
+    if not allowed and os.getenv("REDTEAM_ALLOW_PRIVATE_TARGETS", "false").lower() != "true":
+        try:
+            addresses = {item[4][0] for item in socket.getaddrinfo(host, None)}
+            for address in addresses:
+                ip = __import__("ipaddress").ip_address(address)
+                if ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_reserved:
+                    raise HTTPException(status_code=403, detail="Alvo privado exige REDTEAM_ALLOW_PRIVATE_TARGETS=true")
+        except socket.gaierror:
+            raise HTTPException(status_code=400, detail="Não foi possível resolver o alvo")
+
+
+def _request_with_param(url: str, parameter: str, value: str, method: str = "GET"):
+    parsed = urlparse(url)
+    params = dict(parse_qsl(parsed.query, keep_blank_values=True))
+    params[parameter] = value
+    target = urlunparse(parsed._replace(query=urlencode(params)))
+    if method.upper() == "POST":
+        return requests.post(urlunparse(parsed._replace(query="")), data=params,
+                             timeout=HTTP_TIMEOUT, allow_redirects=False,
+                             headers={"User-Agent": "IronNet-Authorized-Scanner/1.0"})
+    return requests.get(target, timeout=HTTP_TIMEOUT, allow_redirects=False,
+                        headers={"User-Agent": "IronNet-Authorized-Scanner/1.0"})
 
 # ==================== MODELS ====================
 
@@ -86,6 +153,8 @@ class BruteForceRequest(BaseModel):
     pass_field: str = "password"
     userlist: List[str]
     wordlist: str = "common"
+    custom_wordlist: List[str] = []
+    wordlist_id: Optional[str] = None
     
     @validator('url')
     def validate_url(cls, v):
@@ -103,10 +172,19 @@ class BruteForceRequest(BaseModel):
     
     @validator('wordlist')
     def validate_wordlist(cls, v):
-        valid_wordlists = ['common', 'medium', 'large']
+        valid_wordlists = ['common', 'medium', 'large', 'custom']
         if v not in valid_wordlists:
             raise ValueError(f'Wordlist inválida. Use: {", ".join(valid_wordlists)}')
         return v
+
+    @validator('custom_wordlist')
+    def validate_custom_wordlist(cls, v):
+        cleaned = list(dict.fromkeys(item.strip() for item in (v or []) if item and item.strip()))
+        if BRUTE_FORCE_MAX_ATTEMPTS and len(cleaned) > BRUTE_FORCE_MAX_ATTEMPTS:
+            raise ValueError(f'Wordlist custom excede o limite configurado de {BRUTE_FORCE_MAX_ATTEMPTS} entradas')
+        if any(len(item) > 256 for item in cleaned):
+            raise ValueError('Cada entrada da wordlist deve ter no máximo 256 caracteres')
+        return cleaned
 
 class SubdomainEnumRequest(BaseModel):
     domain: str
@@ -200,6 +278,7 @@ async def test_sql_injection(
                 }
             )
         logger.info(f"SQL Injection test started for URL: {request.url}")
+        _validate_scan_target(request.url)
         
         # Payloads básicos de SQLi
         payloads = {
@@ -239,24 +318,30 @@ async def test_sql_injection(
             for p in payloads.values():
                 payload_list.extend(p)
         
+        if len(request.parameters) * len(payload_list) > MAX_ACTIVE_TESTS:
+            raise HTTPException(status_code=400, detail=f"Teste excede o limite seguro de {MAX_ACTIVE_TESTS} requisições")
+        baseline = requests.get(request.url, timeout=HTTP_TIMEOUT, allow_redirects=False,
+                                headers={"User-Agent": "IronNet-Authorized-Scanner/1.0"})
+        error_markers = ("sql syntax", "mysql", "postgresql", "sqlite", "odbc", "ora-")
         for param in request.parameters:
             for payload in payload_list:
-                # Simula teste (em produção faria requisições reais)
-                result = {
-                    "parameter": param,
-                    "payload": payload,
-                    "url": request.url,
-                    "vulnerable": False,
-                    "response_time": 0.1,
-                    "error_based": False,
-                    "blind_detected": False
-                }
-                
-                # Detecta possível vulnerabilidade (simulado)
-                if "UNION" in payload or "OR '1'='1'" in payload:
-                    result["vulnerable"] = True
-                    result["error_based"] = True
-                
+                started = time.monotonic()
+                try:
+                    response = _request_with_param(request.url, param, payload, request.method)
+                    body = response.text[:1_000_000].lower()
+                    error_based = any(marker in body for marker in error_markers)
+                    # Positive result requires observed server evidence, never the payload itself.
+                    result = {
+                        "parameter": param, "payload": payload, "url": response.url,
+                        "vulnerable": error_based,
+                        "response_time": round(time.monotonic() - started, 3),
+                        "status_code": response.status_code, "error_based": error_based,
+                        "blind_detected": False,
+                        "evidence": "database error marker in response" if error_based else None
+                    }
+                except requests.RequestException as exc:
+                    result = {"parameter": param, "payload": payload, "url": request.url,
+                              "vulnerable": False, "error": str(exc), "evidence": None}
                 results.append(result)
         
         vulnerable_count = sum(1 for r in results if r["vulnerable"])
@@ -336,6 +421,7 @@ async def test_xss(
                 }
             )
         logger.info(f"XSS test started for URL: {request.url}")
+        _validate_scan_target(request.url)
         
         payloads = {
             "reflected": [
@@ -365,23 +451,23 @@ async def test_xss(
             for p in payloads.values():
                 payload_list.extend(p)
         
+        if len(request.parameters) * len(payload_list) > MAX_ACTIVE_TESTS:
+            raise HTTPException(status_code=400, detail=f"Teste excede o limite seguro de {MAX_ACTIVE_TESTS} requisições")
         for param in request.parameters:
             for payload in payload_list:
-                result = {
-                    "parameter": param,
-                    "payload": payload,
-                    "url": request.url,
-                    "vulnerable": False,
-                    "type": request.payload_type,
-                    "severity": "low"
-                }
-                
-                # Simula detecção
-                if "<script>" in payload or "onerror=" in payload:
-                    result["vulnerable"] = True
-                    result["severity"] = "high" if "document.cookie" in payload else "medium"
-                
-                results.append(result)
+                try:
+                    response = _request_with_param(request.url, param, payload)
+                    body = response.text[:1_000_000]
+                    reflected = payload in body
+                    results.append({"parameter": param, "payload": payload, "url": response.url,
+                                    "vulnerable": reflected, "type": request.payload_type,
+                                    "severity": "high" if reflected else "low",
+                                    "status_code": response.status_code,
+                                    "evidence": "payload reflected verbatim in response" if reflected else None})
+                except requests.RequestException as exc:
+                    results.append({"parameter": param, "payload": payload, "url": request.url,
+                                    "vulnerable": False, "type": request.payload_type,
+                                    "severity": "low", "error": str(exc), "evidence": None})
         
         vulnerable_count = sum(1 for r in results if r["vulnerable"])
         
@@ -425,13 +511,58 @@ async def test_xss(
 
 # ==================== BRUTE FORCE TOOL ====================
 
+@router.get("/bruteforce/wordlists", tags=["Red Team"])
+async def list_brute_force_wordlists(current_user: User = Depends(get_current_user)):
+    """Expose the actual built-in wordlist sizes used by the auditor."""
+    if not check_tool_access("password_auditor", current_user):
+        raise HTTPException(status_code=403, detail="Esta ferramenta não está disponível no seu plano atual")
+    return {
+        "wordlists": [
+            {"name": name, "count": len(_builtin_passwords(name)), "source": "built-in"}
+            for name in ("common", "medium", "large")
+        ],
+        "custom": {"source": "upload", "max_entries": BRUTE_FORCE_MAX_ATTEMPTS or "configured_limit"}
+    }
+
+@router.post("/bruteforce/wordlist", tags=["Red Team"])
+async def upload_brute_force_wordlist(
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_user)
+):
+    """Valida uma wordlist enviada pelo usuário sem persistir seu conteúdo."""
+    if not check_tool_access("password_auditor", current_user):
+        raise HTTPException(status_code=403, detail="Esta ferramenta não está disponível no seu plano atual")
+    if not file.filename or not file.filename.lower().endswith((".txt", ".list", ".lst")):
+        raise HTTPException(status_code=400, detail="Envie uma wordlist .txt, .list ou .lst")
+    content = await file.read()
+    if len(content) > 2 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="Wordlist muito grande (máximo 2 MB)")
+    try:
+        text = content.decode("utf-8-sig")
+    except UnicodeDecodeError:
+        raise HTTPException(status_code=400, detail="A wordlist deve estar codificada em UTF-8")
+    entries = list(dict.fromkeys(line.strip() for line in text.splitlines() if line.strip()))
+    if not entries:
+        raise HTTPException(status_code=400, detail="A wordlist está vazia")
+    if BRUTE_FORCE_MAX_ATTEMPTS and len(entries) > BRUTE_FORCE_MAX_ATTEMPTS:
+        raise HTTPException(status_code=400, detail=f"Wordlist excede o limite configurado de {BRUTE_FORCE_MAX_ATTEMPTS} entradas")
+    if any("\x00" in item or len(item) > 256 for item in entries):
+        raise HTTPException(status_code=400, detail="Entrada inválida: máximo de 256 caracteres e sem bytes nulos")
+    wordlist_id = uuid.uuid4().hex
+    storage_dir = os.path.join("/tmp", "ironnet_bruteforce_wordlists", str(current_user.id))
+    os.makedirs(storage_dir, mode=0o700, exist_ok=True)
+    storage_path = os.path.join(storage_dir, f"{wordlist_id}.txt")
+    with open(storage_path, "w", encoding="utf-8") as stored:
+        stored.write("\n".join(entries))
+    return {"status": "validated", "filename": file.filename, "count": len(entries), "wordlist_id": wordlist_id}
+
 @router.post("/bruteforce/start")
 async def start_brute_force(
     request: BruteForceRequest,
     current_user: User = Depends(get_current_user)
 ):
     """
-    Inicia ataque brute force (simulado por segurança)
+    Executa auditoria de autenticação somente quando explicitamente habilitada.
     AVISO: Use apenas em ambientes de teste autorizados
     """
     
@@ -458,36 +589,77 @@ async def start_brute_force(
                 }
             )
         logger.info(f"Brute force test started for URL: {request.url}")
+        _validate_scan_target(request.url)
+        # Habilitado por padrão para instalações autenticadas; pode ser desligado explicitamente.
+        if os.getenv("REDTEAM_ENABLE_BRUTE_FORCE", "true").lower() != "true":
+            raise HTTPException(status_code=403, detail={
+                "error": "bruteforce_disabled",
+                "message": "Auditoria de credenciais desabilitada por segurança.",
+                "action": "Defina REDTEAM_ENABLE_BRUTE_FORCE=true no ambiente do backend somente após autorizar o alvo.",
+                "limits": {"max_attempts": MAX_ACTIVE_TESTS, "redirects": False}
+            })
         
-        # Wordlists simuladas
-        wordlists = {
-            "common": ["password", "123456", "admin", "12345678", "qwerty", "letmein", "welcome", "monkey", "1234567890"],
-            "medium": ["password", "123456", "admin", "12345678", "qwerty", "letmein", "welcome", "monkey"] * 10,
-            "large": ["password", "123456", "admin"] * 50
-        }
-        
-        passwords = wordlists.get(request.wordlist, wordlists["common"])
+        # Listas pequenas e determinísticas; o limite de tentativas é obrigatório.
+        wordlists = {name: _builtin_passwords(name) for name in ("common", "medium", "large")}
+        if request.wordlist == "custom":
+            if request.wordlist_id:
+                if not re.fullmatch(r"[0-9a-f]{32}", request.wordlist_id):
+                    raise HTTPException(status_code=400, detail="Identificador de wordlist inválido")
+                wordlist_path = os.path.join("/tmp", "ironnet_bruteforce_wordlists", str(current_user.id), f"{request.wordlist_id}.txt")
+                try:
+                    with open(wordlist_path, encoding="utf-8") as stored:
+                        passwords = [line.strip() for line in stored if line.strip()]
+                except OSError:
+                    raise HTTPException(status_code=400, detail="Wordlist enviada não encontrada ou expirada")
+            elif request.custom_wordlist:
+                passwords = request.custom_wordlist
+            else:
+                raise HTTPException(status_code=400, detail="Envie uma wordlist custom antes de iniciar")
+        else:
+            passwords = wordlists.get(request.wordlist, wordlists["common"])
         
         results = {
             "status": "completed",
             "url": request.url,
+            "wordlist": request.wordlist,
+            "wordlist_count": len(passwords),
             "total_attempts": len(request.userlist) * len(passwords),
             "successful_attempts": 0,
             "credentials_found": [],
+            "attempts": [],
+            "failed_attempts": 0,
+            "request_errors": 0,
             "progress": 100,
             "timestamp": datetime.now().isoformat()
         }
         
-        # Simula tentativas (em produção faria requisições reais)
+        if BRUTE_FORCE_MAX_ATTEMPTS and len(request.userlist) * len(passwords) > BRUTE_FORCE_MAX_ATTEMPTS:
+            raise HTTPException(status_code=400, detail=f"Auditoria excede o limite configurado de {BRUTE_FORCE_MAX_ATTEMPTS} tentativas. Ajuste REDTEAM_BRUTE_FORCE_MAX_ATTEMPTS no backend.")
         for user in request.userlist:
-            # Simula sucesso ocasional para demonstração
-            if user in ["admin", "test", "user"] and "password" in passwords:
-                results["credentials_found"].append({
-                    "username": user,
-                    "password": "password",
-                    "status": "valid"
-                })
-                results["successful_attempts"] += 1
+            for password in passwords:
+                try:
+                    response = requests.post(request.url, data={request.user_field: user, request.pass_field: password},
+                                              timeout=HTTP_TIMEOUT, allow_redirects=False,
+                                              headers={"User-Agent": "IronNet-Authorized-Scanner/1.0"})
+                    # Success is reported only when the server's response is different from a failed login.
+                    failure = response.status_code in {401, 403} or any(marker in response.text.lower() for marker in ("invalid", "incorrect", "failed", "unauthorized"))
+                    positive = not failure and response.status_code < 400
+                    attempt = {"username": user, "password": password, "positive": positive,
+                               "status": "valid" if positive else "invalid",
+                               "status_code": response.status_code}
+                    if positive:
+                        attempt["password"] = password
+                        results["credentials_found"].append({"username": user, "password": password,
+                                                              "status": "valid", "positive": True,
+                                                              "status_code": response.status_code})
+                        results["successful_attempts"] += 1
+                    else:
+                        results["failed_attempts"] += 1
+                    results["attempts"].append(attempt)
+                except requests.RequestException:
+                    results["request_errors"] += 1
+                    results["attempts"].append({"username": user, "positive": False,
+                                                "status": "error", "status_code": None})
         
         logger.info(f"Brute force completed. Credentials found: {results['successful_attempts']}")
         
@@ -558,14 +730,19 @@ async def enumerate_subdomains(
         
         for subdomain in common_subdomains[:limit]:
             full_domain = f"{subdomain}.{request.domain}"
-            results.append({
-                "subdomain": full_domain,
-                "ip": f"192.168.{hash(subdomain) % 255}.{hash(full_domain) % 255}",
-                "status": "active",
-                "method": request.method,
-                "http_status": 200 if subdomain in ["www", "api", "blog"] else 404,
-                "server": "nginx/1.18.0" if hash(subdomain) % 2 == 0 else "Apache/2.4.41"
-            })
+            try:
+                addresses = sorted({item[4][0] for item in socket.getaddrinfo(full_domain, 443)})
+                item = {"subdomain": full_domain, "ip": addresses[0] if addresses else None,
+                        "status": "resolved", "method": request.method}
+                try:
+                    response = requests.get(f"https://{full_domain}", timeout=HTTP_TIMEOUT,
+                                            allow_redirects=False, headers={"User-Agent": "IronNet-Authorized-Scanner/1.0"})
+                    item.update({"http_status": response.status_code, "server": response.headers.get("Server")})
+                except requests.RequestException as exc:
+                    item["http_error"] = str(exc)
+                results.append(item)
+            except socket.gaierror:
+                continue
         
         logger.info(f"Subdomain enumeration completed. Found: {len(results)}")
         
@@ -637,23 +814,25 @@ async def enumerate_directories(
         
         for path in common_paths[:limit]:
             url = f"{base}/{path}"
-            if path in ["admin", "login", "assets", "images", "css", "js", "api"]:
-                status_code = 200
-            elif path in ["server-status", "private", "phpmyadmin", "cgi-bin"]:
-                status_code = 403
-            else:
-                status_code = 404
+            try:
+                response = requests.get(url, timeout=HTTP_TIMEOUT, allow_redirects=False,
+                                        headers={"User-Agent": "IronNet-Authorized-Scanner/1.0"})
+            except requests.RequestException as exc:
+                continue
+            status_code = response.status_code
             
             if request.status_filter and status_code not in request.status_filter:
                 continue
             
-            length = (abs(hash(url)) % 5000) + 100
-            fingerprint = hashlib.md5(url.encode()).hexdigest()[:8]
+            length = len(response.content)
+            fingerprint = hashlib.sha256(response.content).hexdigest()[:12]
             results.append({
                 "path": f"/{path}",
                 "status_code": status_code,
                 "length": length,
-                "fingerprint": fingerprint
+                "fingerprint": fingerprint,
+                "content_type": response.headers.get("Content-Type"),
+                "redirect": response.headers.get("Location")
             })
         
         logger.info(f"Directory enumeration completed. Found: {len(results)}")

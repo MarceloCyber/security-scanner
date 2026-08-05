@@ -22,10 +22,6 @@ class DockerScanner:
                 {'pattern': r'FROM\s+(?!scratch)(?!alpine)(?!distroless)', 'severity': 'LOW',
                  'message': 'Considere usar imagens mínimas (alpine, distroless)'}
             ],
-            'user': [
-                {'pattern': r'^(?!.*USER)', 'severity': 'HIGH',
-                 'message': 'Container rodará como root. Adicione USER non-root'},
-            ],
             'secrets': [
                 {'pattern': r'(ENV|ARG)\s+(PASSWORD|SECRET|KEY|TOKEN)\s*=', 'severity': 'CRITICAL',
                  'message': 'Não armazene segredos em ENV ou ARG. Use Docker secrets'},
@@ -52,10 +48,7 @@ class DockerScanner:
                 {'pattern': r'ADD\s+(?!.*\.tar)', 'severity': 'LOW',
                  'message': 'Prefira COPY ao invés de ADD (exceto para .tar)'},
             ],
-            'health_check': [
-                {'pattern': r'^(?!.*HEALTHCHECK)', 'severity': 'MEDIUM',
-                 'message': 'Adicione HEALTHCHECK para monitoramento'},
-            ]
+            'health_check': []
         }
     
     def scan_dockerfile(self, dockerfile_content: str) -> Dict[str, Any]:
@@ -63,6 +56,7 @@ class DockerScanner:
         
         lines = dockerfile_content.split('\n')
         vulnerabilities = []
+        errors = []
         
         # Verificar cada categoria de best practices
         for category, rules in self.dockerfile_best_practices.items():
@@ -89,6 +83,19 @@ class DockerScanner:
         
         # Verificações especiais
         vulnerabilities.extend(self._check_special_cases(dockerfile_content, lines))
+
+        if not re.search(r'^\s*USER\s+\S+', dockerfile_content, re.IGNORECASE | re.MULTILINE):
+            vulnerabilities.append({
+                'type': 'User', 'severity': 'HIGH', 'line': 0, 'code': '',
+                'description': 'Container rodará como root. Adicione USER non-root',
+                'recommendation': 'Crie e use usuário non-root no Dockerfile'
+            })
+        if not re.search(r'^\s*HEALTHCHECK\b', dockerfile_content, re.IGNORECASE | re.MULTILINE):
+            vulnerabilities.append({
+                'type': 'Health Check', 'severity': 'MEDIUM', 'line': 0, 'code': '',
+                'description': 'HEALTHCHECK não definido para o container',
+                'recommendation': 'Adicione HEALTHCHECK para monitoramento'
+            })
         
         return self._format_results(vulnerabilities, 'Dockerfile')
     
@@ -261,10 +268,17 @@ class DockerScanner:
     
     def _format_results(self, vulnerabilities: List[Dict], scan_type: str) -> Dict[str, Any]:
         """Formata resultados"""
+        unique = []
+        seen = set()
+        for vuln in vulnerabilities:
+            key = tuple(str(vuln.get(field, '')) for field in ('type', 'severity', 'line', 'code', 'port', 'description'))
+            if key not in seen:
+                seen.add(key)
+                unique.append(vuln)
         return {
             'scan_type': scan_type,
-            'vulnerabilities': vulnerabilities,
-            'summary': self._generate_summary(vulnerabilities),
+            'vulnerabilities': unique,
+            'summary': self._generate_summary(unique),
             'scanned_at': self._get_timestamp()
         }
     
@@ -322,7 +336,8 @@ class GraphQLScanner:
         import requests
         
         vulnerabilities = []
-        headers = headers or {}
+        errors = []
+        headers = headers.copy() if headers else {}
         headers['Content-Type'] = 'application/json'
         
         # Teste de introspection
@@ -341,7 +356,7 @@ class GraphQLScanner:
                     'endpoint': url
                 })
         except Exception as e:
-            pass
+            errors.append({'test': 'introspection', 'error': str(e)})
         
         # Teste de query profunda
         deep_query = {
@@ -350,7 +365,8 @@ class GraphQLScanner:
         
         try:
             response = requests.post(url, json=deep_query, headers=headers, timeout=10)
-            if response.status_code == 200 and 'depth' not in response.text.lower():
+            body = response.json() if response.headers.get('content-type', '').startswith('application/json') else {}
+            if response.status_code == 200 and isinstance(body, dict) and body.get('data') is not None and not body.get('errors'):
                 vulnerabilities.append({
                     'type': 'No Depth Limiting',
                     'severity': 'HIGH',
@@ -358,8 +374,8 @@ class GraphQLScanner:
                     'recommendation': 'Implemente max query depth',
                     'endpoint': url
                 })
-        except Exception:
-            pass
+        except Exception as e:
+            errors.append({'test': 'depth_limit', 'error': str(e)})
         
         # Teste de campo suggestions
         malformed_query = {
@@ -376,8 +392,8 @@ class GraphQLScanner:
                     'recommendation': 'Desabilite field suggestions',
                     'endpoint': url
                 })
-        except Exception:
-            pass
+        except Exception as e:
+            errors.append({'test': 'field_suggestions', 'error': str(e)})
         
         return {
             'endpoint': url,
@@ -389,6 +405,7 @@ class GraphQLScanner:
                 'medium': sum(1 for v in vulnerabilities if v['severity'] == 'MEDIUM'),
                 'low': sum(1 for v in vulnerabilities if v['severity'] == 'LOW')
             },
+            'errors': errors,
             'scanned_at': self._get_timestamp()
         }
     

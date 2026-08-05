@@ -23,22 +23,39 @@ import io
 class PDFReportGenerator:
     """Gerador de relatórios PDF profissionais"""
 
-    NAVY = colors.HexColor('#14213D')
-    BLUE = colors.HexColor('#2563EB')
-    SLATE = colors.HexColor('#475569')
+    NAVY = colors.HexColor('#0F172A')
+    BLUE = colors.HexColor('#1D4ED8')
+    SLATE = colors.HexColor('#334155')
     MUTED = colors.HexColor('#64748B')
     BORDER = colors.HexColor('#CBD5E1')
-    SURFACE = colors.HexColor('#F8FAFC')
+    SURFACE = colors.HexColor('#F1F5F9')
     WHITE = colors.white
     SEVERITY_COLORS = {
-        'CRITICAL': colors.HexColor('#991B1B'),
+        'CRITICAL': colors.HexColor('#B91C1C'),
         'HIGH': colors.HexColor('#C2410C'),
         'MEDIUM': colors.HexColor('#A16207'),
         'LOW': colors.HexColor('#047857'),
         'INFO': colors.HexColor('#475569'),
     }
     
-    def __init__(self):
+    def __init__(self, theme: str = 'viggio'):
+        self.dark_theme = False
+        self.PAGE_BG = colors.white
+        self.PANEL = colors.white
+        self.TOOL_BANNER = colors.HexColor('#E2E8F0')
+        # Mantém a identidade atual do Viggio e aplica uma variação escura
+        # somente aos relatórios emitidos pelas demais ferramentas.
+        if theme == 'platform':
+            self.dark_theme = True
+            self.PAGE_BG = colors.HexColor('#111827')
+            self.PANEL = colors.HexColor('#1A1D29')
+            self.NAVY = colors.HexColor('#F8FAFC')
+            self.BLUE = colors.HexColor('#667EEA')
+            self.SLATE = colors.HexColor('#E2E8F0')
+            self.MUTED = colors.HexColor('#AAB8CC')
+            self.BORDER = colors.HexColor('#3A465D')
+            self.SURFACE = colors.HexColor('#202638')
+            self.TOOL_BANNER = self.SURFACE
         self.styles = getSampleStyleSheet()
         self._setup_custom_styles()
     
@@ -97,7 +114,7 @@ class PDFReportGenerator:
             name='MonospaceBlock',
             parent=self.styles['Normal'],
             fontSize=7.2, leading=9.2,
-            textColor=colors.HexColor('#1E293B'),
+            textColor=self.SLATE,
             backColor=self.SURFACE,
             borderColor=self.BORDER, borderWidth=0.5,
             borderPadding=7,
@@ -216,11 +233,11 @@ class PDFReportGenerator:
             ('TOPPADDING', (0, 0), (-1, -1), 6),
             ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
             ('ROWBACKGROUNDS', (0, 1 if header else 0), (-1, -1),
-             [self.WHITE, self.SURFACE]),
+             [self.PANEL, self.SURFACE]),
         ]
         if header:
             commands.extend([
-                ('BACKGROUND', (0, 0), (-1, 0), self.NAVY),
+                ('BACKGROUND', (0, 0), (-1, 0), self.BLUE),
                 ('TEXTCOLOR', (0, 0), (-1, 0), self.WHITE),
                 ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
                 ('FONTSIZE', (0, 0), (-1, 0), 8),
@@ -670,7 +687,7 @@ class PDFReportGenerator:
         for tool, items in groups.items():
             banner = Table([[self._cell(tool, 'CardValue')]], colWidths=[5.7*inch])
             banner.setStyle(TableStyle([
-                ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor('#E2E8F0')),
+                ('BACKGROUND', (0, 0), (-1, -1), self.TOOL_BANNER),
                 ('LINEBEFORE', (0, 0), (0, -1), 4, self.BLUE),
                 ('LEFTPADDING', (0, 0), (-1, -1), 10),
                 ('RIGHTPADDING', (0, 0), (-1, -1), 8),
@@ -718,7 +735,7 @@ class PDFReportGenerator:
                     colWidths=[1.2*inch, 1.2*inch, 1.2*inch, 1.2*inch]
                 )
                 severity_table.setStyle(TableStyle([
-                    ('BACKGROUND', (0, 0), (-1, -1), self.WHITE),
+                    ('BACKGROUND', (0, 0), (-1, -1), self.PANEL),
                     ('GRID', (0, 0), (-1, -1), 0.35, self.BORDER),
                     ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
                     ('LEFTPADDING', (0, 0), (-1, -1), 6),
@@ -764,6 +781,9 @@ class PDFReportGenerator:
         page_num = canvas.getPageNumber()
         width, height = doc.pagesize
         canvas.saveState()
+        if self.dark_theme:
+            canvas.setFillColor(self.PAGE_BG)
+            canvas.rect(0, 0, width, height, stroke=0, fill=1)
         canvas.setStrokeColor(self.BORDER)
         canvas.setLineWidth(0.5)
         canvas.line(42, 35, width - 42, 35)
@@ -781,7 +801,8 @@ class PDFReportGenerator:
 def generate_pdf_report(scan_data: Dict[str, Any], output_path: str = None) -> bytes:
     """Gera o relatório e mantém uma saída válida mesmo com dados inesperados."""
     try:
-        generator = PDFReportGenerator()
+        theme = scan_data.get('report_theme', 'viggio') if isinstance(scan_data, dict) else 'viggio'
+        generator = PDFReportGenerator(theme=theme)
         return generator.generate_scan_report(scan_data if isinstance(scan_data, dict) else {}, output_path)
     except Exception:
         # O relatório não deve deixar de ser emitido por causa de um campo atípico

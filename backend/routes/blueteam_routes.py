@@ -8,10 +8,14 @@ from pydantic import BaseModel, validator
 from typing import List, Dict, Any
 import re
 import hashlib
+import ipaddress
 from datetime import datetime
 import secrets
 import string
 import logging
+import os
+import requests
+from urllib.parse import quote, urlsplit
 from sqlalchemy.orm import Session
 
 from auth import get_current_user
@@ -23,6 +27,168 @@ from middleware.subscription import check_subscription_status, check_tool_access
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/blueteam", tags=["Blue Team"])
+
+TI_TIMEOUT = (3.05, 10)
+
+
+def _intel_unavailable(source: str, reason: str) -> Dict[str, Any]:
+    return {"status": "not_queried", "source": source, "reason": reason}
+
+
+def _intel_not_configured(source: str, reason: str) -> Dict[str, Any]:
+    return {"status": "not_configured", "source": source, "reason": reason}
+
+
+def _query_public_intel(target: str, target_type: str) -> Dict[str, Any]:
+    """Consulta fontes públicas reais, sem tratar contexto como veredito de ameaça."""
+    try:
+        if target_type == "ip":
+            response = requests.get(
+                f"https://ipwho.is/{quote(target, safe='')}",
+                timeout=TI_TIMEOUT,
+            )
+            response.raise_for_status()
+            data = response.json()
+            if not data.get("success", False):
+                return {"status": "not_found", "source": "public_context", "reason": data.get("message", "IP não localizado")}
+            connection = data.get("connection") or {}
+            reverse_dns = None
+            try:
+                ptr_name = ipaddress.ip_address(data.get("ip")).reverse_pointer
+                ptr_response = requests.get(
+                    "https://dns.google/resolve", params={"name": ptr_name, "type": "PTR"}, timeout=TI_TIMEOUT
+                )
+                ptr_answers = ptr_response.json().get("Answer") or []
+                reverse_dns = ptr_answers[0].get("data") if ptr_answers else None
+            except (ValueError, requests.RequestException):
+                pass
+            return {
+                "status": "queried", "source": "public_context", "reputation_source": False,
+                "ip": data.get("ip"), "ip_type": data.get("type"),
+                "continent": data.get("continent"), "country": data.get("country"),
+                "country_code": data.get("country_code"), "region": data.get("region"),
+                "region_code": data.get("region_code"), "city": data.get("city"),
+                "postal": data.get("postal"), "is_eu": data.get("is_eu"),
+                "latitude": data.get("latitude"), "longitude": data.get("longitude"),
+                "isp": connection.get("isp"), "organization": connection.get("org"),
+                "asn": connection.get("asn"), "reverse_dns": reverse_dns,
+                "timezone": (data.get("timezone") or {}).get("id"),
+            }
+
+        if target_type == "hash":
+            hash_type = {32: "md5", 40: "sha1", 64: "sha256"}.get(len(target.lower()))
+            if not hash_type or not re.fullmatch(r"[0-9a-fA-F]+", target):
+                return {"status": "invalid", "source": "circl_hashlookup", "reason": "hash MD5, SHA-1 ou SHA-256 inválido"}
+            response = requests.get(
+                f"https://hashlookup.circl.lu/lookup/{hash_type}/{quote(target.lower(), safe='')}",
+                timeout=TI_TIMEOUT,
+            )
+            if response.status_code == 404:
+                return {"status": "not_found", "source": "circl_hashlookup", "hash_type": hash_type}
+            response.raise_for_status()
+            data = response.json()
+            return {
+                "status": "queried", "source": "circl_hashlookup", "reputation_source": False,
+                "hash_type": hash_type, "known_file": True,
+                "file_name": data.get("fileName"), "file_size": data.get("fileSize"),
+                "file_type": data.get("fileType"),
+            }
+
+        raw_target = target.strip()
+        # Aceita tanto https://site.tld/caminho quanto site.tld/caminho.
+        # O prefixo // faz o urlsplit tratar entradas sem esquema como URL.
+        parsed_target = urlsplit(raw_target if "://" in raw_target else f"//{raw_target}")
+        hostname = parsed_target.hostname or ""
+        hostname = hostname.strip().rstrip(".").lower()
+        if not hostname or not re.fullmatch(r"[a-z0-9][a-z0-9.:-]{0,252}", hostname):
+            return {"status": "invalid", "source": "public_context", "reason": "domínio/URL inválido"}
+        dns_records = {}
+        for record_type in ("A", "AAAA", "MX", "NS"):
+            response = requests.get(
+                "https://dns.google/resolve",
+                params={"name": hostname, "type": record_type},
+                timeout=TI_TIMEOUT,
+            )
+            response.raise_for_status()
+            answers = response.json().get("Answer") or []
+            if answers:
+                dns_records[record_type] = [answer.get("data") for answer in answers]
+        certificates = []
+        if target_type == "domain":
+            response = requests.get(
+                "https://crt.sh/", params={"q": f"%.{hostname}", "output": "json"}, timeout=TI_TIMEOUT
+            )
+            if response.ok:
+                certificate_data = response.json()
+                certificates = certificate_data[:100] if isinstance(certificate_data, list) else []
+        resolved_ips = (dns_records.get("A") or []) + (dns_records.get("AAAA") or [])
+        resolved_context = {}
+        if resolved_ips:
+            ip_response = requests.get(
+                f"https://ipwho.is/{quote(str(resolved_ips[0]), safe='')}", timeout=TI_TIMEOUT
+            )
+            if ip_response.ok:
+                ip_data = ip_response.json()
+                ip_connection = ip_data.get("connection") or {}
+                resolved_context = {
+                    "ip": ip_data.get("ip"), "continent": ip_data.get("continent"),
+                    "country": ip_data.get("country"), "country_code": ip_data.get("country_code"),
+                    "region": ip_data.get("region"), "city": ip_data.get("city"),
+                    "latitude": ip_data.get("latitude"), "longitude": ip_data.get("longitude"),
+                    "isp": ip_connection.get("isp"), "organization": ip_connection.get("org"),
+                    "asn": ip_connection.get("asn"), "timezone": (ip_data.get("timezone") or {}).get("id"),
+                }
+        return {
+            "status": "queried", "source": "public_context", "reputation_source": False,
+            "hostname": hostname, "dns_records": dns_records, "resolved_ips": resolved_ips,
+            **resolved_context,
+            "certificate_count": len(certificates),
+            "certificate_names": sorted({name.strip() for cert in certificates for name in str(cert.get("name_value", "")).splitlines() if name.strip()})[:100],
+        }
+    except (requests.RequestException, ValueError) as exc:
+        return _intel_unavailable("public_intel", f"falha da fonte pública: {exc}")
+
+
+def _query_intel(source: str, target: str, target_type: str) -> Dict[str, Any]:
+    """Query configured providers and preserve provider evidence verbatim."""
+    try:
+        if source == "virustotal":
+            key = os.getenv("VIRUSTOTAL_API_KEY")
+            if not key: return _intel_not_configured(source, "VIRUSTOTAL_API_KEY não configurada")
+            kind = "ip_addresses" if target_type == "ip" else "domains" if target_type == "domain" else "urls" if target_type == "url" else "files"
+            value = quote(target, safe="") if target_type == "url" else target
+            r = requests.get(f"https://www.virustotal.com/api/v3/{kind}/{value}", headers={"x-apikey": key}, timeout=TI_TIMEOUT)
+            if r.status_code == 404: return {"status": "not_found", "source": source}
+            r.raise_for_status()
+            attrs = r.json().get("data", {}).get("attributes", {})
+            stats = attrs.get("last_analysis_stats", {})
+            return {"status": "queried", "source": source, "detections": stats.get("malicious", 0), "total_engines": sum(stats.values()), "last_analysis": attrs.get("last_analysis_date")}
+        if source == "abuseipdb":
+            key = os.getenv("ABUSEIPDB_API_KEY")
+            if not key: return _intel_not_configured(source, "ABUSEIPDB_API_KEY não configurada")
+            if target_type != "ip": return _intel_unavailable(source, "fonte aceita apenas IP")
+            r = requests.get("https://api.abuseipdb.com/api/v2/check", params={"ipAddress": target}, headers={"Key": key, "Accept": "application/json"}, timeout=TI_TIMEOUT)
+            r.raise_for_status(); data = r.json().get("data", {})
+            return {"status": "queried", "source": source, "abuse_confidence_score": data.get("abuseConfidenceScore"), "total_reports": data.get("totalReports"), "country": data.get("countryCode")}
+        if source == "shodan":
+            key = os.getenv("SHODAN_API_KEY")
+            if not key: return _intel_not_configured(source, "SHODAN_API_KEY não configurada")
+            if target_type not in {"ip", "domain"}: return _intel_unavailable(source, "fonte aceita IP/domínio")
+            r = requests.get(f"https://api.shodan.io/host/{quote(target, safe='')}", params={"key": key}, timeout=TI_TIMEOUT)
+            if r.status_code == 404: return {"status": "not_found", "source": source}
+            r.raise_for_status(); data = r.json()
+            return {"status": "queried", "source": source, "open_ports": data.get("ports", []), "os": data.get("os"), "vulns": data.get("vulns", [])}
+        if source == "alienvault":
+            key = os.getenv("OTX_API_KEY")
+            if not key: return _intel_not_configured(source, "OTX_API_KEY não configurada")
+            section = "IPv4" if target_type == "ip" else "domain" if target_type == "domain" else "URL" if target_type == "url" else "file"
+            r = requests.get(f"https://otx.alienvault.com/api/v1/indicators/{section}/{quote(target, safe='')}/general", headers={"X-OTX-API-KEY": key}, timeout=TI_TIMEOUT)
+            if r.status_code == 404: return {"status": "not_found", "source": source}
+            r.raise_for_status(); data = r.json()
+            return {"status": "queried", "source": source, "pulses": data.get("pulse_info", {}).get("count", 0), "tags": data.get("pulse_info", {}).get("related", [])}
+    except requests.RequestException as exc:
+        return _intel_unavailable(source, f"falha do provedor: {exc}")
+    return _intel_unavailable(source, "fonte não suportada")
 
 # ==================== MODELS ====================
 
@@ -299,61 +465,67 @@ async def query_threat_intel(
             )
         logger.info(f"Threat intel query started for target: {request.target}")
         
-        # Simula resposta de threat intel
         result = {
             "target": request.target,
             "target_type": request.target_type,
-            "reputation_score": 0,
-            "is_malicious": False,
             "sources": {},
-            "details": {},
             "timestamp": datetime.now().isoformat()
         }
-        
-        # Simula dados de diferentes fontes
-        if "virustotal" in request.sources:
-            result["sources"]["virustotal"] = {
-                "detections": 2,
-                "total_engines": 70,
-                "last_analysis": "2024-12-04",
-                "categories": ["malware", "phishing"]
+        for source in request.sources:
+            result["sources"][source] = _query_intel(source, request.target, request.target_type)
+        public_intel = _query_public_intel(request.target, request.target_type)
+        result["sources"][public_intel.get("source", "public_intel")] = public_intel
+        if public_intel.get("status") == "queried":
+            result["indicator_context"] = {
+                "ip": public_intel.get("ip") or (
+                    (public_intel.get("dns_records") or {}).get("A") or [None]
+                )[0],
+                "location": {
+                    "continent": public_intel.get("continent"),
+                    "country": public_intel.get("country"),
+                    "country_code": public_intel.get("country_code"),
+                    "region": public_intel.get("region"),
+                    "city": public_intel.get("city"),
+                    "postal": public_intel.get("postal"),
+                    "latitude": public_intel.get("latitude"),
+                    "longitude": public_intel.get("longitude"),
+                    "timezone": public_intel.get("timezone"),
+                },
+                "network": {
+                    "isp": public_intel.get("isp"),
+                    "organization": public_intel.get("organization"),
+                    "asn": public_intel.get("asn"),
+                    "dns_records": public_intel.get("dns_records") or {},
+                    "reverse_dns": public_intel.get("reverse_dns"),
+                },
+                "exposure": {},
+                "certificates": {
+                    "count": public_intel.get("certificate_count", 0),
+                    "names": public_intel.get("certificate_names", []),
+                },
+                "identity": {
+                    "cpf": None,
+                    "status": "not_collected",
+                    "reason": "CPF não é inferido nem coletado a partir de indicadores técnicos.",
+                },
             }
-            result["reputation_score"] += 30
-        
-        if "abuseipdb" in request.sources and request.target_type == "ip":
-            result["sources"]["abuseipdb"] = {
-                "abuse_confidence_score": 15,
-                "total_reports": 5,
-                "last_report": "2024-11-28",
-                "country": "US"
-            }
-            result["reputation_score"] += 15
-        
-        if "shodan" in request.sources and request.target_type in ["ip", "domain"]:
-            result["sources"]["shodan"] = {
-                "open_ports": [80, 443, 22],
-                "services": ["HTTP", "HTTPS", "SSH"],
-                "vulns": ["CVE-2021-44228"],
-                "os": "Linux"
-            }
-            result["reputation_score"] += 25
-        
-        if "alienvault" in request.sources:
-            result["sources"]["alienvault"] = {
-                "pulses": 3,
-                "tags": ["botnet", "c2"],
-                "related_indicators": 12
-            }
-            result["reputation_score"] += 20
-        
-        # Determina se é malicioso
-        result["is_malicious"] = result["reputation_score"] > 50
-        
-        # Adiciona detalhes
+            shodan = result["sources"].get("shodan") or {}
+            if shodan.get("status") == "queried":
+                result["indicator_context"]["exposure"] = {
+                    "open_ports": shodan.get("open_ports") or [],
+                    "operating_system": shodan.get("os"),
+                    "vulnerabilities": shodan.get("vulns") or [],
+                }
+        queried = [v for v in result["sources"].values() if v.get("status") == "queried" and v.get("reputation_source", True)]
+        available = [v for v in result["sources"].values() if v.get("status") in {"queried", "not_found"}]
+        detections = sum(int(v.get("detections") or 0) for v in queried)
+        abuse = max((int(v.get("abuse_confidence_score") or 0) for v in queried), default=0)
+        result["reputation_score"] = min(100, max(abuse, detections * 10)) if queried else None
+        result["is_malicious"] = (result["reputation_score"] or 0) >= 50 if queried else None
         result["details"] = {
-            "risk_level": "high" if result["reputation_score"] > 70 else "medium" if result["reputation_score"] > 40 else "low",
-            "recommendation": "Block" if result["is_malicious"] else "Monitor",
-            "confidence": f"{min(result['reputation_score'], 100)}%"
+            "risk_level": "high" if result["is_malicious"] else "low" if queried else "not_classified",
+            "recommendation": "block" if result["is_malicious"] else "monitor" if queried else "review provider data",
+            "confidence": "provider evidence" if queried else "contextual data only" if available else "no provider response",
         }
         
         logger.info(f"Threat intel query completed for {request.target}")
@@ -426,30 +598,18 @@ async def analyze_ioc(
                 summary['urls'] += 1
             elif t == 'hash':
                 summary['hashes'] += 1
-            is_malicious = False
-            if t in ('domain', 'url') and re.search(r'(mal|evil|bad|phish|botnet|c2)', ind, re.IGNORECASE):
-                is_malicious = True
-            if t == 'ip' and ind.endswith('.123'):
-                is_malicious = True
-            if t == 'hash' and ind.lower().startswith('0'):
-                is_malicious = True
             details: Dict[str, Any] = {}
-            if "virustotal" in request.sources:
-                details["virustotal"] = {
-                    "detections": (abs(hash(ind)) % 10),
-                    "total_engines": 70,
-                    "last_analysis": datetime.now().strftime("%Y-%m-%d")
-                }
-            if "alienvault" in request.sources:
-                details["alienvault"] = {
-                    "pulses": (abs(hash(ind)) % 5),
-                    "tags": ["malware"] if is_malicious else []
-                }
+            for source in request.sources:
+                if t in ('ip', 'domain', 'url', 'hash'):
+                    details[source] = _query_intel(source, ind, t)
+            queried = [v for v in details.values() if v.get("status") == "queried"]
+            is_malicious = any((v.get("detections", 0) or 0) > 0 or (v.get("abuse_confidence_score", 0) or 0) >= 50 or (v.get("pulses", 0) or 0) > 0 for v in queried)
             results.append({
                 "indicator": ind,
                 "type": t,
                 "is_malicious": is_malicious,
-                "details": details
+                "details": details,
+                "evidence_status": "queried" if queried else "not_queried"
             })
         
         return {
@@ -480,6 +640,11 @@ async def analyze_hash(
         
         for hash_value in request.hashes:
             hash_value = hash_value.strip()
+            if not re.fullmatch(r"[0-9a-fA-F]+", hash_value):
+                results.append({"hash": hash_value, "type": "invalid", "is_known": False,
+                                "plaintext": None, "malware_associated": None,
+                                "evidence_status": "invalid_hash"})
+                continue
             
             # Auto-detecta tipo de hash
             hash_length = len(hash_value)
@@ -500,12 +665,12 @@ async def analyze_hash(
                 "length": hash_length,
                 "is_known": False,
                 "plaintext": None,
-                "sources_checked": ["local_db", "online_db"],
-                "malware_associated": False,
+                "sources_checked": ["local_common_hashes", "virustotal"],
+                "malware_associated": None,
                 "file_info": None
             }
             
-            # Simula busca em banco de dados
+            # Pequena base local de referência; não é apresentada como inteligência de malware.
             common_hashes = {
                 "5f4dcc3b5aa765d61d8327deb882cf99": "password",  # MD5
                 "5baa61e4c9b93f3f0682250b6cf8331b7ee68fd8": "password",  # SHA-1
@@ -515,14 +680,11 @@ async def analyze_hash(
                 result["is_known"] = True
                 result["plaintext"] = common_hashes[hash_value.lower()]
             
-            # Simula informação de malware
-            if hash_length == 32 and hash_value.startswith('a'):
-                result["malware_associated"] = True
-                result["file_info"] = {
-                    "malware_family": "Trojan.Generic",
-                    "first_seen": "2024-01-15",
-                    "threat_level": "high"
-                }
+            # No fabricated malware verdict: query VirusTotal only when configured.
+            intel = _query_intel("virustotal", hash_value, "hash")
+            result["threat_intel"] = intel
+            result["malware_associated"] = (intel.get("detections", 0) or 0) > 0 if intel.get("status") == "queried" else None
+            result["evidence_status"] = intel.get("status")
             
             results.append(result)
         
@@ -532,7 +694,7 @@ async def analyze_hash(
             "status": "completed",
             "hashes_analyzed": len(results),
             "known_hashes": sum(1 for r in results if r["is_known"]),
-            "malware_detected": sum(1 for r in results if r["malware_associated"]),
+            "malware_detected": sum(1 for r in results if r.get("malware_associated") is True),
             "results": results,
             "timestamp": datetime.now().isoformat()
         }

@@ -1284,10 +1284,12 @@ async def generate_report(
         has_summary = any(summary.values())
 
         base_html = f"""
-<div style="font-family: Arial, sans-serif;">
-<header style="margin-bottom: 16px;">
-  <h1 style="margin:0; color:#7c3aed; border-bottom:3px solid #7c3aed; padding-bottom:10px;">Relatório - {request.tool_name}</h1>
-  <div style="display:flex; gap:16px; flex-wrap:wrap; background:#f5f5f5; padding:12px; margin-top:12px; border-radius:8px;">
+<article class="generic-report-document">
+<header class="generic-report-header">
+  <div class="generic-report-brand">IRON NET <span>/ SECURITY</span></div>
+  <div class="generic-report-label">RELATÓRIO DE FERRAMENTA</div>
+  <h1>Relatório — {request.tool_name}</h1>
+  <div class="generic-report-metadata">
     <div><strong>Data:</strong> {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}</div>
     <div><strong>Analista:</strong> {request.user}</div>
     <div><strong>Ferramenta:</strong> {request.tool_name}</div>
@@ -1295,18 +1297,18 @@ async def generate_report(
 </header>
 
 {'' if not has_summary else f'''
-<section style="margin-top:8px;">
-  <h2 style="margin:0 0 8px 0; color:#333;">Resumo Rápido</h2>
-  <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap:8px;">
-    <div style="background:#ffffff; border:1px solid #ddd; border-radius:8px; padding:10px;"><div style="color:#555;">Total</div><div style="font-weight:bold; font-size:18px;">{summary['total']}</div></div>
-    <div style="background:#ffffff; border:1px solid #ddd; border-radius:8px; padding:10px;"><div style="color:#c0392b;">Críticas</div><div style="font-weight:bold; font-size:18px;">{summary['critical']}</div></div>
-    <div style="background:#ffffff; border:1px solid #ddd; border-radius:8px; padding:10px;"><div style="color:#e67e22;">Altas</div><div style="font-weight:bold; font-size:18px;">{summary['high']}</div></div>
-    <div style="background:#ffffff; border:1px solid #ddd; border-radius:8px; padding:10px;"><div style="color:#f39c12;">Médias</div><div style="font-weight:bold; font-size:18px;">{summary['medium']}</div></div>
-    <div style="background:#ffffff; border:1px solid #ddd; border-radius:8px; padding:10px;"><div style="color:#27ae60;">Baixas</div><div style="font-weight:bold; font-size:18px;">{summary['low']}</div></div>
+<section class="generic-report-section generic-report-summary-section">
+  <h2>Resumo rápido</h2>
+  <div class="generic-report-summary">
+    <div><div class="summary-label">Total</div><div class="summary-value">{summary['total']}</div></div>
+    <div class="is-critical"><div class="summary-label">Críticas</div><div class="summary-value">{summary['critical']}</div></div>
+    <div class="is-high"><div class="summary-label">Altas</div><div class="summary-value">{summary['high']}</div></div>
+    <div class="is-medium"><div class="summary-label">Médias</div><div class="summary-value">{summary['medium']}</div></div>
+    <div class="is-low"><div class="summary-label">Baixas</div><div class="summary-value">{summary['low']}</div></div>
   </div>
-  <table style="width:100%; border-collapse:collapse; margin-top:10px;">
+  <table class="generic-report-table">
     <thead>
-      <tr style="background:#7c3aed; color:#fff;">
+      <tr>
         <th style="padding:8px; text-align:left;">Severidade</th>
         <th style="padding:8px; text-align:right;">Quantidade</th>
         <th style="padding:8px; text-align:right;">Percentual</th>
@@ -1314,57 +1316,45 @@ async def generate_report(
     </thead>
     <tbody>
       <tr>
-        <td style="padding:8px;">Crítica</td>
-        <td style="padding:8px; text-align:right;">{summary['critical']}</td>
-        <td style="padding:8px; text-align:right;">{(summary['critical']/summary['total']*100) if summary['total']>0 else 0:.1f}%</td>
+        <td>Crítica</td><td>{summary['critical']}</td><td>{(summary['critical']/summary['total']*100) if summary['total']>0 else 0:.1f}%</td>
       </tr>
       <tr>
-        <td style="padding:8px;">Alta</td>
-        <td style="padding:8px; text-align:right;">{summary['high']}</td>
-        <td style="padding:8px; text-align:right;">{(summary['high']/summary['total']*100) if summary['total']>0 else 0:.1f}%</td>
+        <td>Alta</td><td>{summary['high']}</td><td>{(summary['high']/summary['total']*100) if summary['total']>0 else 0:.1f}%</td>
       </tr>
       <tr>
-        <td style="padding:8px;">Média</td>
-        <td style="padding:8px; text-align:right;">{summary['medium']}</td>
-        <td style="padding:8px; text-align:right;">{(summary['medium']/summary['total']*100) if summary['total']>0 else 0:.1f}%</td>
+        <td>Média</td><td>{summary['medium']}</td><td>{(summary['medium']/summary['total']*100) if summary['total']>0 else 0:.1f}%</td>
       </tr>
       <tr>
-        <td style="padding:8px;">Baixa</td>
-        <td style="padding:8px; text-align:right;">{summary['low']}</td>
-        <td style="padding:8px; text-align:right;">{(summary['low']/summary['total']*100) if summary['total']>0 else 0:.1f}%</td>
+        <td>Baixa</td><td>{summary['low']}</td><td>{(summary['low']/summary['total']*100) if summary['total']>0 else 0:.1f}%</td>
       </tr>
-      <tr style="background:#f5f5f5;">
-        <td style="padding:8px; font-weight:bold;">Total</td>
-        <td style="padding:8px; text-align:right; font-weight:bold;">{summary['total']}</td>
-        <td style="padding:8px; text-align:right; font-weight:bold;">100.0%</td>
+      <tr class="total-row">
+        <td>Total</td><td>{summary['total']}</td><td>100.0%</td>
       </tr>
     </tbody>
   </table>
 </section>
 '''}
 
-<section style="margin-top:16px;">
-  <h2 style="margin:0 0 8px 0; color:#333;">Dados da Execução</h2>
-  <div style="background:#fff; padding:14px; border:1px solid #ddd; border-radius:8px;">
-    <pre style="margin:0; white-space:pre-wrap; word-wrap:break-word;">{json.dumps(request.tool_data, indent=2, ensure_ascii=False)}</pre>
+<section class="generic-report-section">
+  <h2>Dados da execução</h2>
+  <div class="generic-report-code">
+    <pre>{json.dumps(request.tool_data, indent=2, ensure_ascii=False)}</pre>
   </div>
 </section>
 
-<section style="margin-top:16px;">
-  <h2 style="margin:0 0 8px 0; color:#333;">Resultados</h2>
-  <div style="background:#fff; padding:14px; border:1px solid #ddd; border-radius:8px;">
-    <pre style="margin:0; white-space:pre-wrap; word-wrap:break-word;">{json.dumps(request.result_data, indent=2, ensure_ascii=False)}</pre>
+<section class="generic-report-section">
+  <h2>Resultados</h2>
+  <div class="generic-report-code">
+    <pre>{json.dumps(request.result_data, indent=2, ensure_ascii=False)}</pre>
   </div>
 </section>
 
-<section style="margin-top:20px;">
-  <div style="padding:12px; background:#f0f0f0; border-radius:8px;">
-    <h3 style="margin:0 0 6px 0;">Observações</h3>
-    <p style="margin:0 0 4px 0;">Este relatório foi gerado automaticamente pela Iron Net.</p>
-    <p style="margin:0;">Revise os resultados cuidadosamente e tome as ações necessárias para corrigir as vulnerabilidades encontradas.</p>
-  </div>
+<section class="generic-report-note">
+    <h3>Observações</h3>
+    <p>Este relatório foi gerado automaticamente pela Iron Net.</p>
+    <p>Revise os resultados cuidadosamente e tome as ações necessárias para corrigir as vulnerabilidades encontradas.</p>
 </section>
-</div>
+</article>
 """
 
         report_html = dedent(base_html).strip()

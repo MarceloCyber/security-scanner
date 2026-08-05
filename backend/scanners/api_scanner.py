@@ -1,7 +1,7 @@
 import requests
 import json
 from typing import Dict, List
-from urllib.parse import urljoin
+from urllib.parse import urljoin, urlparse, parse_qsl
 import time
 
 class APISecurityScanner:
@@ -11,6 +11,21 @@ class APISecurityScanner:
         self.base_url = base_url
         self.headers = headers or {}
         self.results = []
+        self.errors = []
+
+    def _record_error(self, operation: str, endpoint: str, exc: Exception) -> None:
+        self.errors.append({"operation": operation, "endpoint": endpoint, "error": str(exc)})
+
+    @staticmethod
+    def _dedupe(vulnerabilities: List[Dict]) -> List[Dict]:
+        unique, seen = [], set()
+        for vuln in vulnerabilities:
+            key = tuple(str(vuln.get(k, '')).strip().lower() for k in
+                        ('type', 'endpoint', 'parameter', 'missing_header', 'origin', 'test_id', 'keyword'))
+            if key not in seen:
+                seen.add(key)
+                unique.append(vuln)
+        return unique
     
     def test_sql_injection(self, endpoint: str, params: dict) -> List[Dict]:
         """Testa injeção SQL em endpoints"""
@@ -47,7 +62,7 @@ class APISecurityScanner:
                             'description': 'Possível SQL Injection detectada através de mensagem de erro'
                         })
                 except Exception as e:
-                    pass
+                    self._record_error("sql_injection", endpoint, e)
         
         return vulnerabilities
     
@@ -68,7 +83,7 @@ class APISecurityScanner:
                     'response_code': response.status_code
                 })
         except Exception as e:
-            pass
+            self._record_error("authentication", endpoint, e)
         
         # Teste com token inválido
         try:
@@ -83,7 +98,7 @@ class APISecurityScanner:
                     'response_code': response.status_code
                 })
         except Exception as e:
-            pass
+            self._record_error("authentication_invalid_token", endpoint, e)
         
         return vulnerabilities
     
@@ -110,7 +125,7 @@ class APISecurityScanner:
                         'response_code': response.status_code
                     })
             except Exception as e:
-                pass
+                self._record_error("authorization", endpoint, e)
         
         return vulnerabilities
     
@@ -139,7 +154,7 @@ class APISecurityScanner:
                         'response_code': response.status_code
                     })
         except Exception as e:
-            pass
+            self._record_error("sensitive_data", endpoint, e)
         
         return vulnerabilities
     
@@ -168,7 +183,7 @@ class APISecurityScanner:
                     'response_code': response.status_code
                 })
         except Exception as e:
-            pass
+            self._record_error("xxe", endpoint, e)
         
         return vulnerabilities
     
@@ -199,7 +214,7 @@ class APISecurityScanner:
                         'recommendation': f'Adicione o header {header}'
                     })
         except Exception as e:
-            pass
+            self._record_error("security_headers", endpoint, e)
         
         return vulnerabilities
     
@@ -216,6 +231,7 @@ class APISecurityScanner:
                 responses.append(response.status_code)
                 time.sleep(0.01)
             except Exception as e:
+                self._record_error("rate_limiting", endpoint, e)
                 break
         
         # Se todas as requisições forem bem-sucedidas, pode não haver rate limiting
@@ -259,7 +275,7 @@ class APISecurityScanner:
                             'recommendation': 'Restrinja origens permitidas'
                         })
             except Exception as e:
-                pass
+                self._record_error("cors", endpoint, e)
         
         return vulnerabilities
     
@@ -268,7 +284,6 @@ class APISecurityScanner:
         params = params or {}
         all_vulnerabilities = []
         
-        print(f"Scanning endpoint: {endpoint}")
         
         # Executa todos os testes
         all_vulnerabilities.extend(self.test_sql_injection(endpoint, params))
@@ -280,6 +295,7 @@ class APISecurityScanner:
         all_vulnerabilities.extend(self.test_rate_limiting(endpoint))
         all_vulnerabilities.extend(self.test_cors(endpoint))
         
+        all_vulnerabilities = self._dedupe(all_vulnerabilities)
         # Estatísticas
         severity_count = {'CRITICAL': 0, 'HIGH': 0, 'MEDIUM': 0, 'LOW': 0}
         for vuln in all_vulnerabilities:
@@ -290,6 +306,7 @@ class APISecurityScanner:
             'total_vulnerabilities': len(all_vulnerabilities),
             'vulnerabilities': all_vulnerabilities,
             'severity_count': severity_count
+            , 'errors': self.errors
         }
     
     def full_scan(self, endpoints: List[str]) -> Dict:
@@ -299,7 +316,9 @@ class APISecurityScanner:
         total_severity = {'CRITICAL': 0, 'HIGH': 0, 'MEDIUM': 0, 'LOW': 0}
         
         for endpoint in endpoints:
-            result = self.scan_endpoint(endpoint)
+            parsed = urlparse(endpoint)
+            query_params = {key: value for key, value in parse_qsl(parsed.query, keep_blank_values=True)}
+            result = self.scan_endpoint(endpoint, query_params)
             all_results.append(result)
             total_vulns += result['total_vulnerabilities']
             
@@ -312,4 +331,5 @@ class APISecurityScanner:
             'severity_count': total_severity,
             'endpoint_results': all_results,
             'scan_timestamp': time.time()
+            , 'errors': self.errors
         }

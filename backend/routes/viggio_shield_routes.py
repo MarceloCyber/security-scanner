@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
+from fastapi.responses import Response
 from sqlalchemy.orm import Session
 from sqlalchemy import func, or_
 from pydantic import BaseModel, validator
@@ -12,6 +13,7 @@ from middleware.subscription import ensure_tool_access
 from scanners.port_scanner import scan_ports
 from scanners.deep_security_scanner import deep_web_scan
 from scanners.appsec_platform_scanner import run_appsec_scan, add_governance
+from scanners.pdf_generator import generate_pdf_report
 from urllib.parse import urlparse
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import asyncio
@@ -21,6 +23,7 @@ import requests
 import subprocess
 import re
 import hashlib
+import json
 from collections import defaultdict
 
 router = APIRouter(prefix="/api/viggio-shield", tags=["Viggio Shield"])
@@ -60,6 +63,40 @@ def remediation_for_incident(incident: MonitorIncident) -> str:
     if incident.incident_type == "port_scan":
         return "Restrinja portas públicas, aplique rate limiting e revise regras de firewall e registros de acesso."
     return "Revise os logs do alvo, valide a disponibilidade do serviço e aplique as correções recomendadas pela equipe responsável."
+
+
+def dedupe_findings(findings: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """Deduplica achados técnicos preservando a primeira evidência observada."""
+    unique, seen = [], set()
+    for finding in findings or []:
+        if not isinstance(finding, dict):
+            continue
+        key = tuple(str(finding.get(field, "")).strip().lower() for field in (
+            "type", "severity", "description", "port", "cwe", "owasp", "evidence", "layer", "endpoint"
+        ))
+        if key not in seen:
+            seen.add(key)
+            unique.append(finding)
+    return unique
+
+
+def incident_identity(incident: MonitorIncident) -> str:
+    extra = incident.extra_data or {}
+    stable_detail = extra.get("finding_key") or incident.title or incident.incident_type
+    return ":".join(str(value or "").strip().lower() for value in (
+        incident.target_id, incident.incident_type, stable_detail
+    ))
+
+
+def dedupe_incidents(incidents: List[MonitorIncident]) -> List[MonitorIncident]:
+    """Remove incidentes repetidos do histórico, mantendo o registro mais recente."""
+    unique = {}
+    for incident in incidents:
+        key = incident_identity(incident)
+        current = unique.get(key)
+        if current is None or (incident.detected_at or datetime.min) > (current.detected_at or datetime.min):
+            unique[key] = incident
+    return sorted(unique.values(), key=lambda item: item.detected_at or datetime.min, reverse=True)
 
 # ============= Modelos Pydantic =============
 
@@ -434,7 +471,7 @@ async def check_target_health(target: MonitorTarget) -> Dict[str, Any]:
                 deep_assessment = {"error": str(deep_error), "findings": [], "summary": {"total": 0}}
         result["metadata"]["security_scan"] = security_scan
         result["metadata"]["deep_assessment"] = deep_assessment
-        result["metadata"]["vulnerabilities"] = port_vulnerabilities + deep_vulnerabilities
+        result["metadata"]["vulnerabilities"] = dedupe_findings(port_vulnerabilities + deep_vulnerabilities)
         result["metadata"]["security_summary"] = security_scan.get("summary", {})
                 
     except requests.exceptions.Timeout:
@@ -607,7 +644,8 @@ async def run_automatic_target_check(target: MonitorTarget, db: Session) -> Dict
 @router.post("/appsec/scan")
 async def run_viggio_appsec_scan(
     request: AppSecScanRequest,
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
 ):
     """Executa um scanner real do workspace AppSec unificado do Viggio."""
     ensure_tool_access("intelligent_automation", current_user)
@@ -621,6 +659,25 @@ async def run_viggio_appsec_scan(
             request.filename or '', request.target_url or ''
         )
         result = add_governance(result, request.policy, request.filename or request.target_url or 'source')
+        findings = dedupe_findings(result.get('findings') or result.get('vulnerabilities') or [])
+        if 'findings' in result:
+            result['findings'] = findings
+        elif 'vulnerabilities' in result:
+            result['vulnerabilities'] = findings
+        db.add(MonitorLog(
+            target_id=None,
+            user_id=current_user.id,
+            log_type='appsec_scan',
+            message=f"AppSec {request.scan_type}: {len(findings)} achado(s)",
+            level='warning' if findings else 'info',
+            data={
+                'scan_type': request.scan_type,
+                'filename': request.filename,
+                'target_url': request.target_url,
+                'result': result
+            }
+        ))
+        db.commit()
         return {'success': True, 'scan_type': request.scan_type, 'result': result, 'scanned_at': datetime.utcnow()}
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
@@ -706,10 +763,11 @@ async def list_monitor_targets(
     result = []
     for target in targets:
         # Conta incidentes ativos
-        active_incidents = db.query(MonitorIncident).filter(
+        target_incidents = db.query(MonitorIncident).filter(
             MonitorIncident.target_id == target.id,
             MonitorIncident.status == "open"
-        ).count()
+        ).all()
+        active_incidents = len(dedupe_incidents(target_incidents))
         
         result.append({
             "id": target.id,
@@ -746,7 +804,9 @@ async def get_target_details(
         MonitorIncident.target_id == target_id
     ).order_by(MonitorIncident.detected_at.desc())
     details_limit = VULNERABILITY_DISPLAY_LIMITS.get(current_user.subscription_plan, 3)
-    incidents = incident_query.all() if details_limit == -1 else incident_query.limit(details_limit).all()
+    incidents = dedupe_incidents(incident_query.all())
+    if details_limit != -1:
+        incidents = incidents[:details_limit]
     
     # IPs bloqueados
     blocked_ips = db.query(BlockedIP).filter(
@@ -955,9 +1015,10 @@ async def list_incidents(
         query = query.filter(MonitorIncident.severity == severity)
     
     display_limit = VULNERABILITY_DISPLAY_LIMITS.get(current_user.subscription_plan, 3)
-    total_found = query.count()
-    ordered_query = query.order_by(MonitorIncident.detected_at.desc())
-    incidents = ordered_query.all() if display_limit == -1 else ordered_query.limit(display_limit).all()
+    incidents = dedupe_incidents(query.order_by(MonitorIncident.detected_at.desc()).all())
+    total_found = len(incidents)
+    if display_limit != -1:
+        incidents = incidents[:display_limit]
     
     return {
         "incidents": [
@@ -1161,17 +1222,15 @@ async def get_dashboard_stats(
     automation_limit = AUTOMATION_MONTHLY_LIMITS.get(current_user.subscription_plan, 2)
     
     # Incidentes abertos
-    open_incidents = db.query(MonitorIncident).filter(
+    user_incidents = db.query(MonitorIncident).filter(
         MonitorIncident.user_id == current_user.id,
-        MonitorIncident.status == "open"
-    ).count()
+    ).all()
+    unique_incidents = dedupe_incidents(user_incidents)
+    open_incidents = sum(1 for incident in unique_incidents if incident.status == "open")
     
     # Incidentes críticos
-    critical_incidents = db.query(MonitorIncident).filter(
-        MonitorIncident.user_id == current_user.id,
-        MonitorIncident.severity == "critical",
-        MonitorIncident.status == "open"
-    ).count()
+    critical_incidents = sum(1 for incident in unique_incidents
+                             if incident.severity == "critical" and incident.status == "open")
     
     # IPs bloqueados ativos
     blocked_ips_count = db.query(BlockedIP).filter(
@@ -1194,13 +1253,10 @@ async def get_dashboard_stats(
     
     # Incidentes por tipo (últimos 7 dias)
     week_ago = datetime.utcnow() - timedelta(days=7)
-    incidents_by_type = db.query(
-        MonitorIncident.incident_type,
-        func.count(MonitorIncident.id)
-    ).filter(
-        MonitorIncident.user_id == current_user.id,
-        MonitorIncident.detected_at >= week_ago
-    ).group_by(MonitorIncident.incident_type).all()
+    incidents_by_type = defaultdict(int)
+    for incident in unique_incidents:
+        if incident.detected_at and incident.detected_at >= week_ago:
+            incidents_by_type[incident.incident_type] += 1
     
     return {
         "total_targets": total_targets,
@@ -1210,5 +1266,109 @@ async def get_dashboard_stats(
         "average_uptime": round(avg_uptime, 2),
         "automations_this_month": automations_this_month,
         "automation_monthly_limit": automation_limit,
-        "incidents_by_type": {itype: count for itype, count in incidents_by_type}
+        "incidents_by_type": dict(incidents_by_type)
     }
+
+
+@router.get("/report/full")
+async def generate_viggio_full_report(
+    target_id: Optional[int] = None,
+    severity: Optional[str] = None,
+    include_resolved: bool = True,
+    include_logs: bool = True,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Gera um PDF fidedigno com o histórico operacional e técnico do Shield."""
+    target_query = db.query(MonitorTarget).filter(MonitorTarget.user_id == current_user.id)
+    if target_id is not None:
+        target_query = target_query.filter(MonitorTarget.id == target_id)
+    targets = target_query.order_by(MonitorTarget.created_at.asc()).all()
+    target_ids = {target.id for target in targets}
+
+    incident_query = db.query(MonitorIncident).filter(MonitorIncident.user_id == current_user.id)
+    if target_id is not None:
+        incident_query = incident_query.filter(MonitorIncident.target_id == target_id)
+    if not include_resolved:
+        incident_query = incident_query.filter(MonitorIncident.status.in_(['open', 'investigating']))
+    if severity:
+        incident_query = incident_query.filter(MonitorIncident.severity == severity.lower())
+    incidents = dedupe_incidents(incident_query.all())
+
+    target_names = {target.id: target.name for target in targets}
+    vulnerabilities = []
+    for incident in incidents:
+        extra = incident.extra_data or {}
+        vulnerabilities.append({
+            'type': incident.incident_type,
+            'severity': str(incident.severity or 'medium').upper(),
+            'description': incident.description or incident.title,
+            'recommendation': remediation_for_incident(incident),
+            'cves': extra.get('cves', []),
+            'cwe': extra.get('cwe'),
+            'owasp': extra.get('owasp'),
+            'cvss': extra.get('cvss'),
+            'evidence': extra.get('evidence'),
+            'layer': extra.get('layer'),
+            'target': target_names.get(incident.target_id, str(incident.target_id)),
+            'target_id': incident.target_id,
+            'status': incident.status,
+            'detected_at': incident.detected_at.isoformat() if incident.detected_at else None,
+            'resolved_at': incident.resolved_at.isoformat() if incident.resolved_at else None,
+            'incident_id': incident.id
+        })
+    vulnerabilities = dedupe_findings(vulnerabilities)
+
+    logs_query = db.query(MonitorLog).filter(MonitorLog.user_id == current_user.id)
+    if target_id is not None:
+        logs_query = logs_query.filter(MonitorLog.target_id == target_id)
+    logs = logs_query.order_by(MonitorLog.created_at.desc()).all() if include_logs else []
+    appsec_logs = [log for log in logs if log.log_type == 'appsec_scan']
+    for log in appsec_logs:
+        payload = log.data or {}
+        result = payload.get('result') or {}
+        for finding in dedupe_findings(result.get('findings') or result.get('vulnerabilities') or []):
+            item = dict(finding)
+            item.setdefault('scanner', f"Viggio AppSec/{payload.get('scan_type', 'scan')}")
+            item.setdefault('detected_at', log.created_at.isoformat() if log.created_at else None)
+            vulnerabilities.append(item)
+    vulnerabilities = dedupe_findings(vulnerabilities)
+
+    severity_count = {level: sum(1 for item in vulnerabilities if str(item.get('severity', '')).upper() == level)
+                      for level in ('CRITICAL', 'HIGH', 'MEDIUM', 'LOW')}
+    scans_details = []
+    for target in targets:
+        scans_details.append({
+            'id': target.id,
+            'tool': 'Viggio Shield Monitor',
+            'scan_type': target.target_type,
+            'target': target.target_address,
+            'created_at': target.created_at.isoformat() if target.created_at else None,
+            'total_vulnerabilities': sum(1 for item in vulnerabilities if item.get('target_id') == target.id),
+            'severity_count': {level: sum(1 for item in vulnerabilities if item.get('target_id') == target.id and str(item.get('severity', '')).upper() == level) for level in ('CRITICAL', 'HIGH', 'MEDIUM', 'LOW')},
+            'raw_excerpt': json.dumps({'name': target.name, 'checks': target.total_checks, 'failed_checks': target.failed_checks, 'uptime': target.uptime_percentage}, ensure_ascii=False)
+        })
+    if include_logs:
+        for log in logs[:5000]:
+            scans_details.append({
+                'id': f'log-{log.id}', 'tool': 'Viggio Shield Activity', 'scan_type': log.log_type,
+                'target': target_names.get(log.target_id, 'AppSec / plataforma'),
+                'created_at': log.created_at.isoformat() if log.created_at else None,
+                'total_vulnerabilities': 0, 'severity_count': {'CRITICAL': 0, 'HIGH': 0, 'MEDIUM': 0, 'LOW': 0},
+                'raw_excerpt': json.dumps(log.data or {}, ensure_ascii=False, default=str)[:3000]
+            })
+
+    scan_data = {
+        'scan_id': 'VIGGIO-FULL', 'scan_type': 'viggio_shield_full',
+        'target': 'Todos os alvos selecionados', 'created_at': datetime.utcnow().isoformat(),
+        'summary': {'total': len(vulnerabilities), **{key.lower(): value for key, value in severity_count.items()}},
+        'vulnerabilities': vulnerabilities,
+        'user_overview': {'total_scans': len(logs), 'total_vulnerabilities': len(vulnerabilities), 'severity_count': severity_count},
+        'tools_summary': [{'tool': 'Viggio Shield', 'scans': len(logs), 'vulnerabilities': len(vulnerabilities)}],
+        'scans_details': scans_details,
+        'report_options': {'target_id': target_id, 'severity': severity, 'include_resolved': include_resolved, 'include_logs': include_logs}
+    }
+    pdf_bytes = generate_pdf_report(scan_data)
+    return Response(content=pdf_bytes, media_type='application/pdf', headers={
+        'Content-Disposition': 'attachment; filename=viggio-shield-full-report.pdf'
+    })

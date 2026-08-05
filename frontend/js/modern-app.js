@@ -112,6 +112,25 @@ document.addEventListener('DOMContentLoaded', function() {
     loadDashboardStats();
     loadNotifications();
     setupNotificationsDropdown();
+    const bruteWordlistSelect = document.getElementById('bf-wordlist');
+    const bruteWordlistFile = document.getElementById('bf-wordlist-file');
+    const bruteWordlistButton = document.getElementById('bf-select-wordlist');
+    if (bruteWordlistSelect && bruteWordlistFile) {
+        bruteWordlistSelect.addEventListener('change', () => {
+            bruteWordlistFile.style.display = bruteWordlistSelect.value === 'custom' ? 'block' : 'none';
+            if (bruteWordlistButton) bruteWordlistButton.style.display = bruteWordlistSelect.value === 'custom' ? 'inline-block' : 'none';
+            if (bruteWordlistSelect.value !== 'custom') {
+                bruteWordlistFile.value = '';
+                window.bruteForceCustomWordlist = [];
+                window.bruteForceWordlistId = null;
+                const statusEl = document.getElementById('bf-wordlist-status');
+                if (statusEl) statusEl.textContent = '';
+            } else {
+                setTimeout(() => bruteWordlistFile.click(), 0);
+            }
+        });
+        if (bruteWordlistButton) bruteWordlistButton.addEventListener('click', () => bruteWordlistFile.click());
+    }
     checkSubscription();
     
 setInterval(loadNotifications, 5000);
@@ -121,14 +140,6 @@ async function checkSubscription() {
     try {
         const response = await apiRequest('/user/subscription-info');
         const plan = normalizePlan(response.subscription_plan);
-        
-        // Mostrar link admin se for administrador
-        if (response.is_admin) {
-            const adminLink = document.getElementById('adminLink');
-            if (adminLink) {
-                adminLink.style.display = 'flex';
-            }
-        }
         
         // Update Subscription Card
         const card = document.getElementById('subscriptionCard');
@@ -1050,8 +1061,9 @@ async function refreshAccessToken() {
 async function apiRequest(endpoint, options = {}) {
     const currentToken = getToken();
     
+    const isMultipart = typeof FormData !== 'undefined' && options.body instanceof FormData;
     const headers = {
-        'Content-Type': 'application/json',
+        ...(isMultipart ? {} : { 'Content-Type': 'application/json' }),
         ...options.headers
     };
 
@@ -2812,7 +2824,7 @@ async function showFullReportPreview() {
         } catch (_) {}
 
         // Build HTML with dashboard card aesthetics
-        let html = `<div style="font-family: inherit; color: var(--text);">
+        let html = `<div class="platform-full-report-preview">
             <header style="margin-bottom: 16px;">
               <h1 style="margin:0; color: var(--text); border-bottom:3px solid var(--primary); padding-bottom:10px;">Relatório Completo - Visualização</h1>
               <div style="display:flex; gap:16px; flex-wrap:wrap; background: var(--bg-tertiary); color: var(--text); padding:12px; margin-top:12px; border-radius: var(--border-radius); border: 1px solid var(--border);">
@@ -2975,7 +2987,7 @@ function createReportPreviewModal(reportHtml, toolName) {
                         <i class="fas fa-copy"></i> Copiar HTML
                     </button>
                 </div>
-                <div id="report-content" class="report-preview${isXSSReport ? ' xss-report-preview' : ''}${isSQLiReport ? ' sqli-report-preview' : ''}" data-report-kind="${reportKind}" style="background: ${isXSSReport || isSQLiReport ? '#ffffff' : 'var(--bg-secondary)'}; color: ${isXSSReport || isSQLiReport ? '#172033' : 'var(--text)'}; padding: ${isXSSReport || isSQLiReport ? '0' : '25px'}; border-radius: var(--border-radius); border: 1px solid var(--border);">
+                <div id="report-content" class="report-preview${isXSSReport ? ' xss-report-preview' : ''}${isSQLiReport ? ' sqli-report-preview' : ''} generic-report-preview" data-report-kind="${reportKind}">
                     ${reportHtml}
                 </div>
             </div>
@@ -3801,6 +3813,13 @@ async function startBruteForce() {
     showLoading();
     
     try {
+        let customWordlist = [];
+        let wordlistId = null;
+        if (wordlist === 'custom') {
+            customWordlist = window.bruteForceCustomWordlist || [];
+            wordlistId = window.bruteForceWordlistId || null;
+            if (!wordlistId && !customWordlist.length) throw new Error('Selecione uma wordlist válida antes de iniciar');
+        }
         const response = await apiRequest('/redteam/bruteforce/start', {
             method: 'POST',
             body: JSON.stringify({
@@ -3808,7 +3827,9 @@ async function startBruteForce() {
                 user_field: userField,
                 pass_field: passField,
                 userlist,
-                wordlist
+                wordlist,
+                custom_wordlist: customWordlist,
+                wordlist_id: wordlistId
             })
         });
         
@@ -3838,10 +3859,25 @@ async function startBruteForce() {
                 ${response.credentials_found.map(cred => `
                     <div class="alert alert-success">
                         <i class="fas fa-check-circle"></i>
-                        <strong>Username:</strong> ${cred.username} | <strong>Password:</strong> ${cred.password}
+                        <strong>Username:</strong> ${escapeHtml(cred.username)} |
+                        <strong>Password:</strong> ${escapeHtml(cred.password || '')} |
+                        <strong>Resultado:</strong> Positivo
                     </div>
                 `).join('')}
-            ` : '<p class="text-muted">Nenhuma credencial encontrada</p>'}
+            ` : '<div class="alert alert-info"><i class="fas fa-times-circle"></i> Resultado: nenhuma credencial válida encontrada.</div>'}
+            <p class="text-muted">Tentativas positivas: ${response.successful_attempts || 0} | Negativas: ${response.failed_attempts || 0} | Erros: ${response.request_errors || 0}</p>
+            <div style="overflow:auto; max-height:420px; margin-top:12px;">
+                <table class="table">
+                    <thead><tr><th>Username</th><th>Password</th><th>Status</th><th>HTTP</th></tr></thead>
+                    <tbody>${(response.attempts || []).map(attempt => `
+                        <tr>
+                            <td>${escapeHtml(attempt.username || '')}</td>
+                            <td>${escapeHtml(attempt.password || '')}</td>
+                            <td style="color:${attempt.positive ? '#16a34a' : attempt.status === 'error' ? '#dc2626' : '#6b7280'};font-weight:600;">${attempt.positive ? 'POSITIVO' : attempt.status === 'error' ? 'ERRO' : 'NEGATIVO'}</td>
+                            <td>${escapeHtml(String(attempt.status_code || '-'))}</td>
+                        </tr>`).join('')}</tbody>
+                </table>
+            </div>
         `;
         
         document.getElementById('bf-results').innerHTML = resultsHtml;
@@ -3853,7 +3889,33 @@ async function startBruteForce() {
         showToast('Brute force concluído', 'success');
     } catch (error) {
         hideLoading();
-        showToast('Erro no brute force', 'error');
+        showToast(error.message || 'Erro no brute force', 'error');
+    }
+}
+
+async function uploadBruteForceWordlist() {
+    const file = document.getElementById('bf-wordlist-file')?.files?.[0];
+    const statusEl = document.getElementById('bf-wordlist-status');
+    if (!file) return;
+    if (statusEl) statusEl.textContent = 'Validando wordlist...';
+    try {
+        const formData = new FormData();
+        formData.append('file', file, file.name);
+        const uploaded = await apiRequest('/redteam/bruteforce/wordlist', {
+            method: 'POST',
+            body: formData
+        });
+        window.bruteForceCustomWordlist = [];
+        window.bruteForceWordlistId = uploaded.wordlist_id || null;
+        if (statusEl) statusEl.textContent = `${uploaded.count} entradas validadas: ${uploaded.filename}`;
+        showToast('Wordlist carregada com sucesso', 'success');
+    } catch (error) {
+        window.bruteForceCustomWordlist = [];
+        window.bruteForceWordlistId = null;
+        if (statusEl) statusEl.textContent = 'Falha ao carregar a wordlist';
+        const input = document.getElementById('bf-wordlist-file');
+        if (input) input.value = '';
+        showToast(error.message || 'Falha ao carregar a wordlist', 'error');
     }
 }
 
@@ -4196,23 +4258,55 @@ async function queryThreatIntel() {
             })
         });
         
-        document.getElementById('threat-score').textContent = `Score: ${response.reputation_score}`;
-        document.getElementById('threat-score').className = `badge badge-${response.is_malicious ? 'danger' : 'success'}`;
+        const hasVerdict = response.reputation_score !== null && response.reputation_score !== undefined;
+        const verdictClass = response.is_malicious ? 'danger' : hasVerdict ? 'success' : 'warning';
+        document.getElementById('threat-score').textContent = hasVerdict ? `Score: ${response.reputation_score}` : 'Sem score';
+        document.getElementById('threat-score').className = `badge badge-${verdictClass}`;
+        const verdictTitle = response.is_malicious ? 'AMEAÇA DETECTADA' : hasVerdict ? 'Nenhuma ameaça conhecida' : 'DADOS CONSULTADOS';
+        const verdictIcon = response.is_malicious ? 'skull-crossbones' : hasVerdict ? 'check-circle' : 'database';
+        const verdictAlert = response.is_malicious ? 'danger' : hasVerdict ? 'success' : 'warning';
         
+        const visibleSources = Object.entries(response.sources || {}).filter(([, data]) => !['not_configured', 'not_queried'].includes(data.status));
+        const skippedSources = Object.entries(response.sources || {}).filter(([, data]) => data.status === 'not_configured').map(([source]) => source.toUpperCase());
+        const unavailableSources = Object.entries(response.sources || {}).filter(([, data]) => data.status === 'not_queried').map(([source]) => source.toUpperCase());
+        const context = response.indicator_context || {};
+        const location = context.location || {};
+        const network = context.network || {};
+        const exposure = context.exposure || {};
+        const contextHtml = response.indicator_context ? `
+            <div class="card" style="margin-bottom: 20px;">
+                <div class="card-header"><h3><i class="fas fa-location-dot"></i> Contexto do indicador</h3></div>
+                <div class="card-body">
+                    <p><strong>IP:</strong> ${context.ip || 'Não identificado'}</p>
+                    <p><strong>Localização:</strong> ${[location.city, location.region, location.country].filter(Boolean).join(' — ') || 'Não disponível'}</p>
+                    <p><strong>Coordenadas:</strong> ${location.latitude != null && location.longitude != null ? `${location.latitude}, ${location.longitude}` : 'Não disponíveis'}</p>
+                    <p><strong>ISP / Organização:</strong> ${network.isp || network.organization || 'Não disponível'}</p>
+                    <p><strong>ASN:</strong> ${network.asn || 'Não disponível'}</p>
+                    <p><strong>Reverse DNS:</strong> ${network.reverse_dns || 'Não disponível'}</p>
+                    <p><strong>CPF relacionado:</strong> Não coletado — não é possível inferir CPF com segurança a partir de um indicador técnico.</p>
+                    <p><strong>Certificados associados:</strong> ${context.certificates?.count || 0}</p>
+                    ${exposure.open_ports ? `<p><strong>Portas expostas:</strong> ${exposure.open_ports.length ? exposure.open_ports.join(', ') : 'Nenhuma informada'}</p>` : ''}
+                    ${exposure.operating_system ? `<p><strong>Sistema operacional:</strong> ${exposure.operating_system}</p>` : ''}
+                    ${exposure.vulnerabilities ? `<p><strong>CVEs/vulnerabilidades:</strong> ${exposure.vulnerabilities.length ? exposure.vulnerabilities.join(', ') : 'Nenhuma informada'}</p>` : ''}
+                </div>
+            </div>` : '';
         const resultsHtml = `
-            <div class="alert alert-${response.is_malicious ? 'danger' : 'success'}">
-                <i class="fas fa-${response.is_malicious ? 'skull-crossbones' : 'check-circle'}"></i>
-                <strong>${response.is_malicious ? 'AMEAÇA DETECTADA' : 'Sem ameaças conhecidas'}</strong>
+            <div class="alert alert-${verdictAlert}">
+                <i class="fas fa-${verdictIcon}"></i>
+                <strong>${verdictTitle}</strong>
             </div>
             <div class="card" style="margin-bottom: 20px;">
                 <div class="card-header"><h3>Detalhes</h3></div>
                 <div class="card-body">
-                    <p><strong>Nível de Risco:</strong> <span class="badge badge-${response.details.risk_level === 'high' ? 'danger' : response.details.risk_level === 'medium' ? 'warning' : 'success'}">${response.details.risk_level.toUpperCase()}</span></p>
+                    <p><strong>Nível de Risco:</strong> <span class="badge badge-${response.details.risk_level === 'high' ? 'danger' : response.details.risk_level === 'not_classified' ? 'warning' : 'success'}">${response.details.risk_level.toUpperCase()}</span></p>
                     <p><strong>Recomendação:</strong> ${response.details.recommendation}</p>
                     <p><strong>Confiança:</strong> ${response.details.confidence}</p>
                 </div>
             </div>
-            ${Object.entries(response.sources).map(([source, data]) => `
+            ${contextHtml}
+            ${skippedSources.length ? `<div class="alert alert-info"><i class="fas fa-info-circle"></i> Fontes com credencial não configurada foram omitidas: ${skippedSources.join(', ')}.</div>` : ''}
+            ${unavailableSources.length ? `<div class="alert alert-warning"><i class="fas fa-triangle-exclamation"></i> Fonte pública temporariamente indisponível: ${unavailableSources.join(', ')}.</div>` : ''}
+            ${visibleSources.map(([source, data]) => `
                 <div class="card" style="margin-bottom: 15px;">
                     <div class="card-header">
                         <h3><i class="fas fa-database"></i> ${source.toUpperCase()}</h3>

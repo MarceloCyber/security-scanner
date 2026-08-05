@@ -27,6 +27,24 @@ from routes.tools_routes import list_phishing_captures, list_generated_pages
 router = APIRouter()
 
 
+def _dedupe_findings(findings: List[dict]) -> List[dict]:
+    """Remove repeated findings while preserving the first observed evidence."""
+    unique = []
+    seen = set()
+    identity_fields = (
+        "type", "severity", "description", "endpoint", "parameter",
+        "file", "line", "port", "code", "package", "cve"
+    )
+    for finding in findings:
+        if not isinstance(finding, dict):
+            continue
+        key = tuple(str(finding.get(field, "")).strip().lower() for field in identity_fields)
+        if key not in seen:
+            seen.add(key)
+            unique.append(finding)
+    return unique
+
+
 # ========== DEPENDENCY SCANNING ==========
 
 class DependencyScanRequest(BaseModel):
@@ -334,7 +352,7 @@ async def generate_report_endpoint(
                 vulns = list(vulns.values())
             if not isinstance(vulns, list):
                 return []
-            return [v for v in vulns if isinstance(v, dict)]
+            return _dedupe_findings([v for v in vulns if isinstance(v, dict)])
 
         def extract_summary(res: dict) -> dict:
             def to_int(x):
@@ -378,6 +396,7 @@ async def generate_report_endpoint(
             "scan_id": scan.id,
             "scan_type": scan.scan_type,
             "target": scan.target,
+            "report_theme": "platform",
             "created_at": scan.created_at.isoformat(),
             "summary": selected_summary,
             "vulnerabilities": selected_vulns
@@ -553,7 +572,7 @@ async def generate_full_report(
                 vulns = list(vulns.values())
             if not isinstance(vulns, list):
                 return []
-            return [v for v in vulns if isinstance(v, dict)]
+            return _dedupe_findings([v for v in vulns if isinstance(v, dict)])
 
         def extract_summary(res: dict) -> dict:
             def to_int(x):
@@ -713,6 +732,14 @@ async def generate_full_report(
                 'raw_excerpt': raw_excerpt
             })
 
+        consolidated_vulnerabilities = _dedupe_findings(consolidated_vulnerabilities)
+        agg_sc = {
+            'CRITICAL': sum(1 for item in consolidated_vulnerabilities if str(item.get('severity', '')).upper() == 'CRITICAL'),
+            'HIGH': sum(1 for item in consolidated_vulnerabilities if str(item.get('severity', '')).upper() == 'HIGH'),
+            'MEDIUM': sum(1 for item in consolidated_vulnerabilities if str(item.get('severity', '')).upper() == 'MEDIUM'),
+            'LOW': sum(1 for item in consolidated_vulnerabilities if str(item.get('severity', '')).upper() == 'LOW')
+        }
+        agg_total = len(consolidated_vulnerabilities)
         overall_summary = {
             'total': agg_total,
             'critical': agg_sc['CRITICAL'],
@@ -725,6 +752,7 @@ async def generate_full_report(
             'scan_id': 'ALL',
             'scan_type': 'full',
             'target': 'Todos',
+            'report_theme': 'platform',
             'created_at': datetime.utcnow().isoformat(),
             'summary': overall_summary,
             'vulnerabilities': consolidated_vulnerabilities,

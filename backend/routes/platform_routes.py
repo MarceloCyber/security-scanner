@@ -12,6 +12,7 @@ from models.saas import Asset, AuditLog, Finding, Integration, Organization, Rem
 from middleware.subscription import check_subscription_status, normalize_subscription_plan
 from risk.engine import organization_security_score
 from services.audit_service import record_audit
+from services.ai_action_service import transition_remediation_task
 from services.tenant import TenantContext, get_tenant_context, require_roles
 
 router = APIRouter()
@@ -91,11 +92,18 @@ def update_task_status(task_id: int, payload: TaskStatusUpdate, request: Request
     task = db.query(RemediationTask).filter(RemediationTask.id == task_id, RemediationTask.organization_id == context.organization.id).first()
     if not task:
         raise HTTPException(status_code=404, detail="Remediation task not found")
-    task.status = payload.status
-    task.completed_at = datetime.utcnow() if payload.status == "completed" else None
-    record_audit(db, context, "remediation_status_changed", "remediation_task", task.id, request, {"status": payload.status})
+    try:
+        previous, finding = transition_remediation_task(db, task, payload.status)
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc))
+    record_audit(db, context, "remediation_status_changed", "remediation_task", task.id, request, {
+        "from": previous,
+        "to": task.status,
+        "finding_id": task.finding_id,
+        "finding_status": finding.status if finding else None,
+    })
     db.commit()
-    return {"id": task.id, "status": task.status}
+    return {"id": task.id, "status": task.status, "finding_id": task.finding_id, "finding_status": finding.status if finding else None}
 
 
 @router.patch("/organization")

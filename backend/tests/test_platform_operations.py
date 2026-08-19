@@ -12,7 +12,7 @@ from models.saas import (
     OrganizationMember, RemediationTask, SecurityEvent, SecuritySensor, SSOLoginState,
 )
 from models.user import User
-from services.ai_action_service import execute_action, propose_action
+from services.ai_action_service import execute_action, propose_action, transition_remediation_task
 from services.credential_vault import CredentialVault
 from services.job_service import claim_next_job, enqueue_job
 from services.pipeline_service import consolidate_findings, evaluate_gate, normalize_findings, normalize_sarif
@@ -33,7 +33,9 @@ from routes.security_monitoring_routes import SensorContext, TelemetryBatch, Tel
 from scripts.iron_ai_sensor import aggregate as aggregate_nginx_logs, parse_line as parse_nginx_line
 from middleware.subscription import CANCELLATION_WINDOW_DAYS, sync_owned_organization_plans
 from routes import payment_routes
+from routes.ai_action_routes import approve_action, reject_action, run_action
 from services.plan_policy import PLAN_POLICY, access_end_for_plan, is_plan_expired
+from services.tenant import TenantContext
 
 
 def _database():
@@ -287,6 +289,64 @@ def test_ai_action_requires_human_approval():
     task = execute_action(db, action)
     assert task.finding_id == finding.id
     assert action.status == "executed"
+
+
+def test_ai_action_http_handlers_persist_rejection_approval_and_execution():
+    db, user, organization, finding = _database()
+    membership = db.query(OrganizationMember).filter_by(organization_id=organization.id, user_id=user.id).one()
+    context = TenantContext(user=user, organization=organization, membership=membership)
+    request = Request({"type": "http", "method": "POST", "path": "/", "headers": [], "client": ("127.0.0.1", 12345)})
+
+    rejected = propose_action(db, organization.id, user.id, "create_remediation_task", {"finding_id": finding.id})
+    db.commit()
+    rejection = reject_action(rejected.id, request, context, db)
+    assert rejection["status"] == "rejected"
+    db.refresh(rejected)
+    assert rejected.status == "rejected"
+
+    approved = propose_action(db, organization.id, user.id, "create_remediation_task", {"finding_id": finding.id})
+    db.commit()
+    approval = approve_action(approved.id, request, context, db)
+    assert approval["status"] == "approved"
+    execution = run_action(approved.id, request, context, db)
+    assert execution["status"] == "executed"
+    task = db.query(RemediationTask).filter_by(id=execution["remediation_task_id"]).one()
+    assert task.finding_id == finding.id and task.status == "open"
+
+
+def test_ai_action_prevents_duplicate_open_work_for_same_finding():
+    db, user, organization, finding = _database()
+    propose_action(db, organization.id, user.id, "create_remediation_task", {"finding_id": finding.id})
+    try:
+        propose_action(db, organization.id, user.id, "create_remediation_task", {"finding_id": finding.id})
+    except ValueError as exc:
+        assert "aguardando decisão" in str(exc)
+    else:
+        raise AssertionError("duplicate pending action must be rejected")
+
+
+def test_remediation_task_lifecycle_updates_linked_finding():
+    db, user, organization, finding = _database()
+    task = RemediationTask(
+        organization_id=organization.id,
+        finding_id=finding.id,
+        title="Corrigir API pública",
+        priority="critical",
+        status="open",
+    )
+    db.add(task)
+    db.flush()
+    previous, changed_finding = transition_remediation_task(db, task, "in_progress")
+    assert previous == "open" and task.status == "in_progress"
+    previous, changed_finding = transition_remediation_task(db, task, "completed")
+    assert previous == "in_progress" and task.completed_at is not None
+    assert changed_finding.id == finding.id and finding.status == "resolved" and finding.resolved_at is not None
+    previous, changed_finding = transition_remediation_task(db, task, "in_progress")
+    assert previous == "completed" and finding.status == "in_progress" and finding.resolved_at is None
+    try:
+        transition_remediation_task(db, task, "completed")
+    except ValueError:
+        raise AssertionError("in-progress task should be completable")
 
 
 def test_durable_job_is_claimed_once():

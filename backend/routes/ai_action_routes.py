@@ -19,8 +19,9 @@ class ActionProposal(BaseModel):
     priority: str = Field(default="", max_length=20)
 
 
-def _get_action(db: Session, context: TenantContext, action_id: int) -> AIAction:
-    action = db.query(AIAction).filter(AIAction.id == action_id, AIAction.organization_id == context.organization.id).first()
+def _get_action(db: Session, context: TenantContext, action_id: int, lock: bool = False) -> AIAction:
+    query = db.query(AIAction).filter(AIAction.id == action_id, AIAction.organization_id == context.organization.id)
+    action = (query.with_for_update() if lock else query).first()
     if not action:
         raise HTTPException(status_code=404, detail="AI action not found")
     return action
@@ -40,12 +41,12 @@ def create_action(payload: ActionProposal, request: Request, context: TenantCont
 @router.get("/ai/actions")
 def list_actions(context: TenantContext = Depends(get_tenant_context), db: Session = Depends(get_db)):
     actions = db.query(AIAction).filter(AIAction.organization_id == context.organization.id).order_by(AIAction.created_at.desc()).limit(100).all()
-    return {"actions": [{"id": action.id, "action_type": action.action_type, "status": action.status, "requires_approval": action.requires_approval, "payload": action.payload, "created_at": action.created_at.isoformat()} for action in actions]}
+    return {"actions": [{"id": action.id, "action_type": action.action_type, "status": action.status, "requires_approval": action.requires_approval, "payload": action.payload, "approved_by": action.approved_by, "executed_at": action.executed_at.isoformat() if action.executed_at else None, "created_at": action.created_at.isoformat()} for action in actions]}
 
 
 @router.post("/ai/actions/{action_id}/approve")
 def approve_action(action_id: int, request: Request, context: TenantContext = Depends(require_roles("owner", "admin")), db: Session = Depends(get_db)):
-    action = _get_action(db, context, action_id)
+    action = _get_action(db, context, action_id, lock=True)
     if action.status != "proposed":
         raise HTTPException(status_code=409, detail="Only proposed actions can be approved")
     action.status = "approved"
@@ -57,7 +58,7 @@ def approve_action(action_id: int, request: Request, context: TenantContext = De
 
 @router.post("/ai/actions/{action_id}/reject")
 def reject_action(action_id: int, request: Request, context: TenantContext = Depends(require_roles("owner", "admin")), db: Session = Depends(get_db)):
-    action = _get_action(db, context, action_id)
+    action = _get_action(db, context, action_id, lock=True)
     if action.status not in {"proposed", "approved"}:
         raise HTTPException(status_code=409, detail="Action cannot be rejected")
     action.status = "rejected"
@@ -68,7 +69,7 @@ def reject_action(action_id: int, request: Request, context: TenantContext = Dep
 
 @router.post("/ai/actions/{action_id}/execute")
 def run_action(action_id: int, request: Request, context: TenantContext = Depends(require_roles("owner", "admin")), db: Session = Depends(get_db)):
-    action = _get_action(db, context, action_id)
+    action = _get_action(db, context, action_id, lock=True)
     try:
         task = execute_action(db, action)
     except ValueError as exc:

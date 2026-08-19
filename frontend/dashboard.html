@@ -353,7 +353,7 @@
                     <div class="card-body"><div id="posture-score" style="font-size:3rem;font-weight:700;color:#68d391;">—</div><p class="text-muted">Calculado pelo Risk Engine com dados persistidos.</p></div>
                 </div>
                 <div class="card">
-                    <div class="card-header"><h2>Riscos prioritários</h2><button class="btn-sm" onclick="loadSecurityOverview()">Atualizar</button></div>
+                    <div class="card-header"><h2>Riscos prioritários</h2><button class="btn-sm" onclick="runWithButtonLoading(this, loadSecurityOverview)">Atualizar</button></div>
                     <div class="card-body"><div id="posture-top-risks"><p class="text-muted">Carregando riscos...</p></div></div>
                 </div>
                 <div class="card card-full">
@@ -459,7 +459,7 @@
                     </div>
                 </div>
                 <div class="card">
-                    <div class="card-header"><h2>Scans programados</h2><button class="btn-sm" onclick="loadAutomationData()"><i class="fas fa-rotate"></i> Atualizar</button></div>
+                    <div class="card-header"><h2>Scans programados</h2><button class="btn-sm" onclick="runWithButtonLoading(this, loadAutomationData)"><i class="fas fa-rotate"></i> Atualizar</button></div>
                     <div class="card-body"><div id="automation-list" class="automation-list"><p class="text-muted">Carregando automações...</p></div></div>
                 </div>
                 <div class="card card-full">
@@ -547,7 +547,7 @@
                             <button class="btn-sm" onclick="clearAllPhishingPages()" style="background: #dc3545; margin-right: 5px;" title="Apagar todos os links">
                                 <i class="fas fa-trash-alt"></i> Limpar Tudo
                             </button>
-                            <button class="btn-sm" onclick="loadPhishingPages()" title="Atualizar lista">
+                            <button class="btn-sm" onclick="runWithButtonLoading(this, loadPhishingPages)" title="Atualizar lista">
                                 <i class="fas fa-sync"></i>
                             </button>
                         </div>
@@ -1093,7 +1093,7 @@
                 <div class="card card-full">
                     <div class="card-header">
                         <h2>Scans Disponíveis</h2>
-                        <button class="btn-sm" onclick="loadAvailableScans()">
+                        <button class="btn-sm" onclick="runWithButtonLoading(this, loadAvailableScans)">
                             <i class="fas fa-sync"></i>
                             Atualizar
                         </button>
@@ -1798,7 +1798,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.9.2/html2pdf.bundle.min.js" integrity="sha512-pdCVFUWsxl1A4g0uV6fyJ3nrnTGeWnZN2Tl/56j45UvZ1OMdm9CIbctuIHj+yBIRTUUyv6I9+OivXj4i0LPEYA==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
     <script src="js/confirm-dialog.js?v=1.1"></script>
     <script src="js/ui-feedback.js?v=1.0"></script>
-    <script src="js/modern-app.js?v=8.3"></script>
+    <script src="js/modern-app.js?v=8.4"></script>
     <script>
         (function(){
             if (localStorage.getItem('cookie_consent') === 'accepted') return;

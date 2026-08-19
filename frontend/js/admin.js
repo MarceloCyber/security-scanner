@@ -126,7 +126,8 @@ function initNavigation() {
     });
 }
 
-async function loadAccessKeys() {
+async function loadAccessKeys(button = null) {
+    setButtonBusy(button, true);
     try {
         const response = await fetchAPI('/api/admin/access-keys');
         const data = await response.json();
@@ -144,6 +145,8 @@ async function loadAccessKeys() {
             </tr>`).join('') : '<tr><td colspan="6" class="loading-cell">Nenhuma chave emitida</td></tr>';
     } catch (error) {
         showToast('Erro ao carregar chaves de usuários', 'error');
+    } finally {
+        setButtonBusy(button, false);
     }
 }
 
@@ -170,7 +173,8 @@ function toggleSidebar() {
 }
 
 // ============ Dashboard ============
-async function loadDashboard() {
+async function loadDashboard(button = null) {
+    setButtonBusy(button, true);
     try {
         const response = await fetchAPI('/api/admin/stats');
         const data = await response.json();
@@ -233,6 +237,8 @@ async function loadDashboard() {
     } catch (error) {
         console.error('Erro ao carregar dashboard:', error);
         showToast('Erro ao carregar estatísticas', 'error');
+    } finally {
+        setButtonBusy(button, false);
     }
 }
 
@@ -259,7 +265,8 @@ function updatePlanStats(plans) {
 }
 
 // ============ Usuários ============
-async function loadUsers(page = 1) {
+async function loadUsers(page = 1, button = null) {
+    setButtonBusy(button, true);
     try {
         const params = new URLSearchParams({
             page: page,
@@ -277,6 +284,8 @@ async function loadUsers(page = 1) {
     } catch (error) {
         console.error('Erro ao carregar usuários:', error);
         showToast('Erro ao carregar usuários', 'error');
+    } finally {
+        setButtonBusy(button, false);
     }
 }
 
@@ -571,7 +580,8 @@ async function resetUserScans(userId) {
 }
 
 // ============ Atividades ============
-async function loadActivity() {
+async function loadActivity(button = null) {
+    setButtonBusy(button, true);
     try {
         const response = await fetchAPI('/api/admin/activity');
         const data = await response.json();
@@ -609,7 +619,7 @@ async function loadActivity() {
                             <span class="agh-count">${count} atividades</span>
                         </div>
                         <div class="agh-right">
-                            <button class="btn-refresh" onclick="loadActivity()"><i class="fas fa-sync-alt"></i> Atualizar</button>
+                            <button class="btn-refresh" onclick="loadActivity(this)"><i class="fas fa-sync-alt"></i> Atualizar</button>
                             <button class="btn-danger" onclick="clearActivity()"><i class="fas fa-trash"></i> Apagar histórico</button>
                         </div>
                     </div>
@@ -624,6 +634,8 @@ async function loadActivity() {
         const activityList = document.getElementById('activityList');
         if (activityList) activityList.innerHTML = '<div class="loading-state">Erro ao carregar atividades</div>';
         showToast('Erro ao carregar atividades', 'error');
+    } finally {
+        setButtonBusy(button, false);
     }
 }
 
@@ -648,7 +660,8 @@ async function clearActivity() {
 window.clearActivity = clearActivity;
 
 // ============ Sistema ============
-async function loadSystemInfo() {
+async function loadSystemInfo(button = null) {
+    setButtonBusy(button, true);
     try {
         const response = await fetchAPI('/api/admin/system');
         const data = await response.json();
@@ -691,6 +704,8 @@ async function loadSystemInfo() {
     } catch (error) {
         console.error('Erro ao carregar informações do sistema:', error);
         showToast('Erro ao carregar informações do sistema', 'error');
+    } finally {
+        setButtonBusy(button, false);
     }
 }
 
@@ -727,6 +742,23 @@ function closeModal(modalId) {
 }
 
 // ============ Utilitários ============
+function setButtonBusy(button, busy, label = 'Atualizando...') {
+    if (!button) return;
+    if (busy) {
+        if (!button.dataset.originalHtml) button.dataset.originalHtml = button.innerHTML;
+        button.disabled = true;
+        button.setAttribute('aria-busy', 'true');
+        button.innerHTML = `<i class="fas fa-spinner fa-spin"></i> ${label}`;
+    } else {
+        button.disabled = false;
+        button.removeAttribute('aria-busy');
+        if (button.dataset.originalHtml) {
+            button.innerHTML = button.dataset.originalHtml;
+            delete button.dataset.originalHtml;
+        }
+    }
+}
+
 let __rl_active = 0;
 const __rl_queue = [];
 const __rl_max = 1;
@@ -938,10 +970,11 @@ function renderPaymentsState(icon, title, message, state = 'empty') {
     `;
 }
 
-async function loadPayments() {
+async function loadPayments(button = null) {
     const tbody = document.getElementById('paymentsTableBody');
     if (!tbody) return;
 
+    setButtonBusy(button, true);
     renderPaymentsState('spinner fa-spin', 'Carregando pagamentos', 'Aguarde enquanto consultamos as sessões de checkout.', 'loading');
 
     try {
@@ -1002,6 +1035,8 @@ async function loadPayments() {
             'Não foi possível consultar o provedor agora. Use o botão Atualizar para tentar novamente.',
             'unavailable'
         );
+    } finally {
+        setButtonBusy(button, false);
     }
 }
 
@@ -1027,7 +1062,8 @@ async function clearPayments() {
 
 window.clearPayments = clearPayments;
 
-async function loadCancelled(page = 1) {
+async function loadCancelled(page = 1, button = null) {
+    setButtonBusy(button, true);
     try {
         const response = await fetchAPI(`/api/admin/users?page=${page}&limit=200`);
         const data = await response.json();
@@ -1050,5 +1086,7 @@ async function loadCancelled(page = 1) {
         const tbody = document.getElementById('cancelledTableBody');
         if (tbody) tbody.innerHTML = '<tr><td colspan="6" class="loading-cell">Erro ao carregar cancelados</td></tr>';
         showToast('Erro ao carregar cancelados', 'error');
+    } finally {
+        setButtonBusy(button, false);
     }
 }

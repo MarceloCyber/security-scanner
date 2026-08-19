@@ -83,7 +83,7 @@
                 <div class="page-header">
                     <h2>Dashboard</h2>
                     <div class="page-actions">
-                        <button class="btn-refresh" onclick="loadDashboard()">
+                        <button class="btn-refresh" onclick="loadDashboard(this)">
                             <i class="fas fa-sync-alt"></i> Atualizar
                         </button>
                         <button class="btn-danger" onclick="clearActivity()">
@@ -219,7 +219,7 @@
                             <option value="professional">Professional</option>
                             <option value="enterprise">Enterprise</option>
                         </select>
-                        <button class="btn-refresh" onclick="loadUsers()">
+                        <button class="btn-refresh" onclick="loadUsers(1, this)">
                             <i class="fas fa-sync-alt"></i> Atualizar
                         </button>
                         <button class="btn-danger" onclick="clearActivity()">
@@ -269,7 +269,7 @@
             <div id="access-keys-page" class="admin-page">
                 <div class="page-header">
                     <h2>Chaves de Usuários</h2>
-                    <button class="btn-refresh" onclick="loadAccessKeys()"><i class="fas fa-sync-alt"></i> Atualizar</button>
+                    <button class="btn-refresh" onclick="loadAccessKeys(this)"><i class="fas fa-sync-alt"></i> Atualizar</button>
                 </div>
                 <p style="color:#94a3b8; margin-bottom:18px;">As chaves são armazenadas com hash. Por segurança, o segredo completo não é exibido no painel.</p>
                 <div class="table-container">
@@ -285,7 +285,7 @@
                 <div class="page-header">
                     <h2>Sessões de Checkout</h2>
                     <div class="page-actions">
-                        <button class="btn-refresh" onclick="loadPayments()">
+                        <button class="btn-refresh" onclick="loadPayments(this)">
                             <i class="fas fa-sync-alt"></i> Atualizar
                         </button>
                         <button class="btn-danger" onclick="clearPayments()">
@@ -325,7 +325,7 @@
                 <div class="page-header">
                     <h2>Usuários Cancelados</h2>
                     <div class="page-actions">
-                        <button class="btn-refresh" onclick="loadCancelled()">
+                        <button class="btn-refresh" onclick="loadCancelled(1, this)">
                             <i class="fas fa-sync-alt"></i> Atualizar
                         </button>
                     </div>
@@ -358,7 +358,7 @@
                 <div class="page-header">
                     <h2>Registro de Atividades</h2>
                     <div class="page-actions">
-                        <button class="btn-refresh" onclick="loadActivity()">
+                        <button class="btn-refresh" onclick="loadActivity(this)">
                             <i class="fas fa-sync-alt"></i> Atualizar
                         </button>
                         <button class="btn-danger" onclick="clearActivity()">
@@ -379,7 +379,7 @@
                 <div class="page-header">
                     <h2>Informações do Sistema</h2>
                     <div class="page-actions">
-                        <button class="btn-refresh" onclick="loadSystemInfo()">
+                        <button class="btn-refresh" onclick="loadSystemInfo(this)">
                             <i class="fas fa-sync-alt"></i> Atualizar
                         </button>
                         <button class="btn-danger" onclick="clearActivity()">

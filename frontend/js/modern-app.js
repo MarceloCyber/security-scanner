@@ -387,7 +387,10 @@ async function sendAiMessage() {
             for (const event of events) {
                 const line = event.split('\n').find(item => item.startsWith('data:'));
                 if (!line) continue;
-                const data = JSON.parse(line.slice(5).trim());
+                const raw = line.slice(5).trim();
+                if (!raw || raw === '[DONE]') continue;
+                let data;
+                try { data = JSON.parse(raw); } catch (_) { continue; }
                 if (data.delta) { reply += data.delta; if (thinking) thinking.textContent = reply; }
             }
         }
@@ -2009,6 +2012,21 @@ function hideLoading() {
     const loadingElement = document.getElementById('loading');
     if (loadingElement) {
         loadingElement.classList.remove('active');
+    }
+}
+
+async function runWithButtonLoading(button, operation, label = 'Atualizando...') {
+    if (!button || typeof operation !== 'function') return;
+    const original = button.innerHTML;
+    button.disabled = true;
+    button.setAttribute('aria-busy', 'true');
+    button.innerHTML = `<i class="fas fa-spinner fa-spin"></i> ${label}`;
+    try {
+        return await operation();
+    } finally {
+        button.disabled = false;
+        button.removeAttribute('aria-busy');
+        button.innerHTML = original;
     }
 }
 

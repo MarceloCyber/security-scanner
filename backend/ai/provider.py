@@ -78,7 +78,9 @@ class OpenAICompatibleProvider(AIProvider):
         return body
     def _request(self, messages, reasoning_effort, tools=None, stream=False, structured=False):
         try:
-            return requests.post(self.base_url, headers={'Authorization': 'Bearer ' + self.api_key, 'Content-Type': 'application/json'}, json=self._body(messages, reasoning_effort, tools, stream, structured), timeout=(8, 60), stream=stream)
+            response = requests.post(self.base_url, headers={'Authorization': 'Bearer ' + self.api_key, 'Content-Type': 'application/json'}, json=self._body(messages, reasoning_effort, tools, stream, structured), timeout=(8, 60), stream=stream)
+            response.encoding = 'utf-8'
+            return response
         except requests.RequestException as exc:
             raise AIProviderError('Falha de conexão com o provider') from exc
     def chat(self, *, messages, reasoning_effort='medium', tools=None, structured=False):
@@ -100,8 +102,11 @@ class OpenAICompatibleProvider(AIProvider):
         if response.status_code >= 400:
             raise AIProviderError('Provider recusou a solicitação', response.status_code, response.status_code in (408, 409, 425, 429) or response.status_code >= 500)
         try:
-            for raw in response.iter_lines(decode_unicode=True):
-                line = (raw or '').strip()
+            # APIs OpenAI-compatible stream JSON as UTF-8. Relying on
+            # requests' inferred response encoding can turn "você" into
+            # "vocÃª" when the provider omits charset from Content-Type.
+            for raw in response.iter_lines(decode_unicode=False):
+                line = (raw.decode('utf-8', errors='replace') if isinstance(raw, bytes) else (raw or '')).strip()
                 if not line or not line.startswith('data:'):
                     continue
                 payload = line[5:].strip()

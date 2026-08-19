@@ -42,3 +42,22 @@ def test_provider_payload_contains_reasoning_and_allowlisted_tools(monkeypatch):
 def test_provider_errors_are_marked_retryable_by_status():
     error = AIProviderError("temporário", status_code=429)
     assert error.retryable is True
+
+
+def test_provider_stream_decodes_utf8_without_mojibake(monkeypatch):
+    provider = OpenAICompatibleProvider("https://example.test/chat", "test-key", "test-model", "groq")
+
+    class FakeResponse:
+        status_code = 200
+
+        def iter_lines(self, decode_unicode=False):
+            assert decode_unicode is False
+            yield 'data: {"choices":[{"delta":{"content":"Você está protegido"}}]}'.encode("utf-8")
+            yield b"data: [DONE]"
+
+        def close(self):
+            pass
+
+    monkeypatch.setattr(provider, "_request", lambda *args, **kwargs: FakeResponse())
+    chunks = provider.stream(messages=[{"role": "user", "content": "status"}])
+    assert "".join(chunks) == "Você está protegido"

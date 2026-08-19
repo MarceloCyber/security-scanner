@@ -339,11 +339,12 @@ function appendChatMessage(role, text) {
     bubble.style.maxWidth = '75%';
     bubble.style.padding = '10px 12px';
     bubble.style.borderRadius = '12px';
-    bubble.style.whiteSpace = 'pre-wrap';
+    bubble.style.whiteSpace = role === 'user' ? 'pre-wrap' : 'normal';
     bubble.style.wordBreak = 'break-word';
     bubble.style.background = role === 'user' ? 'rgba(102,126,234,0.25)' : 'rgba(255,255,255,0.08)';
     bubble.style.border = '1px solid rgba(255,255,255,0.12)';
-    bubble.textContent = text;
+    if (role === 'assistant' && window.IronAIFormat) window.IronAIFormat.renderInto(bubble, text);
+    else bubble.textContent = text;
     row.appendChild(bubble);
     box.appendChild(row);
     box.scrollTop = box.scrollHeight;
@@ -364,12 +365,13 @@ async function sendAiMessage() {
             sendBtn.setAttribute('aria-busy', 'true');
             sendBtn.innerHTML = '<span>Enviando...</span> <i class="fas fa-spinner fa-spin"></i>';
         }
-        const thinking = appendChatMessage('assistant', 'Pensando...');
+        const thinking = appendChatMessage('assistant', '');
+        window.IronAIFormat?.showThinking(thinking, 'Pensando na melhor resposta');
         const resp = await fetch(`${API_URL}/ai/chat/stream`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${getToken()}` }, body: JSON.stringify({ message: text, history: aiChatHistory }) });
         if (resp.status === 405) {
             const fallback = await apiRequest('/ai/chat', { method: 'POST', body: JSON.stringify({ message: text, history: aiChatHistory }) });
             const reply = fallback.summary || 'Não há dados suficientes na Iron AI para confirmar isso.';
-            if (thinking) thinking.textContent = reply;
+            if (thinking) window.IronAIFormat?.renderInto(thinking, reply);
             aiChatHistory.push({ role: 'assistant', content: reply });
             return;
         }
@@ -391,15 +393,18 @@ async function sendAiMessage() {
                 if (!raw || raw === '[DONE]') continue;
                 let data;
                 try { data = JSON.parse(raw); } catch (_) { continue; }
-                if (data.delta) { reply += data.delta; if (thinking) thinking.textContent = reply; }
+                if (data.delta) { reply += data.delta; if (thinking) window.IronAIFormat?.renderInto(thinking, reply); }
             }
         }
         reply = reply || 'Não há dados suficientes na Iron AI para confirmar isso.';
+        if (thinking) window.IronAIFormat?.renderInto(thinking, reply);
         aiChatHistory.push({ role: 'assistant', content: reply });
     } catch (error) {
         const msg = error && error.message ? error.message : 'Falha ao consultar a IA';
-        const bubble = appendChatMessage('assistant', `Erro: ${msg}`);
+        const bubble = document.querySelector('#aiChatMessages > div:last-child > div') || appendChatMessage('assistant', '');
         if (bubble) {
+            bubble.classList.remove('ai-thinking');
+            bubble.textContent = `Não consegui concluir: ${msg}`;
             bubble.style.background = 'rgba(245,101,101,0.15)';
             bubble.style.border = '1px solid rgba(245,101,101,0.35)';
         }

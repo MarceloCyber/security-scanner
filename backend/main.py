@@ -87,7 +87,7 @@ except Exception as _migration_error:
 
 app = FastAPI(
     title="Iron AI Security Platform API",
-    description="Plataforma brasileira de postura e segurança contínua para PMEs",
+    description="Plataforma brasileira de postura e segurança contínua",
     version="1.0.0",
     docs_url="/api/docs",
     redoc_url="/api/redoc"
@@ -574,6 +574,12 @@ async def contact_form(payload: ContactRequest):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erro ao processar contato: {str(e)}")
+
+# Favicon explícito para navegadores e crawlers, antes do mount estático geral.
+@app.get("/favicon.ico", include_in_schema=False)
+async def favicon():
+    icon_path = Path(__file__).resolve().parents[1] / "frontend" / "favicon.ico"
+    return FileResponse(icon_path, media_type="image/x-icon", headers={"Cache-Control": "public, max-age=86400"})
 
 # Serve arquivos estáticos do frontend (DEVE SER O ÚLTIMO)
 frontend_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "frontend")

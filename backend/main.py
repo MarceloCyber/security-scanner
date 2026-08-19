@@ -19,6 +19,8 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.exceptions import RequestValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
+from pydantic import BaseModel, EmailStr, Field
+from html import escape
 
 # Adiciona o diretório pai ao path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -515,25 +517,40 @@ async def contract_lgpd_pdf(plan: str = "Free"):
     return Response(content=pdf_bytes, media_type="application/pdf")
 
 # Endpoint público de contato (precisa vir antes do mount de estáticos)
+class ContactRequest(BaseModel):
+    name: str = Field(min_length=2, max_length=120)
+    email: EmailStr
+    message: str = Field(min_length=10, max_length=5000)
+    consent: bool
+    plan: str = Field(default="Free", max_length=40)
+
 @app.post("/api/contact")
-async def contact_form(payload: dict = Body(...)):
+async def contact_form(payload: ContactRequest):
     try:
-        name = (payload.get("name") or "").strip()
-        email = (payload.get("email") or "").strip()
-        message = (payload.get("message") or "").strip()
-        plan = (payload.get("plan") or "Free").strip()
+        if not payload.consent:
+            raise HTTPException(status_code=400, detail="É necessário aceitar o tratamento dos dados para enviar a mensagem.")
+        name = payload.name.strip()
+        email = str(payload.email).strip()
+        message = payload.message.strip()
+        plan = payload.plan.strip() or "Free"
         support_email = os.getenv("SUPPORT_EMAIL", "thomaz2523@gmail.com")
-        subject = f"Contato - {name or 'Usuário'} (Plano {plan})"
+        # Evita quebra de cabeçalho caso caracteres de controle cheguem ao endpoint.
+        subject_name = " ".join(name.replace("\r", " ").replace("\n", " ").split())
+        subject_plan = " ".join(plan.replace("\r", " ").replace("\n", " ").split())
+        subject = f"Contato - {subject_name or 'Usuário'} (Plano {subject_plan or 'Free'})"
+        safe_name = escape(name)
+        safe_email = escape(email)
+        safe_message = escape(message).replace("\n", "<br>")
         html = f"""
         <!DOCTYPE html>
         <html><body style='font-family:Arial,sans-serif;'>
         <h2>Nova mensagem de contato</h2>
-        <p><strong>Nome:</strong> {name or 'N/A'}</p>
-        <p><strong>Email:</strong> {email or 'N/A'}</p>
-        <p><strong>Plano:</strong> {plan}</p>
+        <p><strong>Nome:</strong> {safe_name}</p>
+        <p><strong>Email:</strong> {safe_email}</p>
+        <p><strong>Plano:</strong> {escape(plan)}</p>
         <p><strong>Mensagem:</strong></p>
         <div style='background:#f4f6f8;padding:10px;border-radius:6px;border:1px solid #e1e4e8;color:#2c3e50;'>
-        {message or 'N/A'}
+        {safe_message}
         </div>
         </body></html>
         """
@@ -544,7 +561,7 @@ async def contact_form(payload: dict = Body(...)):
             f"Plano: {plan}\n\n" +
             f"Mensagem:\n{message or 'N/A'}\n"
         )
-        ok = email_service.send_email(support_email, subject, html, text)
+        ok = email_service.send_email(support_email, subject, html, text, reply_to=email)
         if not ok:
             raise HTTPException(status_code=500, detail="Falha ao enviar email")
         return {"ok": True}

@@ -65,7 +65,7 @@ class EmailService:
             logger.exception('Falha ao autenticar no servidor SMTP %s:%s', self.smtp_host, self.smtp_port)
             return False, str(exc)
 
-    def send_email(self, to_email: str, subject: str, html_content: str, text_content: str = None, attachments: List[tuple] = None):
+    def send_email(self, to_email: str, subject: str, html_content: str, text_content: str = None, attachments: List[tuple] = None, reply_to: str = None):
         """Send an email"""
         is_valid, message = self.validate_config()
         if not is_valid:
@@ -76,6 +76,8 @@ class EmailService:
             message['Subject'] = subject
             message['From'] = f'{self.from_name} <{self.from_email}>'
             message['To'] = to_email
+            if reply_to:
+                message['Reply-To'] = reply_to
 
             alt = MIMEMultipart('alternative')
             if text_content:

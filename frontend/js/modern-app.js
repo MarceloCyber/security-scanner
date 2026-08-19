@@ -365,13 +365,33 @@ async function sendAiMessage() {
             sendBtn.innerHTML = '<span>Enviando...</span> <i class="fas fa-spinner fa-spin"></i>';
         }
         const thinking = appendChatMessage('assistant', 'Pensando...');
-        const resp = await apiRequest('/ai/chat', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ message: text, history: aiChatHistory })
-        });
-        const reply = resp.summary || 'Não há dados suficientes na Iron AI para confirmar isso.';
-        if (thinking) thinking.textContent = reply;
+        const resp = await fetch(`${API_URL}/ai/chat/stream`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${getToken()}` }, body: JSON.stringify({ message: text, history: aiChatHistory }) });
+        if (resp.status === 405) {
+            const fallback = await apiRequest('/ai/chat', { method: 'POST', body: JSON.stringify({ message: text, history: aiChatHistory }) });
+            const reply = fallback.summary || 'Não há dados suficientes na Iron AI para confirmar isso.';
+            if (thinking) thinking.textContent = reply;
+            aiChatHistory.push({ role: 'assistant', content: reply });
+            return;
+        }
+        if (!resp.ok) throw new Error(`Erro ${resp.status}`);
+        const reader = resp.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+        let reply = '';
+        while (true) {
+            const part = await reader.read();
+            if (part.done) break;
+            buffer += decoder.decode(part.value, {stream: true});
+            const events = buffer.split('\n\n');
+            buffer = events.pop() || '';
+            for (const event of events) {
+                const line = event.split('\n').find(item => item.startsWith('data:'));
+                if (!line) continue;
+                const data = JSON.parse(line.slice(5).trim());
+                if (data.delta) { reply += data.delta; if (thinking) thinking.textContent = reply; }
+            }
+        }
+        reply = reply || 'Não há dados suficientes na Iron AI para confirmar isso.';
         aiChatHistory.push({ role: 'assistant', content: reply });
     } catch (error) {
         const msg = error && error.message ? error.message : 'Falha ao consultar a IA';

@@ -291,7 +291,7 @@ def test_ai_action_requires_human_approval():
     assert action.status == "executed"
 
 
-def test_ai_action_http_handlers_persist_rejection_approval_and_execution():
+def test_ai_action_http_handlers_persist_rejection_and_approve_execution():
     db, user, organization, finding = _database()
     membership = db.query(OrganizationMember).filter_by(organization_id=organization.id, user_id=user.id).one()
     context = TenantContext(user=user, organization=organization, membership=membership)
@@ -307,10 +307,9 @@ def test_ai_action_http_handlers_persist_rejection_approval_and_execution():
     approved = propose_action(db, organization.id, user.id, "create_remediation_task", {"finding_id": finding.id})
     db.commit()
     approval = approve_action(approved.id, request, context, db)
-    assert approval["status"] == "approved"
-    execution = run_action(approved.id, request, context, db)
-    assert execution["status"] == "executed"
-    task = db.query(RemediationTask).filter_by(id=execution["remediation_task_id"]).one()
+    assert approval["status"] == "executed"
+    assert approval["task_created"] is True
+    task = db.query(RemediationTask).filter_by(id=approval["remediation_task_id"]).one()
     assert task.finding_id == finding.id and task.status == "open"
 
 

@@ -52,8 +52,14 @@ def approve_action(action_id: int, request: Request, context: TenantContext = De
     action.status = "approved"
     action.approved_by = context.user.id
     record_audit(db, context, "ai_action_approved", "ai_action", action.id, request)
+    try:
+        task = execute_action(db, action)
+    except ValueError as exc:
+        db.rollback()
+        raise HTTPException(status_code=409, detail=str(exc))
+    record_audit(db, context, "ai_action_executed", "ai_action", action.id, request, {"remediation_task_id": task.id, "approved_and_executed": True})
     db.commit()
-    return {"id": action.id, "status": action.status}
+    return {"id": action.id, "status": action.status, "remediation_task_id": task.id, "task_created": True}
 
 
 @router.post("/ai/actions/{action_id}/reject")

@@ -380,6 +380,11 @@ async def start_intelligent_automation():
                         except Exception as exc:
                             db.rollback()
                             print(f"Erro na automacao do alvo {target.id}: {exc}")
+            except Exception as exc:
+                # Uma falha temporária do banco não pode encerrar a tarefa de
+                # automação silenciosamente. O próximo ciclo tenta novamente.
+                db.rollback()
+                print(f"Banco indisponível para automacao; nova tentativa no próximo ciclo: {exc}")
             finally:
                 db.close()
             await asyncio.sleep(30)

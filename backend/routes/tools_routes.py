@@ -22,6 +22,7 @@ from models.user import User
 from tools.phishing_generator import PhishingPageGenerator
 from tools.payload_generator import PayloadGenerator
 from tools.encoder_decoder import EncoderDecoder
+from ai.provider import provider_candidates
 
 load_dotenv()
 router = APIRouter()
@@ -52,6 +53,18 @@ def _page_belongs_to_user(page_id: str, user: User) -> bool:
         page.get("page_id") == page_id and page.get("owner_user_id") == user.id
         for page in pages
     )
+
+
+def _public_origin() -> tuple[str, bool]:
+    """Return the configured origin and whether it is only a local origin."""
+    configured = os.getenv("PUBLIC_DOMAIN", "localhost:8000").strip().rstrip("/")
+    if not configured:
+        configured = "localhost:8000"
+    if "://" not in configured:
+        configured = f"http://{configured}" if "localhost" in configured else f"https://{configured}"
+    parsed = configured.split("://", 1)
+    is_local = parsed[1].startswith(("localhost", "127.0.0.1"))
+    return configured, is_local
 
 
 # Pydantic models
@@ -241,14 +254,13 @@ async def generate_phishing_page(
         # Create URLs - você precisa expor com ngrok ou similar
         # Formato: https://facebook.com.seu-dominio.ngrok.io/p/abc123
         # Para funcionar externamente, configure NGROK_URL nas variáveis de ambiente
-        import os as os_module
-        public_domain = os_module.environ.get('PUBLIC_DOMAIN', 'localhost:8000')
+        public_origin, is_local_origin = _public_origin()
         
         # URL local para testes
         local_url = f"http://localhost:8000/p/{short_id}"
         
         # URL pública mascarada (parece com o domínio original)
-        if 'localhost' in public_domain:
+        if is_local_origin:
             # Modo local - instrui usuário a configurar ngrok
             masked_url = f"⚠️ Configure PUBLIC_DOMAIN para gerar URL pública"
             public_url = local_url
@@ -268,7 +280,7 @@ async def generate_phishing_page(
             # Modo público - gera URL mascarada
             # Ngrok FREE não suporta subdomínios customizados
             # Usar apenas: https://seu-id.ngrok-free.app/p/abc123
-            public_url = f"https://{public_domain}/p/{short_id}"
+            public_url = f"{public_origin}/p/{short_id}"
             masked_url = public_url
             instructions = f"✅ URL configurada: {public_url}"
         
@@ -338,17 +350,10 @@ async def list_generated_pages(current_user: dict = Depends(get_current_user)):
                     page['redirect_url'] = meta.get('redirect_url', 'https://google.com')
                     # Add short URL (functional)
                     short_id = meta['page_id'][:8]
-                    page['short_url'] = f"http://localhost:8000/p/{short_id}"
+                    public_origin, is_local_origin = _public_origin()
+                    page['short_url'] = f"{public_origin}/p/{short_id}"
                     page['short_id'] = short_id
-                    
-                    # Add masked URL (public)
-                    public_domain = os.environ.get('PUBLIC_DOMAIN', 'localhost:8000')
-                    if 'localhost' not in public_domain:
-                        # Ngrok FREE não suporta subdomínios customizados
-                        # Usar apenas: https://seu-id.ngrok-free.app/p/abc123
-                        page['masked_url'] = f"https://{public_domain}/p/{short_id}"
-                    else:
-                        page['masked_url'] = None
+                    page['masked_url'] = None if is_local_origin else page['short_url']
                     
                     pages_with_expiration.append(page)
                     break
@@ -1105,6 +1110,14 @@ async def ai_security_assistant(payload: AIChatRequest, request: Request, db: Se
         raise
     except Exception:
         raise HTTPException(status_code=401, detail="Could not validate credentials")
+
+    # Mantém esta rota legada compatível, mas usa o mesmo router/fallback da IA principal.
+    for provider in provider_candidates()[:2]:
+        try:
+            result = provider.chat(messages=messages, reasoning_effort="medium")
+            return {"reply": result.get("content") or "Não consegui gerar uma resposta agora.", "provider": provider.name}
+        except Exception:
+            continue
 
     groq_key = os.getenv("GROQ_API_KEY") or os.getenv("GROQ_KEY")
     openrouter_key = os.getenv("OPENROUTER_API_KEY") or os.getenv("OPENROUTER_KEY")

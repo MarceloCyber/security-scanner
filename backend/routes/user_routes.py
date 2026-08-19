@@ -1,12 +1,20 @@
 """
 Rotas relacionadas ao usuário e assinatura
 """
+from datetime import timedelta
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from database import get_db
 from models.user import User
 from auth import get_current_user
-from middleware.subscription import check_subscription_status, get_plan_info, normalize_subscription_plan, get_allowed_dashboard_tools
+from middleware.subscription import (
+    CANCELLATION_WINDOW_DAYS,
+    check_subscription_status,
+    get_plan_info,
+    normalize_subscription_plan,
+    get_allowed_dashboard_tools,
+)
 
 router = APIRouter(prefix="/user", tags=["user"])
 
@@ -34,8 +42,13 @@ async def get_user_subscription_info(
         "subscription_end": current_user.subscription_end.isoformat() if current_user.subscription_end else None,
         "is_trial": current_user.is_trial,
         "trial_started_at": current_user.trial_started_at.isoformat() if current_user.trial_started_at else None,
-        "trial_days": 10 if current_user.is_trial and current_user.trial_started_at else 0,
+        "trial_days": CANCELLATION_WINDOW_DAYS if current_user.is_trial and current_user.trial_started_at else 0,
+        "trial_ends_at": (
+            current_user.trial_started_at + timedelta(days=CANCELLATION_WINDOW_DAYS)
+        ).isoformat() if current_user.is_trial and current_user.trial_started_at else None,
+        "cancellation_window_days": CANCELLATION_WINDOW_DAYS,
         "is_admin": current_user.is_admin or False,
+        "is_developer": bool(getattr(current_user, "is_developer", False)),
         "status": status,
         "plan_info": plan_info,
         "allowed_dashboard_tools": get_allowed_dashboard_tools(plan) if subscription_active else [],
@@ -57,5 +70,7 @@ async def get_current_user_info(
         "subscription_plan": normalize_subscription_plan(current_user.subscription_plan),
         "subscription_status": current_user.subscription_status,
         "scans_used": current_user.scans_this_month,
-        "scans_limit": current_user.scans_limit
+        "scans_limit": current_user.scans_limit,
+        "is_admin": bool(current_user.is_admin),
+        "is_developer": bool(getattr(current_user, "is_developer", False))
     }

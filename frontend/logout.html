@@ -3,12 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Logout - Security Scanner</title>
+    <title>Logout - Iron AI</title><link rel="stylesheet" href="css/ironnet-brand.css?v=1.3">
 </head>
 <body>
     <h1>Fazendo logout...</h1>
+    <script src="/js/ui-feedback.js?v=1.0"></script>
     <script>
         (async () => {
+            window.showTransitionLoading?.('Encerrando sessão...', 'Protegendo seus dados antes de sair.');
             const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
             if (token) {
                 try { await fetch('/api/auth/logout', { method: 'POST', headers: { 'Authorization': `Bearer ${token}` } }); } catch (_) {}

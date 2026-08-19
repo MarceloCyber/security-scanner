@@ -26,7 +26,7 @@ import hashlib
 import json
 from collections import defaultdict
 
-router = APIRouter(prefix="/api/viggio-shield", tags=["Viggio Shield"])
+router = APIRouter(prefix="/api/viggio-shield", tags=["Iron AI Shield"])
 
 AUTOMATION_MONTHLY_LIMITS = {
     "free": 2,
@@ -377,7 +377,7 @@ async def check_target_health(target: MonitorTarget) -> Dict[str, Any]:
                 address,
                 timeout=(3.05, 10),
                 allow_redirects=True,
-                headers={"User-Agent": "IronNet-ViggioShield/1.0"}
+                headers={"User-Agent": "IronAI-Shield/1.0"}
             )
             response_time = (datetime.now() - start_time).total_seconds() * 1000
             
@@ -444,7 +444,7 @@ async def check_target_health(target: MonitorTarget) -> Dict[str, Any]:
                 address,
                 timeout=(3.05, 10),
                 allow_redirects=True,
-                headers={"User-Agent": "IronNet-ViggioShield/1.0"}
+                headers={"User-Agent": "IronAI-Shield/1.0"}
             )
             response_time = (datetime.now() - start_time).total_seconds() * 1000
             
@@ -456,7 +456,7 @@ async def check_target_health(target: MonitorTarget) -> Dict[str, Any]:
             if not result["is_healthy"]:
                 result["issues"].append(f"Aplicação retornou erro: {response.status_code}")
 
-        # Viggio Shield e Automacao Inteligente tambem executam a mesma analise
+        # Iron AI Shield e automacao inteligente tambem executam a mesma analise
         # de servicos, banners e riscos conhecidos utilizada pelo Port Scanner.
         host = extract_host(address)
         security_scan = await asyncio.to_thread(scan_ports, host, target.monitoring_ports)
@@ -1205,7 +1205,7 @@ async def get_dashboard_stats(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Retorna estatísticas do dashboard Viggio Shield"""
+    """Retorna estatísticas do dashboard Iron AI Shield."""
     deactivate_expired_blocks(db, current_user.id)
     db.commit()
     
@@ -1329,7 +1329,7 @@ async def generate_viggio_full_report(
         result = payload.get('result') or {}
         for finding in dedupe_findings(result.get('findings') or result.get('vulnerabilities') or []):
             item = dict(finding)
-            item.setdefault('scanner', f"Viggio AppSec/{payload.get('scan_type', 'scan')}")
+            item.setdefault('scanner', f"Iron AI Shield/{payload.get('scan_type', 'scan')}")
             item.setdefault('detected_at', log.created_at.isoformat() if log.created_at else None)
             vulnerabilities.append(item)
     vulnerabilities = dedupe_findings(vulnerabilities)
@@ -1340,7 +1340,7 @@ async def generate_viggio_full_report(
     for target in targets:
         scans_details.append({
             'id': target.id,
-            'tool': 'Viggio Shield Monitor',
+            'tool': 'Iron AI Shield Monitor',
             'scan_type': target.target_type,
             'target': target.target_address,
             'created_at': target.created_at.isoformat() if target.created_at else None,
@@ -1351,7 +1351,7 @@ async def generate_viggio_full_report(
     if include_logs:
         for log in logs[:5000]:
             scans_details.append({
-                'id': f'log-{log.id}', 'tool': 'Viggio Shield Activity', 'scan_type': log.log_type,
+                'id': f'log-{log.id}', 'tool': 'Iron AI Shield Activity', 'scan_type': log.log_type,
                 'target': target_names.get(log.target_id, 'AppSec / plataforma'),
                 'created_at': log.created_at.isoformat() if log.created_at else None,
                 'total_vulnerabilities': 0, 'severity_count': {'CRITICAL': 0, 'HIGH': 0, 'MEDIUM': 0, 'LOW': 0},
@@ -1364,7 +1364,7 @@ async def generate_viggio_full_report(
         'summary': {'total': len(vulnerabilities), **{key.lower(): value for key, value in severity_count.items()}},
         'vulnerabilities': vulnerabilities,
         'user_overview': {'total_scans': len(logs), 'total_vulnerabilities': len(vulnerabilities), 'severity_count': severity_count},
-        'tools_summary': [{'tool': 'Viggio Shield', 'scans': len(logs), 'vulnerabilities': len(vulnerabilities)}],
+        'tools_summary': [{'tool': 'Iron AI Shield', 'scans': len(logs), 'vulnerabilities': len(vulnerabilities)}],
         'scans_details': scans_details,
         'report_options': {'target_id': target_id, 'severity': severity, 'include_resolved': include_resolved, 'include_logs': include_logs}
     }

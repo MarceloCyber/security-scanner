@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Migração do banco de dados para adicionar tabelas do Viggio Shield
+Migração legada do banco de dados para adicionar tabelas do Iron AI Shield
 """
 import sys
 import os
@@ -19,7 +19,7 @@ def check_table_exists(table_name):
 
 def migrate():
     """Executa a migração"""
-    print("🛡️  Iniciando migração do Viggio Shield...")
+    print("🛡️  Iniciando migração do Iron AI Shield...")
     
     tables_to_create = [
         ('monitor_targets', MonitorTarget),
@@ -56,7 +56,7 @@ def migrate():
             print(f"   • {table}")
     
     print("\n✅ Migração concluída com sucesso!")
-    print("\n🚀 Você já pode usar o Viggio Shield!")
+    print("\n🚀 Você já pode usar o Iron AI Shield!")
     print("   Acesse: /viggio-shield.html\n")
 
 if __name__ == "__main__":

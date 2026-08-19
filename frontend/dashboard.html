@@ -6,8 +6,10 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>Iron Net - Ferramentas de Segurança</title>
+    <title>Iron AI Labs - Ferramentas Avançadas</title>
     <link rel="stylesheet" href="/css/modern-style.css?v=6.4">
+    <link rel="stylesheet" href="css/ironnet-brand.css?v=1.3">
+    <link rel="stylesheet" href="/css/advanced-tools.css?v=1.1">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         /* Subscription Card Styles */
@@ -105,7 +107,7 @@
         @media(max-width:700px){ .automation-item{align-items:flex-start;flex-direction:column}.automation-actions{width:100%}.automation-actions button{flex:1} }
     </style>
 </head>
-<body>
+<body class="advanced-app">
     <!-- Sidebar Overlay para mobile -->
     <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
     
@@ -118,8 +120,9 @@
     <div class="sidebar" id="sidebar">
         <div class="sidebar-header">
             <i class="fas fa-shield-halved"></i>
-            <h2>Iron Net</h2>
+            <h2>Iron AI Dev</h2>
         </div>
+        <div class="developer-access-banner"><i class="fas fa-gem"></i> Enterprise <span>·</span> acesso restrito a desenvolvedores autorizados</div>
         <nav class="sidebar-nav">
             <a href="#dashboard" class="nav-item active" data-page="dashboard">
                 <i class="fas fa-home"></i>
@@ -169,20 +172,20 @@
                 <span>Automação Inteligente</span>
             </a>
             
-            <!-- Viggio Shield - Monitoramento -->
+            <!-- Iron AI Shield - Monitoramento -->
             <div class="nav-section">
                 <span class="nav-section-title">Monitoramento</span>
             </div>
             <a href="/viggio-shield.html" class="nav-item nav-external" target="_blank" rel="noopener">
                 <i class="fas fa-shield-alt"></i>
-                <span>Viggio Shield</span>
+                <span>Iron AI Shield</span>
                 <i class="fas fa-external-link-alt" style="font-size: 12px; margin-left: auto;"></i>
             </a>
             
-            <!-- Manual de Uso -->
-            <a href="/manual.html" class="nav-item nav-item-manual nav-external" target="_blank" rel="noopener">
-                <i class="fas fa-book"></i>
-                <span>Manual de Uso</span>
+            <!-- Central de Ajuda -->
+            <a href="/documentation.html" class="nav-item nav-item-manual nav-external" target="_blank" rel="noopener">
+                <i class="fas fa-circle-question"></i>
+                <span>Central de Ajuda</span>
                 <i class="fas fa-external-link-alt" style="font-size: 12px; margin-left: auto;"></i>
             </a>
             
@@ -302,7 +305,7 @@
         <div class="page active" id="dashboard-page">
             <div class="page-header">
                 <h1>Dashboard</h1>
-                <p>Bem-vindo à Iron Net</p>
+                <p>Bem-vindo ao Iron AI Labs</p>
             </div>
 
             <div class="stats-grid">
@@ -341,6 +344,21 @@
                         <h3 id="total-reports">0</h3>
                         <p>Relatórios</p>
                     </div>
+                </div>
+            </div>
+
+            <div class="content-grid" id="security-posture-overview" style="margin-top:20px;">
+                <div class="card">
+                    <div class="card-header"><h2><i class="fas fa-shield-halved"></i> Security Score</h2><span id="posture-score-change" class="text-muted"></span></div>
+                    <div class="card-body"><div id="posture-score" style="font-size:3rem;font-weight:700;color:#68d391;">—</div><p class="text-muted">Calculado pelo Risk Engine com dados persistidos.</p></div>
+                </div>
+                <div class="card">
+                    <div class="card-header"><h2>Riscos prioritários</h2><button class="btn-sm" onclick="loadSecurityOverview()">Atualizar</button></div>
+                    <div class="card-body"><div id="posture-top-risks"><p class="text-muted">Carregando riscos...</p></div></div>
+                </div>
+                <div class="card card-full">
+                    <div class="card-header"><h2>Resumo da organização</h2></div>
+                    <div class="card-body" id="posture-summary"><p class="text-muted">Carregando postura de segurança...</p></div>
                 </div>
             </div>
 
@@ -1598,11 +1616,11 @@
                     <div class="card-body">
                         <div class="form-group">
                             <label><i class="fas fa-hashtag"></i> Hash</label>
-                            <textarea id="hash-input" class="form-control" rows="4" placeholder="Insira um ou mais hashes (um por linha)"></textarea>
+                            <textarea id="hash-analyzer-input" class="form-control" rows="4" placeholder="Insira um ou mais hashes (um por linha)"></textarea>
                         </div>
                         <div class="form-group">
                             <label><i class="fas fa-cog"></i> Tipo de Hash</label>
-                            <select id="hash-type" class="form-control">
+                            <select id="hash-analyzer-type" class="form-control">
                                 <option value="auto">Auto-detectar</option>
                                 <option value="md5">MD5</option>
                                 <option value="sha1">SHA-1</option>
@@ -1778,8 +1796,9 @@
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.9.2/html2pdf.bundle.min.js" integrity="sha512-pdCVFUWsxl1A4g0uV6fyJ3nrnTGeWnZN2Tl/56j45UvZ1OMdm9CIbctuIHj+yBIRTUUyv6I9+OivXj4i0LPEYA==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-    <script src="js/confirm-dialog.js?v=1.0"></script>
-    <script src="js/modern-app.js?v=7.9"></script>
+    <script src="js/confirm-dialog.js?v=1.1"></script>
+    <script src="js/ui-feedback.js?v=1.0"></script>
+    <script src="js/modern-app.js?v=8.2"></script>
     <script>
         (function(){
             if (localStorage.getItem('cookie_consent') === 'accepted') return;

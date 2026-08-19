@@ -12,9 +12,8 @@ function normalizePlan(plan) {
 // Starter: 5 ferramentas  |  Professional: 10 ferramentas  |  Enterprise: todas
 // Os IDs aqui devem corresponder ao data-page do menu lateral.
 const PLAN_TOOL_ACCESS = {
-    starter:      ['port-scan', 'subdomain', 'hash-analyzer', 'encoder', 'password-strength'],
-    professional: ['port-scan', 'subdomain', 'hash-analyzer', 'encoder', 'password-strength',
-                   'scanner', 'sql-injection', 'xss-tester', 'phishing', 'directory-enum'],
+    starter:      [],
+    professional: [],
     enterprise: null
 };
 
@@ -95,10 +94,20 @@ function setupMobileSidebar() {
 }
 
 // Initialize app
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', async function() {
     // Check authentication
     if (!getToken()) {
         window.location.href = '/index.html';
+        return;
+    }
+    try {
+        const currentUser = await apiRequest('/user/me');
+        if (!currentUser || !currentUser.is_developer || currentUser.subscription_plan !== 'enterprise' || currentUser.subscription_status !== 'active') {
+            window.location.replace('/pricing.html?required=enterprise&feature=developer-tools');
+            return;
+        }
+    } catch (error) {
+        if (window.location.pathname.includes('dashboard')) window.location.replace('/platform.html');
         return;
     }
     prelockTools();
@@ -356,12 +365,12 @@ async function sendAiMessage() {
             sendBtn.innerHTML = '<span>Enviando...</span> <i class="fas fa-spinner fa-spin"></i>';
         }
         const thinking = appendChatMessage('assistant', 'Pensando...');
-        const resp = await apiRequest('/tools/ai/assistant', {
+        const resp = await apiRequest('/ai/chat', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ message: text, history: aiChatHistory })
         });
-        const reply = resp.reply || 'Sem resposta';
+        const reply = resp.summary || 'Não há dados suficientes na Iron AI para confirmar isso.';
         if (thinking) thinking.textContent = reply;
         aiChatHistory.push({ role: 'assistant', content: reply });
     } catch (error) {
@@ -786,19 +795,19 @@ function navigateTo(pageName) {
     document.getElementById(pageName + '-page').classList.add('active');
 
     // Load page-specific data
+    const pending = [];
     if (pageName === 'phishing') {
-        loadPhishingTemplates(); // Reload templates when opening page
-        loadPhishingPages();
-        loadPhishingCaptures(); // Load captures
+        pending.push(loadPhishingTemplates(), loadPhishingPages(), loadPhishingCaptures());
     } else if (pageName === 'reports') {
-        loadAvailableScans();
+        pending.push(loadAvailableScans());
     } else if (pageName === 'profile') {
-        loadProfile();
+        pending.push(loadProfile());
     } else if (pageName === 'ai-assistant') {
         initAiAssistant();
     } else if (pageName === 'intelligent-automation') {
-        loadAutomationData();
+        pending.push(loadAutomationData());
     }
+    if (pending.length) { window.showPageProgress?.(); Promise.allSettled(pending).finally(() => window.hidePageProgress?.()); }
 }
 
 function escapeAutomationHtml(value) {
@@ -852,9 +861,10 @@ async function createAutomation(event) {
     const ports = document.getElementById('automation-ports').value.split(',').map(v => v.trim()).filter(Boolean).map(Number);
     if (ports.some(p => p < 1 || p > 65535)) return showToast('Informe portas entre 1 e 65535.', 'error');
     try {
+        showLoading('Ativando automação...');
         await apiRequest('/viggio-shield/targets', {method:'POST', body:JSON.stringify({name:document.getElementById('automation-name').value.trim(), target_type:document.getElementById('automation-type').value, target_address:document.getElementById('automation-address').value.trim(), monitoring_ports:ports.length ? ports : null, check_interval:Number(document.getElementById('automation-interval').value), alert_threshold:Number(document.getElementById('automation-threshold').value), enable_email_alerts:true})});
         event.target.reset(); showToast('Automação ativada com sucesso.', 'success'); await loadAutomationData();
-    } catch (error) { showToast(error.message, 'error'); }
+    } catch (error) { showToast(error.message, 'error'); } finally { hideLoading(); }
 }
 async function runAutomationNow(id) { try { showLoading(); const result = await apiRequest(`/viggio-shield/targets/${id}/check`, {method:'POST'}); hideLoading(); const found = Number(result.vulnerabilities_found || 0); showToast(found ? `Scan concluído: ${found} vulnerabilidade(s) encontrada(s).` : 'Scan concluído: nenhuma vulnerabilidade encontrada.', found ? 'warning' : 'success'); await loadAutomationData(); } catch(e) { hideLoading(); showToast(e.message,'error'); } }
 async function toggleAutomation(id, status) { try { await apiRequest(`/viggio-shield/targets/${id}`, {method:'PATCH',body:JSON.stringify({status})}); showToast(status === 'paused' ? 'Automação pausada.' : 'Automação retomada.','success'); await loadAutomationData(); } catch(e) { showToast(e.message,'error'); } }
@@ -961,6 +971,12 @@ async function loadProfile() {
 }
 
 async function cancelSubscription() {
+    if (!await showConfirmDialog({
+        variant: 'warning', icon: 'fa-credit-card', title: 'Cancelar assinatura?',
+        message: 'O cancelamento seguirá as regras do seu plano e do provedor de pagamento.',
+        details: 'Confira a vigência e eventual elegibilidade de estorno antes de continuar.',
+        confirmText: 'Continuar cancelamento', confirmIcon: 'fa-ban'
+    })) return;
     try {
         showLoading('Cancelando assinatura...');
         const sub = await apiRequest('/user/subscription-info');
@@ -1027,6 +1043,8 @@ function toggleTheme() {
 }
 
 async function logout() {
+    if (!await showConfirmDialog({variant:'info',icon:'fa-arrow-right-from-bracket',kicker:'Encerrar acesso',title:'Sair da Iron AI Dev?',message:'Sua sessão neste dispositivo será encerrada com segurança.',details:false,confirmText:'Sim, sair',confirmIcon:'fa-arrow-right-from-bracket'})) return;
+    window.showTransitionLoading?.('Encerrando sessão...', 'Fechando o acesso às ferramentas avançadas.');
     const token = getToken();
     if (token) {
         try { await fetch(`${API_URL}/auth/logout`, { method: 'POST', headers: { 'Authorization': `Bearer ${token}` } }); } catch (_) {}
@@ -1155,7 +1173,7 @@ async function loadDashboardStats() {
                     }
                 });
             }
-            document.getElementById('total-vulns').textContent = totalVulns;
+        document.getElementById('total-vulns').textContent = totalVulns;
             localStorage.setItem('dashboard.totalVulns', String(totalVulns));
         } catch (error) {
             const cachedReports = localStorage.getItem('dashboard.totalReports');
@@ -1167,6 +1185,7 @@ async function loadDashboardStats() {
                 document.getElementById('total-vulns').textContent = cachedVulns;
             }
         }
+        await loadSecurityOverview();
     } catch (error) {
         console.error('Error loading dashboard stats:', error);
         const ts = localStorage.getItem('dashboard.totalScans');
@@ -1177,6 +1196,31 @@ async function loadDashboardStats() {
         if (tv !== null) document.getElementById('total-vulns').textContent = tv;
         const tr = localStorage.getItem('dashboard.totalReports');
         if (tr !== null) document.getElementById('total-reports').textContent = tr;
+    }
+}
+
+async function loadSecurityOverview() {
+    try {
+        const overview = await apiRequest('/security/overview');
+        const score = document.getElementById('posture-score');
+        if (score) {
+            score.textContent = `${overview.security_score ?? 0}/100`;
+            score.style.color = (overview.security_score ?? 0) >= 80 ? '#68d391' : ((overview.security_score ?? 0) >= 60 ? '#f6ad55' : '#fc8181');
+        }
+        const summary = document.getElementById('posture-summary');
+        if (summary) {
+            const f = overview.findings || {};
+            const a = overview.assets || {};
+            summary.innerHTML = `<div class="stats-grid"><div><strong>${f.critical || 0}</strong><br>Críticos</div><div><strong>${f.high || 0}</strong><br>Altos</div><div><strong>${a.total || 0}</strong><br>Ativos</div><div><strong>${a.internet_exposed || 0}</strong><br>Expostos</div></div>`;
+        }
+        const risks = document.getElementById('posture-top-risks');
+        if (risks) {
+            const items = overview.top_risks || [];
+            risks.innerHTML = items.length ? items.map(item => `<div style="padding:9px 0;border-bottom:1px solid rgba(255,255,255,.08)"><strong>${escapeAutomationHtml(item.title)}</strong><br><small class="text-muted">${escapeAutomationHtml(item.severity)} · score ${item.risk_score || 0}</small></div>`).join('') : '<p class="text-muted">Nenhum risco aberto normalizado.</p>';
+        }
+    } catch (error) {
+        const summary = document.getElementById('posture-summary');
+        if (summary) summary.innerHTML = '<p class="text-muted">Cadastre um ativo ou reconcilie scans para criar sua visão de segurança.</p>';
     }
 }
 
@@ -2391,7 +2435,15 @@ async function startPortScan() {
             showToast('Limite de scans atingido! Faça upgrade para continuar.', 'warning');
             
             // Mostrar modal de upgrade
-            if (confirm('Você atingiu o limite de scans do seu plano. Deseja fazer upgrade agora?')) {
+            if (await showConfirmDialog({
+                variant: 'info',
+                icon: 'fa-arrow-trend-up',
+                title: 'Limite de scans atingido',
+                message: 'Deseja conhecer os planos com mais capacidade agora?',
+                confirmText: 'Ver planos',
+                cancelText: 'Agora não',
+                confirmIcon: 'fa-arrow-right'
+            })) {
                 window.location.href = 'pricing.html';
             }
         } else {
@@ -4333,8 +4385,8 @@ async function queryThreatIntel() {
 }
 
 async function analyzeHash() {
-    const hashInput = document.getElementById('hash-input').value;
-    const hashType = document.getElementById('hash-type').value;
+    const hashInput = document.getElementById('hash-analyzer-input').value;
+    const hashType = document.getElementById('hash-analyzer-type').value;
     
     const hashes = hashInput.split('\n').map(h => h.trim()).filter(h => h);
     

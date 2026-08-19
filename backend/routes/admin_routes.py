@@ -1,13 +1,13 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from sqlalchemy import func, desc
-from typing import List
+from typing import List, Literal, Optional
 from datetime import datetime, timedelta
 from database import get_db
 from models.user import User
 from models.scan import Scan
 from auth import get_current_user, get_password_hash
-from middleware.subscription import upgrade_user_plan
+from middleware.subscription import normalize_subscription_plan, sync_owned_organization_plans, upgrade_user_plan
 from utils.email_service import email_service
 import json
 import stripe
@@ -33,10 +33,11 @@ def require_admin(current_user: User = Depends(get_current_user)):
 # Schemas
 class UserUpdate(BaseModel):
     email: str = None
-    subscription_plan: str = None
+    subscription_plan: Optional[Literal["starter", "professional", "enterprise"]] = None
     subscription_status: str = None
     scans_limit: int = None
     is_admin: bool = None
+    is_developer: bool = None
     new_password: str = None
 
 class UserResponse(BaseModel):
@@ -49,6 +50,7 @@ class UserResponse(BaseModel):
     scans_this_month: int
     scans_limit: int
     is_admin: bool
+    is_developer: bool = False
     last_login: datetime = None
 
 class BackupRestoreRequest(BaseModel):
@@ -75,9 +77,9 @@ def test_email(
 
     sent = email_service.send_email(
         request.email,
-        'Teste de email - Iron Net',
-        f'<p>Ola, {admin.username}.</p><p>O servico de email da Iron Net esta funcionando.</p>',
-        f'Ola, {admin.username}. O servico de email da Iron Net esta funcionando.',
+        'Teste de email - Iron AI',
+        f'<p>Ola, {admin.username}.</p><p>O servico de email da Iron AI esta funcionando.</p>',
+        f'Ola, {admin.username}. O servico de email da Iron AI esta funcionando.',
     )
     if not sent:
         raise HTTPException(status_code=502, detail='Conexao SMTP funcionou, mas o email de teste nao foi enviado. Consulte email.log.')
@@ -100,10 +102,12 @@ def bootstrap_admin(
     user = db.query(User).filter((User.username == username) | (User.email == email)).first()
     if user:
         user.is_admin = True
+        user.is_developer = True
         user.hashed_password = get_password_hash(password)
-        user.subscription_plan = user.subscription_plan or "enterprise"
-        user.subscription_status = user.subscription_status or "active"
-        user.scans_limit = user.scans_limit or -1
+        user.subscription_plan = "enterprise"
+        user.subscription_status = "active"
+        user.scans_limit = -1
+        sync_owned_organization_plans(user, db)
         db.commit()
         db.refresh(user)
         return {"success": True, "message": "Administrador habilitado", "user_id": user.id}
@@ -114,7 +118,8 @@ def bootstrap_admin(
         subscription_plan="enterprise",
         subscription_status="active",
         scans_limit=-1,
-        is_admin=True
+        is_admin=True,
+        is_developer=True,
     )
     db.add(new_user)
     db.commit()
@@ -235,7 +240,8 @@ def get_all_users(
                 "subscription_status": user.subscription_status,
                 "scans_this_month": user.scans_this_month or 0,
                 "scans_limit": user.scans_limit or 0,
-                "is_admin": user.is_admin or False
+                "is_admin": user.is_admin or False,
+                "is_developer": bool(getattr(user, "is_developer", False))
             }
             for user in users
         ]
@@ -297,6 +303,7 @@ def get_user_details(
         "scans_limit": user.scans_limit or 0,
         "stripe_customer_id": user.stripe_customer_id,
         "is_admin": user.is_admin or False,
+        "is_developer": bool(getattr(user, "is_developer", False)),
         "total_scans": total_scans,
         "last_scan_date": last_scan.created_at if last_scan else None
     }
@@ -320,7 +327,7 @@ def update_user(
         user.email = user_update.email
     
     if user_update.subscription_plan is not None:
-        user.subscription_plan = user_update.subscription_plan
+        user.subscription_plan = normalize_subscription_plan(user_update.subscription_plan)
         
         # Atualizar limite de scans baseado no plano
         if user_update.subscription_plan == 'starter':
@@ -336,10 +343,15 @@ def update_user(
     
     if user_update.is_admin is not None:
         user.is_admin = user_update.is_admin
+    if user_update.is_developer is not None:
+        user.is_developer = user_update.is_developer
     if user_update.new_password is not None and user_update.new_password.strip():
         if len(user_update.new_password.strip()) < 6:
             raise HTTPException(status_code=400, detail="Senha muito curta")
         user.hashed_password = get_password_hash(user_update.new_password.strip())
+
+    if user_update.subscription_plan is not None:
+        sync_owned_organization_plans(user, db)
     
     db.commit()
     db.refresh(user)
@@ -380,7 +392,8 @@ def update_user(
             "subscription_plan": user.subscription_plan,
             "subscription_status": user.subscription_status,
             "scans_limit": user.scans_limit,
-            "is_admin": user.is_admin
+            "is_admin": user.is_admin,
+            "is_developer": bool(getattr(user, "is_developer", False))
         }
     }
 
@@ -548,9 +561,24 @@ def list_checkout_sessions(
     for s in sessions.data:
         user_id = None
         plan = None
-        if hasattr(s, "metadata") and s.metadata:
-            user_id = int(s.metadata.get("user_id")) if s.metadata.get("user_id") else None
-            plan = s.metadata.get("plan")
+        raw_metadata = getattr(s, "metadata", None)
+        metadata = {}
+        if raw_metadata:
+            try:
+                internal_data = getattr(raw_metadata, "_data", None)
+                if isinstance(internal_data, dict):
+                    metadata = internal_data
+                elif isinstance(raw_metadata, dict):
+                    metadata = raw_metadata
+            except Exception:
+                metadata = {}
+        raw_user_id = metadata.get("user_id")
+        if raw_user_id:
+            try:
+                user_id = int(raw_user_id)
+            except (TypeError, ValueError):
+                user_id = None
+        plan = metadata.get("plan")
         user_info = None
         if user_id:
             u = db.query(User).filter(User.id == user_id).first()
@@ -594,9 +622,9 @@ def change_plan(
         raise HTTPException(status_code=404, detail="Usuário não encontrado")
     if new_plan not in ["starter", "professional", "enterprise"]:
         raise HTTPException(status_code=400, detail="Plano inválido")
-    upgrade_user_plan(user, new_plan, 1, db)
+    upgrade_user_plan(user, new_plan, None, db)
     try:
-        plan_prices = {'starter': 289.90, 'professional': 439.90}
+        plan_prices = {'starter': 389.90, 'professional': 3789.90, 'enterprise': 8989.90}
         email_service.send_subscription_confirmation(user.email, user.username, new_plan, plan_prices.get(new_plan, 0))
     except Exception:
         pass
@@ -641,12 +669,13 @@ def cancel_subscription_admin(
         raise HTTPException(status_code=404, detail="Usuário não encontrado")
     try:
         if user.stripe_subscription_id:
-            stripe.api_key = os.getenv("STRIPE_SECRET_KEY", "sk_test_...")
+            stripe.api_key = os.getenv("STRIPE_SECRET_KEY", "")
             stripe.Subscription.delete(user.stripe_subscription_id)
         user.subscription_status = 'cancelled'
         user.subscription_plan = 'starter'
         user.scans_limit = 100
         user.scans_this_month = 0
+        sync_owned_organization_plans(user, db)
         db.commit()
         try:
             notification_file = "/tmp/phishing_notifications.json"
@@ -693,7 +722,7 @@ def refund_last_invoice(
         raise HTTPException(status_code=404, detail="Usuário não encontrado")
     if provider == "stripe":
         try:
-            stripe.api_key = os.getenv("STRIPE_SECRET_KEY", "sk_test_...")
+            stripe.api_key = os.getenv("STRIPE_SECRET_KEY", "")
             invoices = stripe.Invoice.list(customer=user.stripe_customer_id, limit=1)
             if not invoices.data:
                 raise HTTPException(status_code=404, detail="Nenhuma fatura encontrada")

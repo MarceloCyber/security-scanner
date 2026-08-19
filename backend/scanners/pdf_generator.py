@@ -140,7 +140,7 @@ class PDFReportGenerator:
             topMargin=54,
             bottomMargin=46,
             title='Relatório Profissional de Segurança',
-            author='Iron Net',
+            author='Iron AI',
             subject='Análise de vulnerabilidades e plano de remediação',
         )
         
@@ -760,7 +760,7 @@ class PDFReportGenerator:
     def _create_footer(self) -> List:
         """Cria rodapé do relatório"""
         return [Spacer(1, 0.3*inch), self._create_line(), Paragraph(
-            f'Relatório gerado automaticamente pela plataforma Iron Net · {datetime.now().year}<br/>'
+            f'Relatório gerado automaticamente pela plataforma Iron AI · {datetime.now().year}<br/>'
             '<b>CONFIDENCIAL — Uso interno. Validar os achados antes de alterações em produção.</b>',
             ParagraphStyle('DocumentFooter', parent=self.styles['SmallText'], alignment=TA_CENTER))]
     
@@ -812,7 +812,7 @@ def generate_pdf_report(scan_data: Dict[str, Any], output_path: str = None) -> b
         doc = SimpleDocTemplate(
             buffer, pagesize=A4, rightMargin=48, leftMargin=48,
             topMargin=54, bottomMargin=46,
-            title='Relatório de Segurança', author='Iron Net',
+            title='Relatório de Segurança', author='Iron AI',
         )
         styles = getSampleStyleSheet()
         title_style = ParagraphStyle(

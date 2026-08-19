@@ -88,9 +88,9 @@ def _request_with_param(url: str, parameter: str, value: str, method: str = "GET
     if method.upper() == "POST":
         return requests.post(urlunparse(parsed._replace(query="")), data=params,
                              timeout=HTTP_TIMEOUT, allow_redirects=False,
-                             headers={"User-Agent": "IronNet-Authorized-Scanner/1.0"})
+                             headers={"User-Agent": "IronAI-Authorized-Scanner/1.0"})
     return requests.get(target, timeout=HTTP_TIMEOUT, allow_redirects=False,
-                        headers={"User-Agent": "IronNet-Authorized-Scanner/1.0"})
+                        headers={"User-Agent": "IronAI-Authorized-Scanner/1.0"})
 
 # ==================== MODELS ====================
 
@@ -321,7 +321,7 @@ async def test_sql_injection(
         if len(request.parameters) * len(payload_list) > MAX_ACTIVE_TESTS:
             raise HTTPException(status_code=400, detail=f"Teste excede o limite seguro de {MAX_ACTIVE_TESTS} requisições")
         baseline = requests.get(request.url, timeout=HTTP_TIMEOUT, allow_redirects=False,
-                                headers={"User-Agent": "IronNet-Authorized-Scanner/1.0"})
+                                headers={"User-Agent": "IronAI-Authorized-Scanner/1.0"})
         error_markers = ("sql syntax", "mysql", "postgresql", "sqlite", "odbc", "ora-")
         for param in request.parameters:
             for payload in payload_list:
@@ -640,7 +640,7 @@ async def start_brute_force(
                 try:
                     response = requests.post(request.url, data={request.user_field: user, request.pass_field: password},
                                               timeout=HTTP_TIMEOUT, allow_redirects=False,
-                                              headers={"User-Agent": "IronNet-Authorized-Scanner/1.0"})
+                                              headers={"User-Agent": "IronAI-Authorized-Scanner/1.0"})
                     # Success is reported only when the server's response is different from a failed login.
                     failure = response.status_code in {401, 403} or any(marker in response.text.lower() for marker in ("invalid", "incorrect", "failed", "unauthorized"))
                     positive = not failure and response.status_code < 400
@@ -736,7 +736,7 @@ async def enumerate_subdomains(
                         "status": "resolved", "method": request.method}
                 try:
                     response = requests.get(f"https://{full_domain}", timeout=HTTP_TIMEOUT,
-                                            allow_redirects=False, headers={"User-Agent": "IronNet-Authorized-Scanner/1.0"})
+                                            allow_redirects=False, headers={"User-Agent": "IronAI-Authorized-Scanner/1.0"})
                     item.update({"http_status": response.status_code, "server": response.headers.get("Server")})
                 except requests.RequestException as exc:
                     item["http_error"] = str(exc)
@@ -816,7 +816,7 @@ async def enumerate_directories(
             url = f"{base}/{path}"
             try:
                 response = requests.get(url, timeout=HTTP_TIMEOUT, allow_redirects=False,
-                                        headers={"User-Agent": "IronNet-Authorized-Scanner/1.0"})
+                                        headers={"User-Agent": "IronAI-Authorized-Scanner/1.0"})
             except requests.RequestException as exc:
                 continue
             status_code = response.status_code

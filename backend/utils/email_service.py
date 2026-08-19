@@ -32,7 +32,7 @@ class EmailService:
         # O Gmail espera os 16 caracteres sem espaços.
         self.smtp_password = ''.join(os.getenv('SMTP_PASSWORD', '').split())
         self.from_email = os.getenv('FROM_EMAIL', self.smtp_user).strip()
-        self.from_name = os.getenv('FROM_NAME', 'Iron Net').strip()
+        self.from_name = os.getenv('FROM_NAME', 'Iron AI').strip()
 
     def validate_config(self) -> tuple[bool, str]:
         if not self.smtp_host:
@@ -141,7 +141,7 @@ class EmailService:
 
     def generate_lgpd_contract_content(self, plan: str):
         dpo_email = os.getenv('DPO_EMAIL', self.from_email)
-        company_name = os.getenv('COMPANY_NAME', 'Iron Net')
+        company_name = os.getenv('COMPANY_NAME', 'Iron AI')
         forum_city = os.getenv('FORUM_CITY', 'São Paulo')
         forum_state = os.getenv('FORUM_STATE', 'SP')
         html = f"""
@@ -237,7 +237,7 @@ class EmailService:
             'enterprise': 'Enterprise'
         }
 
-        subject = f'Bem-vindo à Iron Net - Plano {plan_names.get(plan, "Free")}'
+        subject = f'Bem-vindo à Iron AI - Plano {plan_names.get(plan, "Free")}'
         base = os.getenv('FRONTEND_URL', 'http://localhost:8000')
         contract_base = os.getenv('BACKEND_URL', base)
         
@@ -295,7 +295,7 @@ class EmailService:
         <body>
             <div class="container">
                 <div class="header">
-                    <h1>🛡️ Bem-vindo à Iron Net!</h1>
+                    <h1>🛡️ Bem-vindo à Iron AI!</h1>
                 </div>
                 <div class="content">
                     <h2>Olá, {username}!</h2>
@@ -340,7 +340,7 @@ class EmailService:
                     </p>
                 </div>
                 <div class="footer">
-                    <p>Iron Net - Proteção Profissional para Suas Aplicações</p>
+                    <p>Iron AI - Segurança contínua para sua empresa</p>
                     <p>Este é um email automático, por favor não responda.</p>
                 </div>
             </div>
@@ -349,7 +349,7 @@ class EmailService:
         """
 
         text_content = f"""
-        Bem-vindo à Iron Net!
+        Bem-vindo à Iron AI!
 
         Olá, {username}!
 
@@ -368,7 +368,7 @@ class EmailService:
 
         Acesse: {base}/index.html
 
-        Iron Net - Proteção Profissional para Suas Aplicações
+        Iron AI - Segurança contínua para sua empresa
         """
 
         text_content = f"{text_content}\n\nContrato (LGPD): {contract_base}/contrato/lgpd?plan={plan_names.get(plan, 'Free')}\nBaixar PDF no link acima."
@@ -381,7 +381,7 @@ class EmailService:
             'enterprise': 'Enterprise'
         }
 
-        subject = f'Bem-vindo à Iron Net - Plano {plan_names.get(plan, "")} Ativado'
+        subject = f'Bem-vindo à Iron AI - Plano {plan_names.get(plan, "")} Ativado'
         base = os.getenv('FRONTEND_URL', 'http://localhost:8000')
         contract_base = os.getenv('BACKEND_URL', base)
 
@@ -402,7 +402,7 @@ class EmailService:
         <body>
             <div class="container">
                 <div class="header">
-                    <h1>🛡️ Bem-vindo à Iron Net!</h1>
+                    <h1>🛡️ Bem-vindo à Iron AI!</h1>
                 </div>
                 <div class="content">
                     <h2>Olá, {username}!</h2>
@@ -434,7 +434,7 @@ class EmailService:
                     </p>
                 </div>
                 <div class="footer">
-                    <p>Iron Net - Proteção Profissional para Suas Aplicações</p>
+                    <p>Iron AI - Segurança contínua para sua empresa</p>
                     <p>Este é um email automático, por favor não responda.</p>
                 </div>
             </div>
@@ -443,7 +443,7 @@ class EmailService:
         """
 
         text_content = f"""
-        Bem-vindo à Iron Net!
+        Bem-vindo à Iron AI!
 
         Olá, {username}!
 
@@ -460,7 +460,7 @@ class EmailService:
         Manual da plataforma: {manual_url}
         Login: {os.getenv('FRONTEND_URL', 'http://localhost:8000')}/index.html
 
-        Iron Net - Proteção Profissional para Suas Aplicações
+        Iron AI - Segurança contínua para sua empresa
         """
 
         text_content = f"{text_content}\n\nContrato (LGPD): {contract_base}/contrato/lgpd?plan={plan_names.get(plan, '')}\nBaixar PDF no link acima."
@@ -575,7 +575,7 @@ class EmailService:
                     </p>
                 </div>
                 <div class="footer">
-                    <p>Iron Net - Proteção Profissional para Suas Aplicações</p>
+                    <p>Iron AI - Segurança contínua para sua empresa</p>
                     <p>Este é um email automático, por favor não responda.</p>
                 </div>
             </div>
@@ -605,14 +605,14 @@ class EmailService:
 
         Acesse seu dashboard: http://localhost:8000/dashboard.html
 
-        Iron Net - Proteção Profissional para Suas Aplicações
+        Iron AI - Segurança contínua para sua empresa
         """
 
         return self.send_email(to_email, subject, html_content, text_content)
 
     def send_password_reset_email(self, to_email: str, username: str, reset_link: str):
         """Send password reset email"""
-        subject = 'Reset de Senha - Iron Net Admin'
+        subject = 'Reset de Senha - Iron AI Admin'
         
         html_content = f"""
         <!DOCTYPE html>
@@ -667,7 +667,7 @@ class EmailService:
                 <div class="content">
                     <p>Olá, <strong>{username}</strong>!</p>
                     
-                    <p>Você solicitou o reset de senha para sua conta de administrador na Iron Net.</p>
+                    <p>Você solicitou o reset de senha para sua conta de administrador na Iron AI.</p>
                     
                     <p>Clique no botão abaixo para criar uma nova senha:</p>
                     
@@ -692,7 +692,7 @@ class EmailService:
                     <hr style="margin: 30px 0; border: none; border-top: 1px solid #ddd;">
                     
                     <p style="color: #666; font-size: 12px;">
-                        Iron Net - Painel Administrativo<br>
+                        Iron AI - Painel Administrativo<br>
                         Este é um email automático, não responda.
                     </p>
                 </div>
@@ -702,7 +702,7 @@ class EmailService:
         """
 
         text_content = f"""
-        Reset de Senha - Iron Net Admin
+        Reset de Senha - Iron AI Admin
 
         Olá, {username}!
 
@@ -716,13 +716,13 @@ class EmailService:
         - Se você não solicitou este reset, ignore este email
         - Nunca compartilhe este link com ninguém
 
-        Iron Net - Painel Administrativo
+        Iron AI - Painel Administrativo
         """
 
         return self.send_email(to_email, subject, html_content, text_content)
 
     def send_user_password_reset_email(self, to_email: str, username: str, reset_link: str):
-        subject = 'Reset de Senha - Iron Net'
+        subject = 'Reset de Senha - Iron AI'
         html_content = f"""
         <!DOCTYPE html>
         <html>
@@ -775,7 +775,7 @@ class EmailService:
                 </div>
                 <div class="content">
                     <p>Olá, <strong>{username}</strong>!</p>
-                    <p>Você solicitou o reset de senha para sua conta na Iron Net.</p>
+                    <p>Você solicitou o reset de senha para sua conta na Iron AI.</p>
                     <p>Clique no botão abaixo para criar uma nova senha:</p>
                     <center>
                         <a href="{reset_link}" class="button">Resetar Senha</a>
@@ -794,7 +794,7 @@ class EmailService:
                     </p>
                     <hr style="margin: 30px 0; border: none; border-top: 1px solid #ddd;">
                     <p style="color: #666; font-size: 12px;">
-                        Iron Net - Plataforma<br>
+                        Iron AI - Plataforma<br>
                         Este é um email automático, não responda.
                     </p>
                 </div>
@@ -803,7 +803,7 @@ class EmailService:
         </html>
         """
         text_content = f"""
-        Reset de Senha - Iron Net
+        Reset de Senha - Iron AI
 
         Olá, {username}!
 
@@ -817,7 +817,7 @@ class EmailService:
         - Se você não solicitou este reset, ignore este email
         - Nunca compartilhe este link com ninguém
 
-        Iron Net - Plataforma
+        Iron AI - Plataforma
         """
         return self.send_email(to_email, subject, html_content, text_content)
 

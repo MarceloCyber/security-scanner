@@ -47,23 +47,29 @@ start_server() {
     fi
     
     # Check virtual environment
-    if [ ! -d "$VENV_DIR" ]; then
+    PYTHON_BIN="$VENV_DIR/bin/python3"
+    if [ ! -x "$PYTHON_BIN" ]; then
         echo -e "${RED}❌ Ambiente virtual não encontrado em: $VENV_DIR${NC}"
         echo -e "${YELLOW}💡 Execute: ./install.sh${NC}"
         return 1
     fi
     
-    # Activate virtual environment and start server
+    # Use the venv interpreter directly. Activation scripts may contain an old
+    # absolute path after the project directory is moved.
     cd "$PROJECT_DIR"
-    source "$VENV_DIR/bin/activate"
-    
-    echo -e "${GREEN}✅ Ambiente virtual ativado${NC}"
+    PYTHON_VERSION="$("$PYTHON_BIN" --version 2>&1)"
+    echo -e "${GREEN}✅ Ambiente virtual encontrado: ${PYTHON_VERSION}${NC}"
+    echo -e "${BLUE}🗃️  Aplicando migrations do banco...${NC}"
+    "$PYTHON_BIN" "$PROJECT_DIR/migrations/run.py" || {
+        echo -e "${RED}❌ Falha ao aplicar migrations${NC}"
+        return 1
+    }
     echo -e "${BLUE}🔧 Iniciando servidor na porta $PORT...${NC}"
     echo ""
     
     # Start server in background
     cd "$BACKEND_DIR"
-    nohup python -m uvicorn main:app --reload --host 0.0.0.0 --port $PORT > "$LOG_FILE" 2>&1 &
+    nohup "$PYTHON_BIN" -m uvicorn main:app --reload --host 0.0.0.0 --port $PORT > "$LOG_FILE" 2>&1 &
     
     # Save PID
     echo $! > "$PID_FILE"

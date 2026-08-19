@@ -65,7 +65,7 @@ def migrate_database():
         # e não passam a exigir uma chave retroativamente.
         db.execute(text("UPDATE users SET access_key_required = FALSE WHERE access_key_required IS NULL"))
         db.execute(text(
-            "UPDATE users SET access_key_required = 1 "
+            "UPDATE users SET access_key_required = TRUE "
             "WHERE access_key_hash IS NOT NULL AND access_key_used_at IS NULL AND COALESCE(is_admin, FALSE) = FALSE"
         ))
         db.execute(text("UPDATE users SET access_key_required = FALSE WHERE access_key_used_at IS NOT NULL"))

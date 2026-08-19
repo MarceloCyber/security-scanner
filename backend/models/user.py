@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime, Boolean
+from sqlalchemy import Column, Integer, String, DateTime, Boolean, Text
 from datetime import datetime
 from database import Base
 
@@ -20,9 +20,10 @@ class User(Base):
     scans_limit = Column(Integer, default=100)  # 100 for starter, -1 for unlimited
     stripe_customer_id = Column(String, nullable=True)
     stripe_subscription_id = Column(String, nullable=True)
+    last_stripe_checkout_session_id = Column(String, nullable=True, unique=True)
     mercadopago_customer_id = Column(String, nullable=True)
     is_trial = Column(Boolean, default=False)
-    # O trial começa no primeiro login após a assinatura ser confirmada.
+    # Início da janela de cancelamento, definido quando o pagamento é confirmado.
     trial_started_at = Column(DateTime, nullable=True)
 
     # Chave de acesso: somente o hash é persistido; o segredo é enviado uma vez por email.
@@ -38,6 +39,13 @@ class User(Base):
     
     # Admin field
     is_admin = Column(Boolean, default=False)
+    # Permissão separada para ferramentas ofensivas/avançadas.
+    is_developer = Column(Boolean, default=False)
+
+    # MFA TOTP opcional. O segredo é criptografado e recovery codes são hashes.
+    mfa_enabled = Column(Boolean, default=False)
+    mfa_secret_encrypted = Column(Text, nullable=True)
+    mfa_recovery_codes_hash = Column(Text, nullable=True)
     
     # Password reset fields
     reset_token = Column(String, nullable=True)

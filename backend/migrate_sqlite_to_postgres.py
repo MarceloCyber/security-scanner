@@ -83,6 +83,7 @@ def migrate(sqlite_path: str, postgres_url: str) -> int:
                 existing.mercadopago_customer_id = data.get("mercadopago_customer_id") or existing.mercadopago_customer_id
                 existing.is_trial = _to_bool(data.get("is_trial"))
                 existing.is_admin = _to_bool(data.get("is_admin")) or existing.is_admin
+                existing.is_developer = _to_bool(data.get("is_developer")) or getattr(existing, "is_developer", False)
                 existing.reset_token = data.get("reset_token") or existing.reset_token
                 existing.reset_token_expires = _parse_dt(data.get("reset_token_expires")) or existing.reset_token_expires
                 pg.commit()
@@ -104,6 +105,7 @@ def migrate(sqlite_path: str, postgres_url: str) -> int:
                     mercadopago_customer_id=data.get("mercadopago_customer_id"),
                     is_trial=_to_bool(data.get("is_trial")),
                     is_admin=_to_bool(data.get("is_admin")),
+                    is_developer=_to_bool(data.get("is_developer")),
                     reset_token=data.get("reset_token"),
                     reset_token_expires=_parse_dt(data.get("reset_token_expires")),
                 )

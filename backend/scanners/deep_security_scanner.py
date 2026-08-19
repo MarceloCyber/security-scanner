@@ -1,4 +1,4 @@
-"""Analise passiva em camadas para alvos web monitorados pelo Viggio Shield."""
+"""Analise passiva em camadas para alvos web monitorados pelo Iron AI Shield."""
 
 from datetime import datetime, timezone
 from typing import Any, Dict, List
@@ -82,7 +82,7 @@ def deep_web_scan(url: str, target_type: str = "application") -> Dict[str, Any]:
     normalized_url = parsed.geturl()
     response = requests.get(
         normalized_url, timeout=(3.05, 10), allow_redirects=True,
-        headers={"User-Agent": "IronNet-ViggioShield-DeepScan/2.0"}
+        headers={"User-Agent": "IronAI-Shield-DeepScan/2.0"}
     )
     final_parsed = urlparse(response.url)
     headers = {k.lower(): v for k, v in response.headers.items()}
@@ -123,7 +123,7 @@ def deep_web_scan(url: str, target_type: str = "application") -> Dict[str, Any]:
                 "Session", "CWE-614", "A07:2021", 5.4, f"Set-Cookie: {cookie.name}; atributos ausentes: {', '.join(missing)}"
             ))
 
-    cors = requests.get(normalized_url, timeout=(3.05, 10), headers={"Origin": "https://attacker.invalid", "User-Agent": "IronNet-ViggioShield-DeepScan/2.0"})
+    cors = requests.get(normalized_url, timeout=(3.05, 10), headers={"Origin": "https://attacker.invalid", "User-Agent": "IronAI-Shield-DeepScan/2.0"})
     allow_origin = cors.headers.get("Access-Control-Allow-Origin")
     allow_credentials = cors.headers.get("Access-Control-Allow-Credentials", "").lower()
     if allow_origin == "https://attacker.invalid" or (allow_origin == "*" and allow_credentials == "true"):

@@ -13,6 +13,7 @@ from models.user import User
 from models.scan import Scan
 from pydantic import BaseModel
 from middleware.subscription import increment_scan_count, check_subscription_status, check_tool_access, ensure_tool_access
+from services.finding_service import persist_scan_findings
 
 # Import novos scanners
 from scanners.multilang_scanner import scan_code as multilang_scan
@@ -85,6 +86,8 @@ async def scan_dependencies_endpoint(
         db.add(scan)
         db.commit()
         db.refresh(scan)
+        persist_scan_findings(db, current_user, results, "dependency_scanner", request.file_type)
+        db.commit()
         
         return {
             "scan_id": scan.id,
@@ -140,6 +143,8 @@ async def scan_ports_endpoint(
         db.add(scan)
         db.commit()
         db.refresh(scan)
+        persist_scan_findings(db, current_user, results, "port_scanner", request.target)
+        db.commit()
         
         # Incrementar contador de scans
         increment_scan_count(current_user, db)
@@ -199,6 +204,8 @@ async def scan_docker_endpoint(
         db.add(scan)
         db.commit()
         db.refresh(scan)
+        persist_scan_findings(db, current_user, results, "docker_scanner", request.scan_type)
+        db.commit()
         
         return {
             "scan_id": scan.id,
@@ -250,6 +257,8 @@ async def scan_graphql_endpoint(
         db.add(scan)
         db.commit()
         db.refresh(scan)
+        persist_scan_findings(db, current_user, results, "graphql_scanner", request.url)
+        db.commit()
         
         return {
             "scan_id": scan.id,
@@ -306,6 +315,8 @@ async def scan_with_ml_endpoint(
         db.add(scan)
         db.commit()
         db.refresh(scan)
+        persist_scan_findings(db, current_user, combined_results, "ml_scanner", "ml_scan")
+        db.commit()
         
         return {
             "scan_id": scan.id,
@@ -874,6 +885,8 @@ async def scan_multilang_endpoint(
         db.add(scan)
         db.commit()
         db.refresh(scan)
+        persist_scan_findings(db, current_user, results, "multilang_scanner", request.filename)
+        db.commit()
         
         return {
             "scan_id": scan.id,

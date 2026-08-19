@@ -1,4 +1,4 @@
-"""Motores locais do workspace AppSec do Viggio Shield."""
+"""Motores locais do workspace AppSec do Iron AI Shield."""
 
 import hashlib
 import json
@@ -211,7 +211,7 @@ def add_governance(result: Dict[str, Any], policy: Dict[str, Any] = None, filena
     }
     result['sarif'] = {
         '$schema': 'https://json.schemastore.org/sarif-2.1.0.json', 'version': '2.1.0',
-        'runs': [{'tool': {'driver': {'name': 'Viggio Shield AppSec', 'rules': []}}, 'results': [
+        'runs': [{'tool': {'driver': {'name': 'Iron AI Shield AppSec', 'rules': []}}, 'results': [
             {'ruleId': item.get('cwe') or item.get('type', 'VIGGIO'), 'level': str(item.get('severity', 'warning')).lower().replace('critical', 'error').replace('high', 'error').replace('medium', 'warning').replace('low', 'note'),
              'message': {'text': item.get('description') or item.get('type', 'Finding')},
              'locations': [{'physicalLocation': {'artifactLocation': {'uri': filename or 'source'}, 'region': {'startLine': int(item.get('line') or 1)}}}]}

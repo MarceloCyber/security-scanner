@@ -3,9 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Iron Net - Plataforma completa de análise e testes de segurança para aplicações web">
-    <title>Iron Net - Proteção Profissional para suas Aplicações</title>
+    <meta name="description" content="Iron AI - Segurança contínua e acessível para pequenas e médias empresas">
+    <title>Iron AI - Segurança contínua para PMEs</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="css/ironnet-brand.css?v=1.3">
     <style>
         * {
             margin: 0;
@@ -275,15 +276,6 @@
             box-shadow: 0 20px 40px rgba(102, 126, 234, 0.3);
         }
 
-        .feature-icon {
-            font-size: 3rem;
-            margin-bottom: 1.5rem;
-            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-
         .feature-card h3 {
             font-size: 1.5rem;
             margin-bottom: 1rem;
@@ -501,13 +493,140 @@
                 grid-template-columns: 1fr;
             }
         }
+
+        /* Iron AI 2026 — product-led landing */
+        :root {
+            --primary: #a855f7;
+            --primary-dark: #7c3aed;
+            --secondary: #6d28d9;
+            --accent: #c4a7ff;
+            --dark: #07060f;
+            --dark-light: #100d1a;
+            --panel: #151022;
+            --panel-soft: #0d1117;
+            --text: #f5f1ff;
+            --text-dark: #aaa1ba;
+            --line: rgba(196, 167, 255, .14);
+        }
+
+        body { font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+        .navbar { padding: .9rem max(5%, calc((100vw - 1240px) / 2)); background: rgba(7, 6, 15, .82); border-bottom: 1px solid var(--line); box-shadow: none; }
+        .logo { display: flex; align-items: center; gap: .7rem; color: var(--text); background: none; -webkit-text-fill-color: currentColor; letter-spacing: .08em; }
+        .landing-brand-image { width: 40px; height: 40px; border-radius: 12px; object-fit: cover; }
+        .nav-links { align-items: center; gap: 1.4rem; }
+        .nav-links a { color: #c8c0d5; font-size: .92rem; }
+        .cta-nav { border-radius: 12px; background: linear-gradient(135deg, #b15cff, #7128dd); }
+
+        .hero { min-height: auto; padding: 9.5rem 5% 5rem; background: radial-gradient(circle at 50% 18%, rgba(126, 52, 221, .22), transparent 34%), linear-gradient(180deg, #090713 0%, #07060f 100%); }
+        .hero::before { width: 720px; height: 720px; top: -500px; right: calc(50% - 360px); opacity: .45; animation: none; }
+        .hero-content { width: 100%; max-width: 1320px; min-width: 0; grid-template-columns: minmax(0, 1fr); gap: 3.5rem; text-align: center; }
+        .hero-text { width: 100%; max-width: 930px; min-width: 0; margin: 0 auto; }
+        .hero-eyebrow { display: inline-flex; align-items: center; gap: .55rem; padding: .48rem .8rem; margin-bottom: 1.4rem; border: 1px solid rgba(177, 92, 255, .25); border-radius: 999px; background: rgba(177, 92, 255, .08); color: #d2b2ff; font-size: .78rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
+        .hero-eyebrow i { font-size: .65rem; }
+        .hero-text h1 { max-width: 900px; margin: 0 auto 1.4rem; font-size: clamp(2.8rem, 6vw, 5.2rem); letter-spacing: -.055em; line-height: .98; }
+        .gradient-text { background: linear-gradient(120deg, #f1e7ff 15%, #c084fc 55%, #7c3aed 100%); -webkit-background-clip: text; background-clip: text; }
+        .hero-text p { max-width: 760px; margin: 0 auto 2rem; color: #b8afc7; font-size: clamp(1.05rem, 2vw, 1.28rem); }
+        .hero-buttons { justify-content: center; }
+        .btn { min-height: 50px; padding: .86rem 1.4rem; border-radius: 13px; font-size: .96rem; }
+        .btn-primary { background: linear-gradient(135deg, #b15cff, #7128dd); box-shadow: 0 14px 40px rgba(113, 40, 221, .24); }
+        .btn-secondary { border: 1px solid var(--line); background: rgba(255, 255, 255, .025); color: #e8ddf8; }
+        .btn-secondary:hover { background: rgba(177, 92, 255, .1); border-color: rgba(177, 92, 255, .4); }
+        .hero-proof { display: flex; justify-content: center; flex-wrap: wrap; gap: .65rem 1.4rem; margin-top: 1.5rem; color: #8f879d; font-size: .83rem; }
+        .hero-proof span { display: inline-flex; align-items: center; gap: .45rem; }
+        .hero-proof i { color: #a855f7; }
+        .hero-image { width: 100%; max-width: 100%; min-width: 0; position: relative; isolation: isolate; }
+        .hero-image::before { content: ""; position: absolute; inset: 8% 9% -2%; z-index: -1; border-radius: 50%; background: rgba(124, 58, 237, .25); filter: blur(80px); }
+        .product-showcase { width: 100%; max-width: 100%; min-width: 0; position: relative; margin: 0; padding: 1px; border: 1px solid rgba(196, 167, 255, .17); border-radius: 25px; background: linear-gradient(145deg, rgba(196, 167, 255, .18), rgba(196, 167, 255, .025)); box-shadow: 0 36px 100px rgba(0, 0, 0, .5); overflow: hidden; }
+        .product-showcase::before { content: "PLATAFORMA REAL · DADOS DA ORGANIZAÇÃO"; position: absolute; z-index: 2; top: 18px; left: 20px; padding: .42rem .65rem; border: 1px solid rgba(255,255,255,.12); border-radius: 999px; background: rgba(7,6,15,.72); backdrop-filter: blur(12px); color: #d9c8f5; font-size: .64rem; font-weight: 700; letter-spacing: .1em; }
+        .dashboard-preview { display: block; width: 100%; max-width: 100%; border-radius: 24px; box-shadow: none; animation: none; aspect-ratio: 1672 / 720; object-fit: cover; object-position: center; }
+        .showcase-caption { display: grid; grid-template-columns: 1.3fr 1fr 1fr; gap: 1px; border-top: 1px solid var(--line); background: var(--line); text-align: left; }
+        .showcase-caption div { padding: 1.15rem 1.3rem; background: rgba(10, 8, 17, .96); }
+        .showcase-caption strong { display: block; color: #f4ecff; font-size: .87rem; }
+        .showcase-caption span { color: #8f879d; font-size: .74rem; }
+
+        .features, .stats-grid, .steps, .footer-content { max-width: 1240px; }
+        .features { padding: 6.5rem 5%; }
+        .section-header { max-width: 740px; margin: 0 auto 3.5rem; }
+        .section-header h2 { font-size: clamp(2rem, 4vw, 3.2rem); letter-spacing: -.04em; }
+        .section-header p { color: #9f96ad; font-size: 1.05rem; }
+        .plans-grid { align-items: stretch; }
+        .feature-card { position: relative; padding: 2rem; border: 1px solid var(--line); border-radius: 20px; background: linear-gradient(145deg, rgba(25, 19, 40, .92), rgba(13, 10, 23, .96)); overflow: hidden; }
+        .feature-card::after { content: ""; position: absolute; width: 120px; height: 120px; top: -70px; right: -55px; background: rgba(168, 85, 247, .15); filter: blur(30px); }
+        .feature-card:hover { transform: translateY(-5px); border-color: rgba(168, 85, 247, .38); box-shadow: 0 24px 60px rgba(0,0,0,.28); }
+        .feature-card h3 { font-size: 1.2rem; }
+        .feature-card p { color: #a79daf; line-height: 1.65; }
+        .plan-kicker { display: block; margin-bottom: .65rem; color: #b978ff; font-size: .72rem; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
+        .plan-price { display: block; margin: .9rem 0 .5rem; color: #f7f1ff; font-size: 1.65rem; letter-spacing: -.03em; }
+        .plan-price small { color: #8f879d; font-size: .76rem; font-weight: 500; }
+        .plan-note { margin-top: .9rem; color: #8e859a !important; font-size: .82rem; }
+
+        .stats { padding: 1.5rem 5%; border-block: 1px solid var(--line); background: #0b0913; }
+        .stats-grid { gap: 0; }
+        .stat-item { min-height: 120px; display: grid; align-content: center; padding: 1.3rem; border-right: 1px solid var(--line); }
+        .stat-item:last-child { border-right: 0; }
+        .stat-item h3 { margin: 0; color: #bd79ff; font-size: 2rem; }
+        .stat-item h3 i { margin-right: .3rem; font-size: 1rem; opacity: .7; }
+        .stat-item p { color: #8f879d; font-size: .86rem; }
+
+        .how-it-works { padding: 6.5rem 5%; background: radial-gradient(circle at 20% 20%, rgba(124, 58, 237, .12), transparent 28%), #0c0914; }
+        .steps { grid-template-columns: repeat(4, 1fr); gap: 1rem; }
+        .step { display: block; padding: 1.7rem; border: 1px solid var(--line); border-radius: 18px; background: rgba(20, 15, 32, .7); }
+        .step-number { width: 42px; height: 42px; margin-bottom: 1.8rem; border-radius: 12px; font-size: 1rem; }
+        .step-content h3 { font-size: 1.05rem; }
+        .step-content p { color: #9a91a7; font-size: .9rem; }
+
+        .cta-section { padding: 7rem 5%; background: radial-gradient(circle at 50% 0%, rgba(200, 128, 255, .22), transparent 38%), linear-gradient(145deg, #140a25, #0a0711); border-top: 1px solid var(--line); }
+        .cta-section h2 { font-size: clamp(2rem, 4vw, 3.4rem); letter-spacing: -.04em; }
+        .cta-section p { color: #b8afc7; }
+        .btn-white { color: #54209d; }
+        .footer { background: #07060f; border-color: var(--line); }
+        .footer-section h3 { color: #d3a8ff; }
+
+        @media (max-width: 920px) {
+            .features-grid { grid-template-columns: repeat(2, 1fr); }
+            .plans-grid .feature-card:last-child { grid-column: 1 / -1; }
+            .steps { grid-template-columns: repeat(2, 1fr); }
+            .showcase-caption { grid-template-columns: 1fr; }
+        }
+
+        @media (max-width: 768px) {
+            .navbar { padding: .8rem 1rem; }
+            .nav-links { top: 65px; width: min(86vw, 320px); background: rgba(16, 13, 26, .98); border-left: 1px solid var(--line); }
+            .hero { display: block; padding: 7.5rem 1rem 3.5rem; }
+            .hero-content { display: grid; width: calc(100vw - 2rem); max-width: calc(100vw - 2rem); margin: 0 auto; gap: 2.5rem; }
+            .hero-text, .hero-image, .product-showcase { width: calc(100vw - 2rem); max-width: calc(100vw - 2rem); }
+            .hero-text h1 { font-size: clamp(2.45rem, 12vw, 3.7rem); }
+            .hero-text h1, .hero-text p { max-width: 100%; overflow-wrap: anywhere; }
+            .product-showcase { border-radius: 16px; overflow: visible; }
+            .product-showcase::before { top: 10px; left: 10px; font-size: .52rem; }
+            .dashboard-preview { border-radius: 15px; }
+            .showcase-caption { display: none; }
+            .features-grid, .plans-grid { grid-template-columns: 1fr; }
+            .plans-grid .feature-card:last-child { grid-column: auto; }
+            .stats-grid { grid-template-columns: repeat(2, 1fr); }
+            .stat-item:nth-child(2) { border-right: 0; }
+            .stat-item:nth-child(-n+2) { border-bottom: 1px solid var(--line); }
+            .steps { grid-template-columns: 1fr; }
+        }
+
+        @media (max-width: 480px) {
+            .hero-text h1 { font-size: clamp(2.25rem, 11.5vw, 3rem); }
+            .hero-buttons .btn { width: 100%; justify-content: center; }
+            .hero-proof { display: grid; text-align: left; }
+            .features, .how-it-works { padding: 5rem 1rem; }
+            .stats { padding-inline: 1rem; }
+            .stat-item { min-height: 100px; padding: 1rem .5rem; }
+            .stat-item h3 { font-size: 1.5rem; }
+            .cookie-banner { padding: .8rem 1rem !important; }
+            .cookie-copy { flex: 1 1 100%; min-width: 0; text-align: center; font-size: .82rem; overflow-wrap: anywhere; }
+        }
     </style>
 </head>
-<body>
+<body class="public-landing">
     <!-- Navbar -->
     <nav class="navbar">
         <div class="logo">
-            <i class="fas fa-shield-alt"></i> Iron Net
+            <img class="landing-brand-image" src="assets/ironnet-logo.jpeg" alt="Iron AI"> Iron AI
         </div>
         <ul class="nav-links" id="navLinks">
             <li><a href="#features">Recursos</a></li>
@@ -525,24 +644,36 @@
     <section class="hero">
         <div class="hero-content">
             <div class="hero-text">
+                <span class="hero-eyebrow"><i class="fas fa-circle"></i> Segurança contínua para PMEs</span>
                 <h1>
-                    Proteja suas <span class="gradient-text">Aplicações</span> com Análise Profissional de Segurança
+                    Enxergue o risco. <span class="gradient-text">Decida o que corrigir.</span>
                 </h1>
                 <p>
-                    Plataforma completa de testes de segurança para desenvolvedores e empresas. 
-                    Detecte vulnerabilidades antes dos hackers.
+                    A Iron AI reúne ativos, scans autorizados, findings, monitoramento, conformidade e relatórios para sua equipe agir com contexto — sem transformar segurança em mais uma operação fragmentada.
                 </p>
                 <div class="hero-buttons">
-                    <a href="register.html" class="btn btn-primary">
-                        <i class="fas fa-rocket"></i> Escolher um plano
+                    <a href="pricing.html" class="btn btn-primary">
+                        <i class="fas fa-arrow-right"></i> Conhecer os planos
                     </a>
-                    <a href="#features" class="btn btn-secondary">
-                        <i class="fas fa-play-circle"></i> Ver Demo
+                    <a href="#platform-preview" class="btn btn-secondary">
+                        <i class="fas fa-desktop"></i> Ver a plataforma
                     </a>
                 </div>
+                <div class="hero-proof">
+                    <span><i class="fas fa-check-circle"></i> Dados isolados por organização</span>
+                    <span><i class="fas fa-check-circle"></i> Ações da IA com aprovação humana</span>
+                    <span><i class="fas fa-check-circle"></i> Relatórios executivos e técnicos</span>
+                </div>
             </div>
-            <div class="hero-image">
-                <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 800 600'%3E%3Crect fill='%231a1d29' width='800' height='600'/%3E%3Crect fill='%232d3748' x='50' y='50' width='700' height='500' rx='20'/%3E%3Crect fill='%23667eea' x='70' y='70' width='660' height='60' rx='10'/%3E%3Ccircle fill='%2348bb78' cx='100' cy='100' r='15'/%3E%3Ccircle fill='%23f6ad55' cx='140' cy='100' r='15'/%3E%3Ccircle fill='%23f56565' cx='180' cy='100' r='15'/%3E%3Crect fill='%233d4a5c' x='70' y='160' width='300' height='360' rx='10'/%3E%3Crect fill='%233d4a5c' x='390' y='160' width='360' height='170' rx='10'/%3E%3Crect fill='%233d4a5c' x='390' y='350' width='360' height='170' rx='10'/%3E%3C/svg%3E" alt="Dashboard Preview" class="dashboard-preview">
+            <div class="hero-image" id="platform-preview">
+                <figure class="product-showcase">
+                    <img src="assets/iron-ai-platform-showcase.png" alt="Telas reais de visão geral e conformidade da plataforma Iron AI" class="dashboard-preview" width="1672" height="941" fetchpriority="high">
+                    <figcaption class="showcase-caption">
+                        <div><strong>Postura em uma única visão</strong><span>Score, exposição e riscos priorizados a partir dos findings persistidos.</span></div>
+                        <div><strong>Iron AI com contexto</strong><span>Copiloto conectado aos dados da organização.</span></div>
+                        <div><strong>Conformidade baseada em evidências</strong><span>Controles automáticos e atestações manuais.</span></div>
+                    </figcaption>
+                </figure>
             </div>
         </div>
     </section>
@@ -550,13 +681,13 @@
     <!-- Plans Summary -->
     <section class="features" id="plans-summary">
         <div class="section-header">
-            <h2>Planos para cada <span class="gradient-text">necessidade</span></h2>
-            <p>Todos os planos são mensais. Starter e Professional incluem 10 dias para cancelamento após o primeiro login.</p>
+            <h2>Comece no nível certo para a <span class="gradient-text">sua operação</span></h2>
+            <p>Planos mensais para estruturar a postura de segurança, ampliar a operação e liberar recursos especializados quando fizer sentido.</p>
         </div>
-        <div class="features-grid">
-            <div class="feature-card"><h3>Starter</h3><p><strong>R$ 289,90/mês</strong><br>Acesso a 5 ferramentas.</p></div>
-            <div class="feature-card"><h3>Professional</h3><p><strong>R$ 439,90/mês</strong><br>Acesso a 10 ferramentas.</p></div>
-            <div class="feature-card"><h3>Enterprise</h3><p><strong>Sob consulta</strong><br>Acesso a todas as ferramentas.</p></div>
+        <div class="features-grid plans-grid">
+            <div class="feature-card"><span class="plan-kicker">Postura essencial</span><h3>Starter</h3><strong class="plan-price">R$ 389,90 <small>/ mês</small></strong><p>Inventário de ativos, 100 scans mensais, Iron AI contextual, riscos, evidências e relatórios.</p><p class="plan-note">Assinatura mensal recorrente, cancelável em até 7 dias conforme as condições do plano.</p></div>
+            <div class="feature-card"><span class="plan-kicker">Operação contínua</span><h3>Professional</h3><strong class="plan-price">R$ 3.789,90 <small>pagamento único</small></strong><p>Todos os recursos Starter, scans ilimitados, detecção em tempo real e contenção aprovada via Cloudflare WAF.</p><p class="plan-note">4 meses de acesso. Parcelamento sujeito às opções apresentadas pelo Stripe.</p></div>
+            <div class="feature-card"><span class="plan-kicker">Capacidade especializada</span><h3>Enterprise</h3><strong class="plan-price">R$ 8.989,90 <small>pagamento único</small></strong><p>Professional, Iron AI Shield, AppSec contínuo, ferramentas avançadas, DAST autenticado, SSO/SAML, integrações e quality gates de CI/CD.</p><p class="plan-note">1 ano de acesso. Ferramentas avançadas exigem permissão explícita de desenvolvedor.</p></div>
         </div>
         <div style="text-align:center; margin-top:28px;"><a href="pricing.html" class="btn btn-primary">Ver detalhes dos planos</a></div>
     </section>
@@ -565,20 +696,20 @@
     <section class="stats">
         <div class="stats-grid">
             <div class="stat-item">
-                <h3><i class="fas fa-users"></i> <span id="landing-users">3</span></h3>
-                <p>Usuários Ativos</p>
+                <h3><i class="fas fa-users"></i> <span id="landing-users">—</span></h3>
+                <p>Contas cadastradas</p>
             </div>
             <div class="stat-item">
-                <h3><i class="fas fa-shield-alt"></i> <span id="landing-scans">7</span></h3>
-                <p>Scans Realizados</p>
+                <h3><i class="fas fa-shield-alt"></i> <span id="landing-scans">—</span></h3>
+                <p>Scans registrados</p>
             </div>
             <div class="stat-item">
-                <h3><i class="fas fa-bug"></i> <span id="landing-vulnerabilities">19</span></h3>
-                <p>Vulnerabilidades Detectadas</p>
+                <h3><i class="fas fa-bug"></i> <span id="landing-vulnerabilities">—</span></h3>
+                <p>Vulnerabilidades registradas</p>
             </div>
             <div class="stat-item">
-                <h3><i class="fas fa-clock"></i> 24/7</h3>
-                <p>Suporte Disponível</p>
+                <h3><i class="fas fa-clipboard-check"></i> 10</h3>
+                <p>Controles de prontidão</p>
             </div>
         </div>
     </section>
@@ -586,51 +717,33 @@
     <!-- Features Section -->
     <section class="features" id="features">
         <div class="section-header">
-            <h2>Recursos <span class="gradient-text">Poderosos</span></h2>
-            <p>Tudo que você precisa para manter suas aplicações seguras</p>
+            <h2>Da descoberta ao tratamento, <span class="gradient-text">sem perder o contexto</span></h2>
+            <p>Recursos conectados ao mesmo inventário, às mesmas evidências e à mesma trilha de auditoria.</p>
         </div>
         <div class="features-grid">
             <div class="feature-card">
-                <div class="feature-icon">
-                    <i class="fas fa-code"></i>
-                </div>
-                <h3>Análise de Código</h3>
-                <p>Escaneamento profundo do código fonte detectando vulnerabilidades como SQL Injection, XSS e mais.</p>
+                <h3>Risco priorizado</h3>
+                <p>Findings consolidados por ativo com severidade, confiança, exposição, recorrência e score de risco determinístico.</p>
             </div>
             <div class="feature-card">
-                <div class="feature-icon">
-                    <i class="fas fa-network-wired"></i>
-                </div>
-                <h3>Port Scanner</h3>
-                <p>Identifique portas abertas e serviços vulneráveis em seus servidores e aplicações.</p>
+                <h3>Scans autorizados</h3>
+                <p>Análises web não destrutivas, importação de resultados e recursos AppSec avançados no plano Enterprise.</p>
             </div>
             <div class="feature-card">
-                <div class="feature-icon">
-                    <i class="fas fa-shield-virus"></i>
-                </div>
-                <h3>Teste de Penetração</h3>
-                <p>Simule ataques reais para identificar pontos fracos antes dos hackers.</p>
+                <h3>Monitoramento contínuo</h3>
+                <p>Acompanhe HTTP, TLS, DNS, exposição e execução dos jobs com status, progresso e histórico operacional.</p>
             </div>
             <div class="feature-card">
-                <div class="feature-icon">
-                    <i class="fas fa-file-pdf"></i>
-                </div>
-                <h3>Relatórios Detalhados</h3>
-                <p>Gere relatórios profissionais em PDF com todas as vulnerabilidades encontradas.</p>
+                <h3>Relatórios profissionais</h3>
+                <p>PDFs executivos para decisão e técnicos para remediação, gerados a partir dos dados persistidos da organização.</p>
             </div>
             <div class="feature-card">
-                <div class="feature-icon">
-                    <i class="fas fa-robot"></i>
-                </div>
-                <h3>Automação Inteligente</h3>
-                <p>Configure scans automáticos e receba alertas em tempo real.</p>
+                <h3>Iron AI</h3>
+                <p>Converse com um copiloto conectado aos findings reais, proponha planos e aprove ações antes da execução.</p>
             </div>
             <div class="feature-card">
-                <div class="feature-icon">
-                    <i class="fas fa-chart-line"></i>
-                </div>
-                <h3>Dashboard Analytics</h3>
-                <p>Visualize métricas e tendências de segurança em tempo real.</p>
+                <h3>Governança por evidências</h3>
+                <p>Prontidão para LGPD, operação e DevSecOps com controles automáticos, atestações manuais e trilha de auditoria.</p>
             </div>
         </div>
     </section>
@@ -639,35 +752,35 @@
     <section class="how-it-works" id="how-it-works">
         <div class="section-header">
             <h2>Como <span class="gradient-text">Funciona</span></h2>
-            <p>4 passos simples para começar a proteger suas aplicações</p>
+            <p>Um fluxo claro para transformar dados técnicos em trabalho de segurança acompanhável.</p>
         </div>
         <div class="steps">
             <div class="step">
                 <div class="step-number">1</div>
                 <div class="step-content">
-                    <h3>Crie sua Conta</h3>
-                    <p>Cadastre-se gratuitamente e tenha acesso imediato a 10 scans por mês.</p>
+                    <h3>Escolha o plano</h3>
+                    <p>Crie sua conta pelo fluxo de assinatura e entre em uma organização isolada para sua empresa.</p>
                 </div>
             </div>
             <div class="step">
                 <div class="step-number">2</div>
                 <div class="step-content">
-                    <h3>Configure seu Projeto</h3>
-                    <p>Adicione sua aplicação e defina os parâmetros de análise.</p>
+                    <h3>Cadastre os ativos</h3>
+                    <p>Adicione somente domínios, aplicações e APIs que sua empresa está autorizada a analisar.</p>
                 </div>
             </div>
             <div class="step">
                 <div class="step-number">3</div>
                 <div class="step-content">
-                    <h3>Execute os Testes</h3>
-                    <p>Inicie os scans de segurança e aguarde a análise completa.</p>
+                    <h3>Produza evidências</h3>
+                    <p>Execute scans, importe resultados e conecte integrações para consolidar findings e monitoramento.</p>
                 </div>
             </div>
             <div class="step">
                 <div class="step-number">4</div>
                 <div class="step-content">
-                    <h3>Corrija as Vulnerabilidades</h3>
-                    <p>Receba relatórios detalhados com recomendações de correção.</p>
+                    <h3>Priorize e acompanhe</h3>
+                    <p>Use o score, a Iron AI, as tarefas de remediação e os relatórios para conduzir a correção.</p>
                 </div>
             </div>
         </div>
@@ -675,8 +788,8 @@
 
     <!-- CTA Section -->
     <section class="cta-section">
-        <h2>Pronto para Proteger suas Aplicações?</h2>
-        <p>Comece gratuitamente hoje mesmo. Sem cartão de crédito necessário.</p>
+        <h2>Segurança que cabe na rotina da sua empresa.</h2>
+        <p>Conheça os planos e escolha a capacidade adequada para a maturidade da sua operação.</p>
         <a href="pricing.html" class="btn btn-white">
             <i class="fas fa-rocket"></i> Ver Planos e Preços
         </a>
@@ -686,13 +799,10 @@
     <footer class="footer">
         <div class="footer-content">
             <div class="footer-section">
-                <h3><i class="fas fa-shield-alt"></i> Iron Net</h3>
-                <p>Plataforma líder em análise de segurança para aplicações web. Proteja seu código, proteja seu negócio.</p>
+                <h3><img class="landing-brand-image" src="assets/ironnet-logo.jpeg" alt="Iron AI"> Iron AI</h3>
+                <p>Plataforma de postura, monitoramento e inteligência de segurança criada para pequenas e médias empresas.</p>
                 <div class="social-links">
-                    <a href="#"><i class="fab fa-twitter"></i></a>
-                    <a href="#"><i class="fab fa-github"></i></a>
-                    <a href="#"><i class="fab fa-linkedin"></i></a>
-                    <a href="#"><i class="fab fa-youtube"></i></a>
+                    <a href="contato.html" aria-label="Falar com a Iron AI"><i class="fas fa-envelope"></i></a>
                 </div>
             </div>
             <div class="footer-section">
@@ -714,7 +824,7 @@
             </div>
         </div>
         <div class="footer-bottom">
-            <p>&copy; 2025 Iron Net. Todos os direitos reservados.</p>
+            <p>&copy; 2026 Iron AI. Todos os direitos reservados.</p>
         </div>
     </footer>
 
@@ -771,8 +881,10 @@
         (function(){
             if (localStorage.getItem('cookie_consent') === 'accepted') return;
             const banner = document.createElement('div');
+            banner.className = 'cookie-banner';
             banner.style.cssText = 'position:fixed;bottom:0;left:0;right:0;background:#111827;color:#e5e7eb;border-top:1px solid #1f2937;padding:12px 16px;z-index:9999;display:flex;gap:12px;align-items:center;justify-content:center;flex-wrap:wrap;';
             const text = document.createElement('span');
+            text.className = 'cookie-copy';
             text.textContent = 'Usamos cookies essenciais para autenticação e experiência.';
             const link = document.createElement('a');
             link.href = 'cookies.html';

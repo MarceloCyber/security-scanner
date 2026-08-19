@@ -42,3 +42,9 @@ httpx==0.27.0
 
 # Crypto (explicit, used directly)
 bcrypt==4.0.1
+
+# Distributed coordination (optional locally, recommended in production)
+redis==5.0.8
+
+# Testes
+pytest>=8.0.0,<9.0.0

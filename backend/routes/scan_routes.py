@@ -11,6 +11,7 @@ from scanners.code_scanner import scan_code
 from scanners.api_scanner import APISecurityScanner
 from pydantic import BaseModel
 from middleware.subscription import increment_scan_count, check_subscription_status, check_tool_access, ensure_tool_access
+from services.finding_service import persist_scan_findings
 
 router = APIRouter()
 
@@ -83,6 +84,8 @@ async def scan_code_endpoint(
         db.add(scan)
         db.commit()
         db.refresh(scan)
+        persist_scan_findings(db, current_user, results, "code_scanner", request.filename or "unknown")
+        db.commit()
         
         # Incrementar contador de scans
         increment_scan_count(current_user, db)
@@ -140,6 +143,8 @@ async def scan_api_endpoint(
         db.add(scan)
         db.commit()
         db.refresh(scan)
+        persist_scan_findings(db, current_user, results, "api_scanner", request.base_url)
+        db.commit()
         increment_scan_count(current_user, db)
         return {
             "scan_id": scan.id,
@@ -192,6 +197,8 @@ async def upload_file_scan(
         db.add(scan)
         db.commit()
         db.refresh(scan)
+        persist_scan_findings(db, current_user, results, "code_scanner", file.filename or "unknown")
+        db.commit()
         increment_scan_count(current_user, db)
         return {
             "scan_id": scan.id,

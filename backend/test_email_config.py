@@ -5,7 +5,7 @@ from utils.email_service import email_service
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description='Verifica a configuracao SMTP da Iron Net.')
+    parser = argparse.ArgumentParser(description='Verifica a configuracao SMTP da Iron AI.')
     parser.add_argument('--to', help='Destinatario para receber um email de teste.')
     args = parser.parse_args()
 
@@ -25,9 +25,9 @@ def main() -> int:
 
     sent = email_service.send_email(
         args.to,
-        'Teste de email - Iron Net',
-        '<p>Este e um email de teste da Iron Net.</p>',
-        'Este e um email de teste da Iron Net.',
+        'Teste de email - Iron AI',
+        '<p>Este e um email de teste da Iron AI.</p>',
+        'Este e um email de teste da Iron AI.',
     )
     if not sent:
         print('A conexao funcionou, mas o email nao foi enviado. Consulte backend/email.log.')

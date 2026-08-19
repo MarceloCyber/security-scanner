@@ -12,19 +12,23 @@ import hashlib
 import secrets
 import requests
 import time
+import re
 
 from database import get_db
 from models.user import User
-from auth import get_current_user, get_password_hash
+from auth import decode_renewal_token, get_current_user, get_password_hash
 from middleware.subscription import (
     check_subscription_status,
     get_plan_info,
     normalize_subscription_plan,
+    sync_owned_organization_plans,
     upgrade_user_plan,
     get_allowed_dashboard_tools,
-    SCAN_LIMITS
+    SCAN_LIMITS,
+    CANCELLATION_WINDOW_DAYS,
 )
 from utils.email_service import email_service
+from services.plan_policy import PLAN_POLICY, get_plan_policy, is_fixed_term_plan, is_plan_expired
 
 router = APIRouter(prefix="/payments", tags=["payments"])
 
@@ -35,19 +39,61 @@ STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET", "")
 # Detectar ambiente e configuração de Stripe
 FRONTEND_ORIGIN = os.getenv("FRONTEND_URL", "http://localhost:8000")
 STRIPE_CONFIGURED = bool(stripe.api_key) and stripe.api_key.startswith("sk_") and ("..." not in stripe.api_key) and len(stripe.api_key) > 20
+STRIPE_WEBHOOK_CONFIGURED = STRIPE_WEBHOOK_SECRET.startswith("whsec_") and "..." not in STRIPE_WEBHOOK_SECRET and len(STRIPE_WEBHOOK_SECRET) > 20
 
 # Configurar Mercado Pago
-MERCADOPAGO_ACCESS_TOKEN = os.getenv("MERCADOPAGO_ACCESS_TOKEN", "APP_USR-...")
+MERCADOPAGO_ACCESS_TOKEN = os.getenv("MERCADOPAGO_ACCESS_TOKEN", "")
 MERCADOPAGO_WEBHOOK_SECRET = os.getenv("MERCADOPAGO_WEBHOOK_SECRET", "")
+MERCADOPAGO_CONFIGURED = (
+    MERCADOPAGO_ACCESS_TOKEN.startswith("APP_USR-")
+    and "..." not in MERCADOPAGO_ACCESS_TOKEN
+    and len(MERCADOPAGO_ACCESS_TOKEN) > 20
+    and len(MERCADOPAGO_WEBHOOK_SECRET) > 20
+)
 
 # Preços dos planos (em centavos para Stripe)
 PLAN_PRICES = {
-    "starter": 28990,       # R$ 289.90
-    "professional": 43990,  # R$ 439.90
-    "enterprise": None       # Preço personalizado
+    plan: policy["amount_cents"] for plan, policy in PLAN_POLICY.items()
 }
 
-TRIAL_DAYS = 10
+
+def _stripe_line_items(plan: str) -> list[dict]:
+    policy = get_plan_policy(plan)
+    price_id = os.getenv(f"STRIPE_PRICE_ID_{plan.upper()}")
+    if price_id:
+        return [{"price": price_id, "quantity": 1}]
+    price_data = {
+        "currency": "brl",
+        "unit_amount": policy["amount_cents"],
+        "product_data": {
+            "name": f"Iron AI - {policy['name']}",
+            "description": (
+                "Assinatura mensal recorrente"
+                if policy["recurring"]
+                else f"Pagamento único com {policy['access_months']} meses de acesso"
+            ),
+        },
+    }
+    if policy["recurring"]:
+        price_data["recurring"] = {"interval": "month", "interval_count": 1}
+    return [{"price_data": price_data, "quantity": 1}]
+
+
+def _stripe_checkout(plan: str, customer_id: str, success_url: str, cancel_url: str, metadata: dict):
+    policy = get_plan_policy(plan)
+    params = {
+        "customer": customer_id,
+        "payment_method_types": ["card"],
+        "line_items": _stripe_line_items(plan),
+        "mode": policy["billing_mode"],
+        "success_url": success_url,
+        "cancel_url": cancel_url,
+        "client_reference_id": str(metadata.get("user_id") or metadata.get("username") or "iron-ai"),
+        "metadata": {key: str(value) for key, value in metadata.items() if value is not None},
+    }
+    if policy["installments"]:
+        params["payment_method_options"] = {"card": {"installments": {"enabled": True}}}
+    return stripe.checkout.Session.create(**params)
 
 def _issue_access_key(user: User, db: Session) -> str:
     """Cria uma chave única; apenas o hash fica armazenado no banco."""
@@ -66,9 +112,9 @@ def _issue_access_key(user: User, db: Session) -> str:
 
 def _trial_is_active(user: User) -> bool:
     return bool(
-        user.is_trial and user.subscription_plan in ("starter", "professional")
+        user.is_trial and user.subscription_plan == "starter"
         and user.trial_started_at
-        and datetime.utcnow() <= user.trial_started_at + timedelta(days=TRIAL_DAYS)
+        and datetime.utcnow() <= user.trial_started_at + timedelta(days=CANCELLATION_WINDOW_DAYS)
     )
 
 def _refund_initial_stripe_payment(subscription_id: str):
@@ -82,11 +128,29 @@ def _refund_initial_stripe_payment(subscription_id: str):
             payment_intent = stripe.PaymentIntent.retrieve(payment_intent_id)
             charge_id = getattr(payment_intent, "latest_charge", None)
             if charge_id:
-                return stripe.Refund.create(charge=charge_id)
+                return stripe.Refund.create(
+                    charge=charge_id,
+                    idempotency_key=f"iron-ai-cancel-{subscription_id}-{charge_id}",
+                )
         charge_id = getattr(invoice, "charge", None)
         if charge_id:
-            return stripe.Refund.create(charge=charge_id)
+            return stripe.Refund.create(
+                charge=charge_id,
+                idempotency_key=f"iron-ai-cancel-{subscription_id}-{charge_id}",
+            )
     return None
+
+
+def _activate_paid_plan(user: User, plan: str, db: Session, subscription_id: Optional[str] = None) -> None:
+    """Applies the exact paid entitlement after provider confirmation."""
+    policy = get_plan_policy(plan)
+    upgrade_user_plan(user, plan, None, db)
+    user.stripe_subscription_id = subscription_id if policy["recurring"] else None
+    user.subscription_status = "active"
+    user.is_trial = plan == "starter"
+    user.trial_started_at = datetime.utcnow() if plan == "starter" else None
+    sync_owned_organization_plans(user, db)
+    db.commit()
 
 # Rate limiting simples por usuário
 _RATE_COUNTERS = {}
@@ -114,6 +178,12 @@ def rate_limit_payment_status(current_user: User = Depends(get_current_user)):
     key = f"payment_status:{current_user.id}"
     if not _rate_check(key, limit=20, window=60):
         raise HTTPException(status_code=429, detail="Muitas consultas de status. Aguarde alguns segundos.")
+
+
+def rate_limit_registration_checkout(request: Request):
+    client_ip = request.client.host if request.client else "unknown"
+    if not _rate_check(f"registration_checkout:{client_ip}", limit=4, window=300):
+        raise HTTPException(status_code=429, detail="Muitas tentativas de cadastro. Aguarde alguns minutos.")
 
 @router.get("/invoices")
 async def list_invoices(
@@ -165,8 +235,11 @@ async def get_subscription_info(
         "subscription_end": current_user.subscription_end.isoformat() if current_user.subscription_end else None,
         "is_trial": _trial_is_active(current_user),
         "trial_started_at": current_user.trial_started_at.isoformat() if current_user.trial_started_at else None,
-        "trial_ends_at": (current_user.trial_started_at + timedelta(days=TRIAL_DAYS)).isoformat()
+        "trial_ends_at": (current_user.trial_started_at + timedelta(days=CANCELLATION_WINDOW_DAYS)).isoformat()
             if current_user.trial_started_at else None,
+        "cancellation_window_days": CANCELLATION_WINDOW_DAYS,
+        "can_cancel_recurring": plan == "starter" and current_user.subscription_status == "active",
+        "renewal_required": is_plan_expired(plan, current_user.subscription_end),
         "status": status,
         "plan_info": plan_info,
         "allowed_dashboard_tools": get_allowed_dashboard_tools(plan) if subscription_active else [],
@@ -190,14 +263,12 @@ async def create_checkout_session(
     plan = data.get("plan", "starter")
     payment_method = data.get("payment_method", "credit-card")
 
-    if plan not in PLAN_PRICES or PLAN_PRICES[plan] is None:
-        if plan == "enterprise":
-            raise HTTPException(status_code=400, detail="O plano Enterprise possui preço personalizado. Entre em contato com vendas.")
+    if plan not in PLAN_PRICES:
         raise HTTPException(status_code=400, detail="Plano inválido")
 
     try:
         if payment_method == "credit-card":
-            if not STRIPE_CONFIGURED:
+            if not STRIPE_CONFIGURED or not STRIPE_WEBHOOK_CONFIGURED:
                 raise HTTPException(status_code=500, detail="Stripe não configurado. Defina STRIPE_SECRET_KEY e STRIPE_WEBHOOK_SECRET no .env e use chaves de teste reais (sk_test_..., pk_test_...) via https://dashboard.stripe.com/test/apikeys")
             # Criar ou recuperar customer do Stripe
             if current_user.stripe_customer_id:
@@ -227,42 +298,12 @@ async def create_checkout_session(
                 current_user.stripe_customer_id = customer_id
                 db.commit()
 
-            # Suporte a Price IDs via env: STRIPE_PRICE_ID_STARTER, STRIPE_PRICE_ID_PROFESSIONAL, STRIPE_PRICE_ID_ENTERPRISE
-            price_id = os.getenv(f"STRIPE_PRICE_ID_{plan.upper()}")
-
-            if price_id:
-                line_items = [{
-                    'price': price_id,
-                    'quantity': 1,
-                }]
-            else:
-                line_items = [{
-                    'price_data': {
-                        'currency': 'brl',
-                        'unit_amount': PLAN_PRICES[plan],
-                        'product_data': {
-                            'name': f'Iron Net - {plan.title()}',
-                            'description': f'Assinatura mensal do plano {plan.title()}',
-                        },
-                        'recurring': {
-                            'interval': 'month',
-                            'interval_count': 1,
-                        },
-                    },
-                    'quantity': 1,
-                }]
-
-            checkout_session = stripe.checkout.Session.create(
-                customer=customer_id,
-                payment_method_types=['card'],
-                line_items=line_items,
-                mode='subscription',
-                success_url=f"{os.getenv('FRONTEND_URL', 'http://localhost:8000')}/payment-success.html?session_id={{CHECKOUT_SESSION_ID}}",
-                cancel_url=f"{os.getenv('FRONTEND_URL', 'http://localhost:8000')}/pricing.html?canceled=true",
-                metadata={
-                    "user_id": current_user.id,
-                    "plan": plan
-                }
+            checkout_session = _stripe_checkout(
+                plan,
+                customer_id,
+                f"{FRONTEND_ORIGIN}/payment-success.html?session_id={{CHECKOUT_SESSION_ID}}",
+                f"{FRONTEND_ORIGIN}/pricing.html?canceled=true",
+                {"user_id": current_user.id, "plan": plan},
             )
 
             return {
@@ -271,7 +312,9 @@ async def create_checkout_session(
             }
 
         elif payment_method in ["pix", "boleto"]:
-            if not MERCADOPAGO_ACCESS_TOKEN or MERCADOPAGO_ACCESS_TOKEN.startswith("APP_USR-") is False:
+            if get_plan_policy(plan)["recurring"]:
+                raise HTTPException(status_code=400, detail="O plano Starter recorrente deve ser contratado por cartão no Stripe.")
+            if not MERCADOPAGO_CONFIGURED:
                 # Ainda sem credenciais reais, retornamos erro controlado
                 raise HTTPException(status_code=400, detail="Mercado Pago não configurado")
 
@@ -284,7 +327,7 @@ async def create_checkout_session(
 
             payload = {
                 "transaction_amount": amount,
-                "description": f"Iron Net - Assinatura {plan.title()}",
+                "description": f"Iron AI - {get_plan_policy(plan)['name']}",
                 "payment_method_id": "pix" if payment_method == "pix" else "bolbradesco",
                 "payer": {
                     "email": current_user.email,
@@ -349,7 +392,7 @@ async def create_checkout_session(
         raise HTTPException(status_code=500, detail=detail)
 
 @router.post("/create-checkout-registration")
-async def create_checkout_registration(request: Request, db: Session = Depends(get_db)):
+async def create_checkout_registration(request: Request, db: Session = Depends(get_db), limiter: None = Depends(rate_limit_registration_checkout)):
     data = await request.json()
     username = (data.get("username") or "").strip()
     email = (data.get("email") or "").strip()
@@ -357,14 +400,18 @@ async def create_checkout_registration(request: Request, db: Session = Depends(g
     full_name = (data.get("full_name") or "").strip()
     plan = data.get("selected_plan") or "starter"
 
-    if plan not in PLAN_PRICES or PLAN_PRICES[plan] is None:
-        if plan == "enterprise":
-            raise HTTPException(status_code=400, detail="O plano Enterprise possui preço personalizado. Entre em contato com vendas.")
+    if plan not in PLAN_PRICES:
         raise HTTPException(status_code=400, detail="Plano inválido para checkout")
-    if not STRIPE_CONFIGURED:
-        raise HTTPException(status_code=500, detail="Stripe não configurado")
+    if not STRIPE_CONFIGURED or not STRIPE_WEBHOOK_CONFIGURED:
+        raise HTTPException(status_code=503, detail="Stripe ou webhook não configurado")
     if not username or not email or not password:
         raise HTTPException(status_code=400, detail="Dados de cadastro incompletos")
+    if len(username) > 80 or not re.fullmatch(r"[A-Za-z0-9_.-]{3,80}", username):
+        raise HTTPException(status_code=400, detail="Nome de usuário inválido")
+    if len(email) > 254 or not re.fullmatch(r"[^\s@]+@[^\s@]+\.[^\s@]+", email):
+        raise HTTPException(status_code=400, detail="Email inválido")
+    if len(password) < 8 or len(password.encode("utf-8")) > 72:
+        raise HTTPException(status_code=400, detail="A senha deve ter entre 8 e 72 bytes")
 
     existing = db.query(User).filter((User.username == username) | (User.email == email)).first()
     if existing:
@@ -381,44 +428,19 @@ async def create_checkout_registration(request: Request, db: Session = Depends(g
             }
         )
 
-        price_id = os.getenv(f"STRIPE_PRICE_ID_{plan.upper()}")
-        if price_id:
-            line_items = [{
-                'price': price_id,
-                'quantity': 1,
-            }]
-        else:
-            line_items = [{
-                'price_data': {
-                    'currency': 'brl',
-                    'unit_amount': PLAN_PRICES[plan],
-                    'product_data': {
-                        'name': f'Iron Net - {plan.title()}',
-                        'description': f'Assinatura mensal do plano {plan.title()}',
-                    },
-                    'recurring': {
-                        'interval': 'month',
-                        'interval_count': 1,
-                    },
-                },
-                'quantity': 1,
-            }]
-
-        checkout_session = stripe.checkout.Session.create(
-            customer=customer.id,
-            payment_method_types=['card'],
-            line_items=line_items,
-            mode='subscription',
-            success_url=f"{FRONTEND_ORIGIN}/payment-success.html?session_id={{CHECKOUT_SESSION_ID}}",
-            cancel_url=f"{FRONTEND_ORIGIN}/register.html?plan={plan}&canceled=true",
-            metadata={
+        checkout_session = _stripe_checkout(
+            plan,
+            customer.id,
+            f"{FRONTEND_ORIGIN}/payment-success.html?session_id={{CHECKOUT_SESSION_ID}}",
+            f"{FRONTEND_ORIGIN}/register.html?plan={plan}&canceled=true",
+            {
                 "pre_register": "true",
                 "username": username,
                 "email": email,
                 "password_hash": password_hash,
                 "full_name": full_name,
                 "plan": plan
-            }
+            },
         )
 
         return {
@@ -429,6 +451,45 @@ async def create_checkout_registration(request: Request, db: Session = Depends(g
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/renewal-checkout")
+async def create_renewal_checkout(request: Request, db: Session = Depends(get_db)):
+    """Creates a fixed-term renewal checkout without issuing a platform session."""
+    client_ip = request.client.host if request.client else "unknown"
+    if not _rate_check(f"renewal_checkout:{client_ip}", limit=5, window=300):
+        raise HTTPException(status_code=429, detail="Muitas tentativas de renovação. Aguarde alguns minutos.")
+    data = await request.json()
+    payload = decode_renewal_token(data.get("renewal_token") or "")
+    user = db.query(User).filter(User.id == int(payload["uid"]), User.username == payload.get("sub")).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Conta não encontrada.")
+    plan = normalize_subscription_plan(user.subscription_plan)
+    if plan != payload.get("plan") or not is_fixed_term_plan(plan) or not is_plan_expired(plan, user.subscription_end):
+        raise HTTPException(status_code=409, detail="Esta conta não precisa de renovação por prazo agora.")
+    if not STRIPE_CONFIGURED or not STRIPE_WEBHOOK_CONFIGURED:
+        raise HTTPException(status_code=503, detail="Stripe ou webhook não configurado para renovação.")
+
+    customer_id = user.stripe_customer_id
+    if customer_id:
+        try:
+            stripe.Customer.retrieve(customer_id)
+        except Exception:
+            customer_id = None
+    if not customer_id:
+        customer = stripe.Customer.create(email=user.email, metadata={"user_id": user.id, "username": user.username})
+        customer_id = customer.id
+        user.stripe_customer_id = customer_id
+        db.commit()
+
+    checkout_session = _stripe_checkout(
+        plan,
+        customer_id,
+        f"{FRONTEND_ORIGIN}/payment-success.html?session_id={{CHECKOUT_SESSION_ID}}&renewal=true",
+        f"{FRONTEND_ORIGIN}/index.html?renewal_canceled=true",
+        {"user_id": user.id, "plan": plan, "renewal": "true"},
+    )
+    return {"checkout_url": checkout_session.url, "session_id": checkout_session.id}
 
 @router.get("/verify-session")
 async def verify_checkout_session(
@@ -449,17 +510,12 @@ async def verify_checkout_session(
         status = getattr(session, "status", None)
         payment_status = getattr(session, "payment_status", None)
         subscription_id = getattr(session, "subscription", None)
-        if status == "complete" and payment_status in ("paid", "no_payment_required") and subscription_id:
+        if status == "complete" and payment_status in ("paid", "no_payment_required"):
             user = db.query(User).filter(User.id == current_user.id).first()
             if user:
-                if plan and (user.subscription_plan != plan or not user.stripe_subscription_id):
-                    upgrade_user_plan(user, plan, 1, db)
-                    user.stripe_subscription_id = subscription_id
-                    user.is_trial = plan in ('starter', 'professional')
-                    user.trial_started_at = None
-                    user.subscription_status = "active"
+                if plan and get_plan_policy(plan)["recurring"] and (user.subscription_plan != plan or not user.stripe_subscription_id):
+                    _activate_paid_plan(user, plan, db, subscription_id)
                     access_key = _issue_access_key(user, db)
-                    db.commit()
                     if access_key and background_tasks:
                         background_tasks.add_task(
                             email_service.send_subscription_confirmation,
@@ -467,7 +523,7 @@ async def verify_checkout_session(
                             PLAN_PRICES.get(plan, 0) / 100,
                             access_key,
                         )
-            return {"verified": True, "plan": plan, "subscription_id": subscription_id}
+            return {"verified": True, "plan": plan, "subscription_id": subscription_id, "activation": "webhook" if is_fixed_term_plan(plan) else "confirmed"}
         return {"verified": False, "status": status, "payment_status": payment_status}
     except stripe.error.StripeError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -482,6 +538,8 @@ async def stripe_webhook(request: Request, background_tasks: BackgroundTasks, db
     """
     Webhook do Stripe para processar eventos de pagamento
     """
+    if not STRIPE_CONFIGURED or not STRIPE_WEBHOOK_CONFIGURED:
+        raise HTTPException(status_code=503, detail="Webhook Stripe não configurado")
     payload = await request.body()
     sig_header = request.headers.get('stripe-signature')
     
@@ -497,10 +555,13 @@ async def stripe_webhook(request: Request, background_tasks: BackgroundTasks, db
     # Processar evento
     if event['type'] == 'checkout.session.completed':
         session = event['data']['object']
+        checkout_session_id = session.get('id')
         meta = session.get('metadata', {}) or {}
         plan = meta.get('plan')
         subscription_id = session.get('subscription')
         customer_id = session.get('customer')
+        if session.get('payment_status') not in ('paid', 'no_payment_required'):
+            return {"status": "ignored", "reason": "payment_not_confirmed"}
 
         pre_register = meta.get('pre_register') == 'true'
         if pre_register:
@@ -528,13 +589,13 @@ async def stripe_webhook(request: Request, background_tasks: BackgroundTasks, db
                 db.commit()
                 db.refresh(user)
 
+            if checkout_session_id and user.last_stripe_checkout_session_id == checkout_session_id:
+                return {"status": "success", "duplicate": True}
+
             if plan:
-                upgrade_user_plan(user, plan, 1, db)
-            user.subscription_status = 'active'
-            user.is_trial = plan in ('starter', 'professional')
-            user.trial_started_at = None
-            user.stripe_subscription_id = subscription_id
+                _activate_paid_plan(user, plan, db, subscription_id)
             user.stripe_customer_id = customer_id
+            user.last_stripe_checkout_session_id = checkout_session_id
             access_key = _issue_access_key(user, db)
             db.commit()
 
@@ -554,21 +615,20 @@ async def stripe_webhook(request: Request, background_tasks: BackgroundTasks, db
             if user_id:
                 user = db.query(User).filter(User.id == int(user_id)).first()
                 if user:
+                    if checkout_session_id and user.last_stripe_checkout_session_id == checkout_session_id:
+                        return {"status": "success", "duplicate": True}
                     if plan:
-                        upgrade_user_plan(user, plan, 1, db)
-                    user.stripe_subscription_id = subscription_id
-                    user.is_trial = plan in ('starter', 'professional')
-                    user.trial_started_at = None
+                        _activate_paid_plan(user, plan, db, subscription_id)
+                    user.last_stripe_checkout_session_id = checkout_session_id
                     access_key = _issue_access_key(user, db)
                     db.commit()
-                    plan_prices = {'starter': 289.90, 'professional': 439.90}
                     if access_key:
                         background_tasks.add_task(
                             email_service.send_subscription_confirmation,
                             user.email,
                             user.username,
                             plan,
-                            plan_prices.get(plan, 0),
+                            PLAN_PRICES.get(plan, 0) / 100,
                             access_key
                         )
                     print(f"✅ Assinatura ativada para usuário {user.username} - Plano: {plan}")
@@ -579,11 +639,12 @@ async def stripe_webhook(request: Request, background_tasks: BackgroundTasks, db
         subscription_id = subscription['id']
         
         user = db.query(User).filter(User.stripe_subscription_id == subscription_id).first()
-        if user:
+        if user and normalize_subscription_plan(user.subscription_plan) == "starter":
             user.subscription_status = 'cancelled'
             user.subscription_plan = 'starter'
             user.scans_limit = 100
             user.is_trial = False
+            sync_owned_organization_plans(user, db)
             db.commit()
             
             print(f"❌ Assinatura cancelada para usuário {user.username}")
@@ -595,11 +656,15 @@ async def stripe_webhook(request: Request, background_tasks: BackgroundTasks, db
         
         user = db.query(User).filter(User.stripe_subscription_id == subscription_id).first()
         if user:
-            # Renovar assinatura por mais um mês
-            if user.subscription_end:
-                user.subscription_end = user.subscription_end + timedelta(days=30)
-            else:
-                user.subscription_end = datetime.utcnow() + timedelta(days=30)
+            # Use the period confirmed by Stripe to avoid extending twice when
+            # checkout.session.completed and the initial invoice arrive together.
+            lines = (invoice.get("lines") or {}).get("data") or []
+            period_ends = [line.get("period", {}).get("end") for line in lines if line.get("period", {}).get("end")]
+            if period_ends:
+                user.subscription_end = datetime.utcfromtimestamp(max(period_ends))
+            elif not user.subscription_end or user.subscription_end <= datetime.utcnow():
+                from services.plan_policy import access_end_for_plan
+                user.subscription_end = access_end_for_plan("starter")
             
             user.subscription_status = 'active'
             user.scans_this_month = 0  # Resetar contador
@@ -668,25 +733,30 @@ async def mercadopago_webhook(request: Request, db: Session = Depends(get_db)):
     Webhook do Mercado Pago para processar eventos de pagamento
     """
     try:
+        if not MERCADOPAGO_CONFIGURED:
+            raise HTTPException(status_code=503, detail="Webhook Mercado Pago não configurado")
         raw_body = await request.body()
         x_signature = request.headers.get('x-signature')
         x_request_id = request.headers.get('x-request-id')
+        data_id = request.query_params.get('data.id')
+        if not x_signature or not x_request_id or not data_id:
+            raise HTTPException(status_code=401, detail="Assinatura ausente")
+        signature_parts = {}
+        for part in x_signature.split(','):
+            key_value = part.strip().split('=', 1)
+            if len(key_value) == 2:
+                signature_parts[key_value[0]] = key_value[1]
+        timestamp = signature_parts.get('ts')
+        signature = signature_parts.get('v1')
+        if not timestamp or not signature:
+            raise HTTPException(status_code=401, detail="Assinatura inválida")
+        manifest = f"id:{data_id.lower()};request-id:{x_request_id};ts:{timestamp};"
+        digest = hmac.new(MERCADOPAGO_WEBHOOK_SECRET.encode('utf-8'), manifest.encode('utf-8'), hashlib.sha256).hexdigest()
+        if not hmac.compare_digest(digest, signature):
+            raise HTTPException(status_code=401, detail="Assinatura inválida")
 
-        if MERCADOPAGO_WEBHOOK_SECRET and x_signature and x_request_id:
-            try:
-                v1 = None
-                for part in x_signature.split(','):
-                    p = part.strip()
-                    if p.startswith('v1='):
-                        v1 = p.split('=', 1)[1]
-                        break
-                digest = hmac.new(MERCADOPAGO_WEBHOOK_SECRET.encode('utf-8'), (x_request_id + raw_body.decode('utf-8')).encode('utf-8'), hashlib.sha256).hexdigest()
-                if not v1 or digest != v1:
-                    raise HTTPException(status_code=400, detail="Assinatura inválida")
-            except Exception:
-                raise HTTPException(status_code=400, detail="Assinatura inválida")
-
-        data = await request.json()
+        import json
+        data = json.loads(raw_body)
         notification_type = data.get('type')
 
         if notification_type == 'payment':
@@ -721,7 +791,7 @@ async def mercadopago_webhook(request: Request, db: Session = Depends(get_db)):
 
                 user = db.query(User).filter(User.id == int(user_id)).first()
                 if user:
-                    upgrade_user_plan(user, plan, 1, db)
+                    _activate_paid_plan(user, plan, db)
                     user.subscription_status = 'active'
                     user.mercadopago_customer_id = payer_id
                     db.commit()
@@ -760,6 +830,8 @@ async def mercadopago_payment_status(payment_id: str, current_user: User = Depen
     Consulta status de pagamento no Mercado Pago (para PIX/Boleto)
     """
     try:
+        if not MERCADOPAGO_CONFIGURED:
+            raise HTTPException(status_code=503, detail="Mercado Pago não configurado")
         mp_headers = {
             'Authorization': f'Bearer {MERCADOPAGO_ACCESS_TOKEN}',
             'Content-Type': 'application/json'
@@ -791,18 +863,30 @@ async def cancel_subscription(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """
-    Cancela a assinatura do usuário
-    """
+    """Cancela a assinatura no provedor e revoga o acesso local."""
+    if normalize_subscription_plan(current_user.subscription_plan) != "starter":
+        raise HTTPException(
+            status_code=409,
+            detail="Professional e Enterprise são licenças de prazo fixo. Elas permanecem válidas até o vencimento e não possuem assinatura recorrente para cancelar.",
+        )
+    if current_user.subscription_status == "cancelled":
+        return {
+            "success": True,
+            "message": "A assinatura já está cancelada.",
+            "refunded": False,
+            "already_cancelled": True,
+        }
+
     try:
         trial_refunded = False
         if _trial_is_active(current_user) and current_user.stripe_subscription_id:
-            _refund_initial_stripe_payment(current_user.stripe_subscription_id)
-            trial_refunded = True
+            refund = _refund_initial_stripe_payment(current_user.stripe_subscription_id)
+            trial_refunded = refund is not None
 
         if current_user.stripe_subscription_id:
-            # Cancelar no Stripe
+            # O delete é remoto: se falhar, o acesso local não é alterado.
             stripe.Subscription.delete(current_user.stripe_subscription_id)
+            current_user.stripe_subscription_id = None
         
         # O Free foi removido: usuário cancelado fica sem acesso até assinar novamente.
         current_user.subscription_status = 'cancelled'
@@ -810,6 +894,8 @@ async def cancel_subscription(
         current_user.scans_limit = 100
         current_user.scans_this_month = 0
         current_user.is_trial = False
+        current_user.subscription_end = datetime.utcnow()
+        sync_owned_organization_plans(current_user, db)
         db.commit()
         
         return {
@@ -818,9 +904,13 @@ async def cancel_subscription(
             "refunded": trial_refunded
         }
         
+    except HTTPException:
+        db.rollback()
+        raise
     except Exception as e:
+        db.rollback()
         print(f"Erro ao cancelar assinatura: {e}")
-        raise HTTPException(status_code=500, detail="Erro ao cancelar assinatura")
+        raise HTTPException(status_code=502, detail="Não foi possível confirmar o cancelamento com o provedor. Nenhuma alteração local foi aplicada.")
 
 
 @router.get("/plans")
@@ -851,7 +941,7 @@ async def upgrade_plan(
     
     if not getattr(current_user, "is_admin", False):
         raise HTTPException(status_code=403, detail="Acesso negado")
-    upgrade_user_plan(current_user, new_plan, 1, db)
+    upgrade_user_plan(current_user, new_plan, None, db)
     
     return {
         "success": True,
@@ -866,7 +956,7 @@ async def payments_status():
     return {
         "stripe_configured": STRIPE_CONFIGURED,
         "stripe_mode": ("test" if os.getenv("STRIPE_SECRET_KEY", "").startswith("sk_test_") else "live") if os.getenv("STRIPE_SECRET_KEY") else None,
-        "stripe_webhook_configured": bool(STRIPE_WEBHOOK_SECRET) and len(STRIPE_WEBHOOK_SECRET) > 20,
+        "stripe_webhook_configured": STRIPE_WEBHOOK_CONFIGURED,
         "frontend_url": os.getenv("FRONTEND_URL", "http://localhost:8000"),
-        "mercadopago_configured": bool(MERCADOPAGO_ACCESS_TOKEN) and MERCADOPAGO_ACCESS_TOKEN.startswith("APP_USR-"),
+        "mercadopago_configured": MERCADOPAGO_CONFIGURED,
     }

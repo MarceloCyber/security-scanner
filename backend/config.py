@@ -109,9 +109,16 @@ def _normalize_db_url(url: str) -> str:
     return url
 
 class Settings:
+    APP_ENV: str = os.getenv("APP_ENV", "production").lower()
     SECRET_KEY: str = os.getenv("SECRET_KEY", "dev-secret-key-change-in-production")
     DATABASE_URL: str = _normalize_db_url(os.getenv("DATABASE_URL", "sqlite:///./security_scanner.db"))
     ACCESS_TOKEN_EXPIRE_MINUTES: int = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "30"))
     ALGORITHM: str = "HS256"
+    REDIS_URL: str = os.getenv("REDIS_URL", "")
+    CREDENTIAL_ENCRYPTION_KEY: str = os.getenv("CREDENTIAL_ENCRYPTION_KEY", "")
+
+    @property
+    def is_development(self) -> bool:
+        return self.APP_ENV in {"development", "local", "test"}
 
 settings = Settings()

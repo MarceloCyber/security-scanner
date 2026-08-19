@@ -6,7 +6,7 @@ import logging
 import os
 from database import get_db
 from models.user import User
-from auth import get_password_hash, verify_password, create_session_token, get_current_user, session_hash, verify_access_key, SESSION_IDLE_TIMEOUT
+from auth import create_renewal_token, get_password_hash, verify_password, create_session_token, get_current_user, session_hash, verify_access_key, SESSION_IDLE_TIMEOUT
 from config import settings
 from pydantic import BaseModel, EmailStr
 from utils.email_service import email_service
@@ -14,6 +14,10 @@ import secrets
 import hmac
 from datetime import datetime
 from jose import jwt
+from models.saas import Organization, OrganizationMember
+from services.credential_vault import CredentialVault
+from services.mfa_service import consume_recovery_code, dump_recovery_hashes, generate_recovery_codes, generate_secret, provisioning_uri, verify_code
+from services.plan_policy import is_plan_expired, normalize_plan
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -44,6 +48,9 @@ class ResetPasswordRequest(BaseModel):
     token: str
     new_password: str
 
+class MFACodeRequest(BaseModel):
+    code: str
+
 @router.post("/register", response_model=dict)
 def register(user: UserCreate, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
     try:
@@ -62,19 +69,36 @@ def register(user: UserCreate, background_tasks: BackgroundTasks, db: Session = 
                 detail="Email already registered"
             )
         
-        # Não existe mais cadastro no plano Free; a assinatura é ativada pelo Stripe.
+        # Em produção, a assinatura e a chave são ativadas pelo fluxo de
+        # pagamento. No modo local explícito, a conta nasce pronta para testes.
+        local_development = settings.is_development
         hashed_password = get_password_hash(user.password)
         new_user = User(
             username=user.username,
             email=user.email,
             hashed_password=hashed_password,
-            subscription_plan='starter',
-            subscription_status='pending',
-            scans_limit=100,
+            subscription_plan='professional' if local_development else 'starter',
+            subscription_status='active' if local_development else 'pending',
+            scans_limit=-1 if local_development else 100,
             scans_this_month=0,
-            access_key_required=True,
+            # O fluxo de pagamento ativa a exigência somente depois de gerar e
+            # persistir a chave. Nunca exigir uma chave inexistente.
+            access_key_required=False,
         )
         db.add(new_user)
+        db.flush()
+
+        # Every account starts with a private organization. Tenant scope is
+        # established server-side and is never supplied by the browser.
+        base_slug = user.username.lower().replace("_", "-").replace(" ", "-")[:120]
+        organization = Organization(
+            name=f"{user.username}'s organization",
+            slug=f"{base_slug}-{new_user.id}",
+            plan=new_user.subscription_plan,
+        )
+        db.add(organization)
+        db.flush()
+        db.add(OrganizationMember(organization_id=organization.id, user_id=new_user.id, role="owner"))
         db.commit()
         db.refresh(new_user)
         
@@ -88,7 +112,7 @@ def register(user: UserCreate, background_tasks: BackgroundTasks, db: Session = 
             email_service.send_welcome_email,
             new_user.email,
             new_user.username,
-            'starter'
+            new_user.subscription_plan
         )
         
         return {
@@ -114,6 +138,7 @@ def login(
     username: str = Form(...),
     password: str = Form(...),
     access_key: str = Form(default=""),
+    mfa_code: str = Form(default=""),
     force_session: bool = Form(default=False),
     db: Session = Depends(get_db)
 ):
@@ -131,6 +156,37 @@ def login(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Informe a chave de acesso enviada para o seu email no primeiro login.",
             )
+
+    if user.mfa_enabled:
+        if not user.mfa_secret_encrypted:
+            raise HTTPException(status_code=503, detail="MFA está inconsistente. Contate o suporte.")
+        try:
+            secret = CredentialVault().decrypt(user.mfa_secret_encrypted)
+        except Exception:
+            raise HTTPException(status_code=503, detail="Não foi possível validar o MFA.")
+        valid = verify_code(secret, mfa_code)
+        if not valid:
+            valid, remaining = consume_recovery_code(user.mfa_recovery_codes_hash, mfa_code)
+            if valid:
+                user.mfa_recovery_codes_hash = remaining
+        if not valid:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Código MFA inválido.")
+
+    if is_plan_expired(user.subscription_plan, user.subscription_end):
+        user.subscription_status = "expired"
+        user.active_session_hash = None
+        user.active_session_last_activity = None
+        db.commit()
+        raise HTTPException(
+            status_code=402,
+            detail={
+                "error": "subscription_renewal_required",
+                "message": "Seu período de acesso terminou. Renove para voltar a usar a Iron AI.",
+                "plan": normalize_plan(user.subscription_plan),
+                "expired_at": user.subscription_end.isoformat() if user.subscription_end else None,
+                "renewal_token": create_renewal_token(user),
+            },
+        )
 
     now = datetime.utcnow()
     if user.active_session_hash and user.active_session_last_activity and now - user.active_session_last_activity <= SESSION_IDLE_TIMEOUT:
@@ -159,9 +215,6 @@ def login(
         user.active_session_hash = None
         user.active_session_last_activity = None
 
-    # O prazo de 10 dias começa no primeiro login após uma assinatura paga.
-    if user.is_trial and user.subscription_plan in ('starter', 'professional') and not user.trial_started_at:
-        user.trial_started_at = datetime.utcnow()
     session_id = secrets.token_urlsafe(32)
     user.active_session_hash = session_hash(session_id)
     user.active_session_last_activity = now
@@ -172,6 +225,61 @@ def login(
     access_token = create_session_token(user.username, session_id)
     
     return {"access_token": access_token, "token_type": "bearer", "access_key_required": False}
+
+
+@router.get("/mfa/status")
+def mfa_status(current_user: User = Depends(get_current_user)):
+    return {"enabled": bool(current_user.mfa_enabled)}
+
+
+@router.post("/mfa/setup")
+def mfa_setup(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    secret = generate_secret()
+    try:
+        current_user.mfa_secret_encrypted = CredentialVault().encrypt(secret)
+    except Exception:
+        raise HTTPException(status_code=503, detail="Cofre de credenciais não configurado para habilitar MFA.")
+    current_user.mfa_enabled = False
+    current_user.mfa_recovery_codes_hash = None
+    db.commit()
+    return {"secret": secret, "provisioning_uri": provisioning_uri(current_user.username, secret), "warning": "Confirme um código antes de o MFA ser ativado."}
+
+
+@router.post("/mfa/confirm")
+def mfa_confirm(payload: MFACodeRequest, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    if not current_user.mfa_secret_encrypted:
+        raise HTTPException(status_code=400, detail="Inicie a configuração do MFA primeiro.")
+    try:
+        secret = CredentialVault().decrypt(current_user.mfa_secret_encrypted)
+    except Exception:
+        raise HTTPException(status_code=503, detail="Não foi possível abrir o cofre do MFA. Contate o suporte.")
+    if not verify_code(secret, payload.code):
+        raise HTTPException(status_code=400, detail="Código inválido. Verifique o relógio do autenticador.")
+    recovery_codes = generate_recovery_codes()
+    current_user.mfa_enabled = True
+    current_user.mfa_recovery_codes_hash = dump_recovery_hashes(recovery_codes)
+    db.commit()
+    return {"enabled": True, "recovery_codes": recovery_codes, "warning": "Armazene estes códigos em local seguro. Eles não serão exibidos novamente."}
+
+
+@router.post("/mfa/disable")
+def mfa_disable(payload: MFACodeRequest, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    if not current_user.mfa_enabled or not current_user.mfa_secret_encrypted:
+        return {"enabled": False}
+    try:
+        secret = CredentialVault().decrypt(current_user.mfa_secret_encrypted)
+    except Exception:
+        raise HTTPException(status_code=503, detail="Não foi possível abrir o cofre do MFA. Contate o suporte.")
+    valid = verify_code(secret, payload.code)
+    if not valid:
+        valid, _ = consume_recovery_code(current_user.mfa_recovery_codes_hash, payload.code)
+    if not valid:
+        raise HTTPException(status_code=400, detail="Código MFA inválido.")
+    current_user.mfa_enabled = False
+    current_user.mfa_secret_encrypted = None
+    current_user.mfa_recovery_codes_hash = None
+    db.commit()
+    return {"enabled": False}
 
 @router.post("/refresh", response_model=Token)
 def refresh_token(request: Request, db: Session = Depends(get_db)):
@@ -199,6 +307,8 @@ def refresh_token(request: Request, db: Session = Depends(get_db)):
         db.commit()
         new_token = create_session_token(user.username, session_id)
         return {"access_token": new_token, "token_type": "bearer"}
+    except HTTPException:
+        raise
     except Exception:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
 

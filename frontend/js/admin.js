@@ -58,7 +58,7 @@ document.addEventListener('click', (e) => {
 
 // ============ Autenticação ============
 async function checkAdminAuth() {
-    const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+    const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token') || localStorage.getItem('token') || sessionStorage.getItem('token');
     if (!token) {
         window.location.href = 'admin-login.html';
         return;
@@ -84,7 +84,9 @@ async function checkAdminAuth() {
 }
 
 async function logout() {
-    const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+    if (!await showConfirmDialog({variant:'info',icon:'fa-arrow-right-from-bracket',kicker:'Sessão administrativa',title:'Sair do painel administrativo?',message:'O acesso administrativo deste dispositivo será encerrado.',details:false,confirmText:'Sim, sair',confirmIcon:'fa-arrow-right-from-bracket'})) return;
+    window.showTransitionLoading?.('Encerrando sessão administrativa...', 'Finalizando o acesso com segurança.');
+    const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token') || localStorage.getItem('token') || sessionStorage.getItem('token');
     if (token) {
         try {
             await fetch(`${API_URL}/api/auth/logout`, {
@@ -94,11 +96,10 @@ async function logout() {
         } catch (_) {}
     }
     localStorage.removeItem('token');
+    localStorage.removeItem('access_token');
     sessionStorage.removeItem('token');
-    showToast('Logout realizado com sucesso', 'success');
-    setTimeout(() => {
-        window.location.href = 'admin-login.html';
-    }, 1000);
+    sessionStorage.removeItem('access_token');
+    window.location.href = 'admin-login.html';
 }
 
 // ============ Navegação ============
@@ -385,6 +386,8 @@ async function openEditModal(userId) {
         
         const editIsAdmin = document.getElementById('editUserIsAdmin');
         if (editIsAdmin) editIsAdmin.checked = user.is_admin || false;
+        const editIsDeveloper = document.getElementById('editUserIsDeveloper');
+        if (editIsDeveloper) editIsDeveloper.checked = user.is_developer || false;
         const newPasswordElem = document.getElementById('editUserNewPassword');
         if (newPasswordElem) newPasswordElem.value = '';
         
@@ -409,9 +412,10 @@ async function saveUserChanges() {
     const statusElem = document.getElementById('editUserStatus');
     const scansLimitElem = document.getElementById('editUserScansLimit');
     const isAdminElem = document.getElementById('editUserIsAdmin');
+    const isDeveloperElem = document.getElementById('editUserIsDeveloper');
     const newPasswordElem = document.getElementById('editUserNewPassword');
     
-    if (!emailElem || !planElem || !statusElem || !scansLimitElem || !isAdminElem) {
+    if (!emailElem || !planElem || !statusElem || !scansLimitElem || !isAdminElem || !isDeveloperElem) {
         console.error('Elementos do formulário não encontrados');
         return;
     }
@@ -421,7 +425,8 @@ async function saveUserChanges() {
         subscription_plan: planElem.value,
         subscription_status: statusElem.value,
         scans_limit: parseInt(scansLimitElem.value) || 0,
-        is_admin: isAdminElem.checked
+        is_admin: isAdminElem.checked,
+        is_developer: isDeveloperElem.checked
     };
     if (newPasswordElem && newPasswordElem.value.trim()) {
         updateData.new_password = newPasswordElem.value.trim();
@@ -511,12 +516,15 @@ async function cancelSubscriptionAdmin(userId) {
         message: 'A assinatura deste usuário será cancelada conforme as regras do provedor de pagamento.',
         confirmText: 'Sim, cancelar'
     })) return;
+    window.showTransitionLoading?.('Cancelando assinatura...', 'Sincronizando a alteração com o provedor de pagamento.');
     try {
         await fetchAPI(`/api/admin/subscriptions/${userId}/cancel`, { method: 'POST' });
         showToast('Assinatura cancelada', 'success');
-        loadUsers(currentPage);
+        await loadUsers(currentPage);
     } catch (error) {
         showToast('Erro ao cancelar assinatura', 'error');
+    } finally {
+        window.hideTransitionLoading?.();
     }
 }
 
@@ -527,11 +535,14 @@ async function refundLastInvoice(userId) {
         details: 'Confirme os dados da cobrança antes de continuar.',
         confirmText: 'Solicitar reembolso'
     })) return;
+    window.showTransitionLoading?.('Solicitando reembolso...', 'Aguardando a confirmação do Stripe.');
     try {
         await fetchAPI(`/api/admin/subscriptions/${userId}/refund`, { method: 'POST' });
         showToast('Reembolso solicitado', 'success');
     } catch (error) {
         showToast('Erro ao solicitar reembolso', 'error');
+    } finally {
+        window.hideTransitionLoading?.();
     }
 }
 
@@ -542,18 +553,20 @@ async function resetUserScans(userId) {
         message: 'A contagem e os dados de scans deste usuário serão redefinidos.',
         confirmText: 'Sim, resetar'
     })) return;
-    
+    window.showTransitionLoading?.('Redefinindo scans...', 'Atualizando os dados deste usuário.');
     try {
         await fetchAPI(`/api/admin/users/${userId}/reset-scans`, {
             method: 'POST'
         });
         
         showToast('Scans resetados com sucesso', 'success');
-        loadUsers(currentPage);
+        await loadUsers(currentPage);
         
     } catch (error) {
         console.error('Erro ao resetar scans:', error);
         showToast('Erro ao resetar scans', 'error');
+    } finally {
+        window.hideTransitionLoading?.();
     }
 }
 
@@ -620,12 +633,15 @@ async function clearActivity() {
         message: 'Todos os registros exibidos no histórico administrativo serão removidos.',
         confirmText: 'Sim, apagar tudo'
     })) return;
+    window.showTransitionLoading?.('Apagando histórico...', 'Removendo os registros administrativos selecionados.');
     try {
         await fetchAPI('/api/admin/activity', { method: 'DELETE' });
         showToast('Histórico de atividades apagado', 'success');
-        loadActivity();
+        await loadActivity();
     } catch (error) {
         showToast('Erro ao apagar histórico', 'error');
+    } finally {
+        window.hideTransitionLoading?.();
     }
 }
 
@@ -733,7 +749,7 @@ function __rl_release() {
     }
 }
 async function fetchAPI(endpoint, options = {}) {
-    const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+    const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token') || localStorage.getItem('token') || sessionStorage.getItem('token');
     const defaultOptions = {
         headers: {
             'Authorization': `Bearer ${token}`,
@@ -756,13 +772,17 @@ async function fetchAPI(endpoint, options = {}) {
         let response = await doFetch();
         if (response.status === 401) {
             localStorage.removeItem('token');
+            localStorage.removeItem('access_token');
             sessionStorage.removeItem('token');
+            sessionStorage.removeItem('access_token');
             window.location.href = 'admin-login.html?reason=token_expired';
             throw new Error('Não autorizado');
         }
         if (response.status === 429) {
             localStorage.removeItem('token');
+            localStorage.removeItem('access_token');
             sessionStorage.removeItem('token');
+            sessionStorage.removeItem('access_token');
             window.location.href = 'admin-login.html?reason=rate_limited';
             throw new Error('Limite de requisições excedido');
         }

@@ -1,14 +1,65 @@
 services:
   - type: web
-    name: security-scanner-api
+    name: iron-ai-api
     runtime: python
     rootDir: .
     buildCommand: pip install -r requirements.txt && pip install -r backend/requirements.txt
-    startCommand: uvicorn backend.main:app --host 0.0.0.0 --port $PORT
+    preDeployCommand: python migrations/run.py
+    startCommand: cd backend && python -m uvicorn main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /api/ready
+    maxShutdownDelaySeconds: 60
     envVars:
       - key: PYTHON_VERSION
-        value: 3.11.9
+        value: 3.12.14
       - key: SECRET_KEY
         generateValue: true
       - key: FRONTEND_URL
-        value: https://security-scanner-api.onrender.com
+        sync: false
+      - key: DATABASE_URL
+        sync: false
+      - key: REDIS_URL
+        sync: false
+      - key: CREDENTIAL_ENCRYPTION_KEY
+        sync: false
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: STRIPE_WEBHOOK_SECRET
+        sync: false
+      - key: AI_PROVIDER
+        value: groq
+      - key: GROQ_API_KEY
+        sync: false
+      - key: KIMI_API_KEY
+        sync: false
+
+  - type: worker
+    name: iron-ai-worker
+    runtime: python
+    rootDir: .
+    buildCommand: pip install -r requirements.txt && pip install -r backend/requirements.txt
+    startCommand: cd backend && python -m workers.runner
+    maxShutdownDelaySeconds: 120
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.14
+      - key: DATABASE_URL
+        sync: false
+      - key: REDIS_URL
+        sync: false
+      - key: CREDENTIAL_ENCRYPTION_KEY
+        sync: false
+
+  - type: worker
+    name: iron-ai-scheduler
+    runtime: python
+    rootDir: .
+    buildCommand: pip install -r requirements.txt && pip install -r backend/requirements.txt
+    startCommand: cd backend && python -m workers.scheduler
+    maxShutdownDelaySeconds: 60
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.14
+      - key: DATABASE_URL
+        sync: false
+      - key: REDIS_URL
+        sync: false

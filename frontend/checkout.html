@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Checkout - Iron Net</title>
+    <title>Checkout - Iron AI</title><link rel="stylesheet" href="css/ironnet-brand.css?v=1.3">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
         * {
@@ -317,7 +317,7 @@
     <div class="container">
         <div class="checkout-header">
             <h1><i class="fas fa-shield-alt"></i> Checkout Seguro</h1>
-            <p>Complete seu pagamento e comece a usar a Iron Net</p>
+            <p>Complete seu pagamento e comece a usar a Iron AI</p>
             <div id="errorBanner" class="error-banner"></div>
         </div>
 
@@ -419,7 +419,7 @@
                         <strong id="planName">Plano Starter</strong>
                         <span class="plan-badge">Mensal</span>
                     </div>
-                    <div class="price-detail highlight" id="planPrice">R$ 189,90</div>
+                    <div class="price-detail highlight" id="planPrice">R$ 389,90/mês</div>
                 </div>
 
                 <div class="order-item">
@@ -443,7 +443,7 @@
                 <div class="total-section">
                     <div class="order-item" style="border: none;">
                         <div><strong>Total</strong></div>
-                        <div class="price-detail highlight" id="totalPrice">R$ 189,90</div>
+                        <div class="price-detail highlight" id="totalPrice">R$ 389,90/mês</div>
                     </div>
                 </div>
 
@@ -461,9 +461,9 @@
 
     <script>
         const planData = {
-            'starter': { name: 'Starter', price: 'R$ 189,90', value: 189.90 },
-            'professional': { name: 'Professional', price: 'R$ 439,90', value: 439.90 },
-            'enterprise': { name: 'Enterprise', price: 'Sob Consulta', value: null }
+            'starter': { name: 'Starter', price: 'R$ 389,90/mês', value: 389.90 },
+            'professional': { name: 'Professional', price: 'R$ 3.789,90 · 4 meses', value: 3789.90 },
+            'enterprise': { name: 'Enterprise', price: 'R$ 8.989,90 · 1 ano', value: 8989.90 }
         };
 
         // Get plan from URL

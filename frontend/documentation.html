@@ -1,638 +1,349 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Documentação Técnica - Iron Net</title>
-    <link rel="stylesheet" href="css/manual.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Central de Ajuda e documentação completa da Iron AI Security Platform.">
+  <title>Central de Ajuda — Iron AI</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="/css/ironnet-brand.css?v=1.3">
+  <link rel="stylesheet" href="/css/documentation.css?v=1.0">
 </head>
 <body>
-    <!-- Header -->
-    <header class="manual-header">
-        <div class="container">
-            <div class="header-content">
-                <div class="logo-section">
-                    <i class="fas fa-shield-alt"></i>
-                    <h1>Iron Net</h1>
-                </div>
-                <div style="display: flex; gap: 15px;">
-                    <a href="manual.html" class="btn-back">
-                        <i class="fas fa-book"></i> Manual
-                    </a>
-                    <a href="dashboard.html" class="btn-back">
-                        <i class="fas fa-arrow-left"></i> Dashboard
-                    </a>
-                </div>
-            </div>
-        </div>
-    </header>
+  <div class="docs-mobile-overlay" id="docs-mobile-overlay"></div>
 
-    <!-- Hero Section -->
-    <section class="hero-section">
-        <div class="container">
-            <h2>Documentação Técnica</h2>
-            <p>Guia completo de APIs, integrações e desenvolvimento</p>
-        </div>
-    </section>
+  <aside class="docs-sidebar" id="docs-sidebar">
+    <a class="docs-brand" href="/landing.html" aria-label="Iron AI">
+      <img src="/assets/ironnet-logo.jpeg" alt="">
+      <span><strong>IRON AI</strong><small>Central de Ajuda</small></span>
+    </a>
 
-    <!-- Navigation -->
-    <nav class="manual-nav sticky">
-        <div class="container">
-            <ul class="nav-list">
-                <li><a href="#getting-started" class="nav-link active">Começando</a></li>
-                <li><a href="#authentication" class="nav-link">Autenticação</a></li>
-                <li><a href="#api-reference" class="nav-link">API Reference</a></li>
-                <li><a href="#integrations" class="nav-link">Integrações</a></li>
-                <li><a href="#examples" class="nav-link">Exemplos</a></li>
-                <li><a href="#errors" class="nav-link">Erros</a></li>
-            </ul>
-        </div>
+    <div class="docs-search compact">
+      <i class="fa-solid fa-magnifying-glass"></i>
+      <input type="search" id="docs-search-sidebar" placeholder="Buscar na documentação" aria-label="Buscar na documentação">
+      <kbd>⌘ K</kbd>
+    </div>
+
+    <nav class="docs-nav" aria-label="Sumário da documentação">
+      <span class="docs-nav-label">COMECE AQUI</span>
+      <a href="#inicio" class="active"><i class="fa-solid fa-house"></i> Visão geral</a>
+      <a href="#primeiros-passos"><i class="fa-solid fa-route"></i> Primeiros passos</a>
+      <a href="#conceitos"><i class="fa-solid fa-shapes"></i> Conceitos essenciais</a>
+
+      <span class="docs-nav-label">USO DA PLATAFORMA</span>
+      <a href="#visao-geral"><i class="fa-solid fa-table-cells-large"></i> Visão Geral</a>
+      <a href="#ativos-scans"><i class="fa-solid fa-server"></i> Ativos e scans</a>
+      <a href="#riscos"><i class="fa-solid fa-triangle-exclamation"></i> Riscos e correções</a>
+      <a href="#monitoramento"><i class="fa-solid fa-wave-square"></i> Monitoramento</a>
+      <a href="#relatorios"><i class="fa-regular fa-file-lines"></i> Relatórios</a>
+      <a href="#conformidade"><i class="fa-solid fa-clipboard-check"></i> Conformidade</a>
+      <a href="#iron-ai"><i class="fa-solid fa-wand-magic-sparkles"></i> Copiloto Iron AI</a>
+
+      <span class="docs-nav-label">CONEXÕES E CONTROLE</span>
+      <a href="#integracoes"><i class="fa-solid fa-puzzle-piece"></i> Integrações</a>
+      <a href="#seguranca-conta"><i class="fa-solid fa-user-shield"></i> Conta, MFA e SSO</a>
+      <a href="#planos-pagamentos"><i class="fa-solid fa-credit-card"></i> Planos e pagamentos</a>
+
+      <span class="docs-nav-label">AVANÇADO</span>
+      <a href="#devsecops"><i class="fa-solid fa-code-branch"></i> CI/CD e Security Gate</a>
+      <a href="#shield"><i class="fa-solid fa-shield-heart"></i> Iron AI Shield</a>
+      <a href="#ferramentas-avancadas"><i class="fa-solid fa-code"></i> Área do desenvolvedor</a>
+      <a href="#api"><i class="fa-solid fa-terminal"></i> API e exemplos</a>
+      <a href="#solucao-problemas"><i class="fa-solid fa-life-ring"></i> Solução de problemas</a>
     </nav>
 
-    <!-- Main Content -->
-    <main class="manual-content">
-        <div class="container">
-            <!-- Getting Started -->
-            <section id="getting-started" class="content-section">
-                <div class="section-header">
-                    <i class="fas fa-rocket"></i>
-                    <h2>Começando</h2>
-                </div>
-                
-                <div class="content-card">
-                    <h3>Bem-vindo à Documentação da API</h3>
-                    <p>A Iron Net API permite que você integre nossas ferramentas de segurança em suas aplicações, automatize testes e crie workflows personalizados.</p>
-                    
-                    <h4>Requisitos</h4>
-                    <ul class="feature-list">
-                        <li><i class="fas fa-check"></i> Conta ativa na plataforma</li>
-                        <li><i class="fas fa-check"></i> Plano Professional ou Enterprise</li>
-                        <li><i class="fas fa-check"></i> Conhecimento básico de APIs REST</li>
-                        <li><i class="fas fa-check"></i> Ferramenta para fazer requisições HTTP (curl, Postman, etc.)</li>
-                    </ul>
+    <div class="docs-sidebar-footer">
+      <a href="/platform.html"><i class="fa-solid fa-arrow-left"></i> Voltar à plataforma</a>
+      <span><i></i> Documentação disponível em todos os planos</span>
+    </div>
+  </aside>
 
-                    <h4>URL Base da API</h4>
-                    <pre><code class="language-bash">https://api.securityscanner.com/v1</code></pre>
-                    <p class="text-muted">Para testes locais: <code>http://localhost:8000/api</code></p>
+  <div class="docs-shell">
+    <header class="docs-topbar">
+      <button class="docs-menu" id="docs-menu" aria-label="Abrir menu"><i class="fa-solid fa-bars"></i></button>
+      <div class="docs-breadcrumb"><span>Iron AI</span><i class="fa-solid fa-chevron-right"></i><strong>Central de Ajuda</strong></div>
+      <div class="docs-top-actions">
+        <button class="docs-search-trigger" id="docs-search-trigger"><i class="fa-solid fa-magnifying-glass"></i><span>Pesquisar</span><kbd>⌘ K</kbd></button>
+        <a class="docs-button ghost" href="/pricing.html">Ver planos</a>
+        <a class="docs-button primary" href="/platform.html">Abrir plataforma <i class="fa-solid fa-arrow-up-right-from-square"></i></a>
+      </div>
+    </header>
 
-                    <h4>Formatos Suportados</h4>
-                    <ul class="feature-list">
-                        <li><i class="fas fa-check"></i> <strong>Request:</strong> JSON, multipart/form-data</li>
-                        <li><i class="fas fa-check"></i> <strong>Response:</strong> JSON</li>
-                        <li><i class="fas fa-check"></i> <strong>Encoding:</strong> UTF-8</li>
-                    </ul>
-                </div>
-            </section>
-
-            <!-- Authentication -->
-            <section id="authentication" class="content-section">
-                <div class="section-header">
-                    <i class="fas fa-key"></i>
-                    <h2>Autenticação</h2>
-                </div>
-
-                <div class="content-card">
-                    <h3>JWT Authentication</h3>
-                    <p>A API utiliza JSON Web Tokens (JWT) para autenticação. Você precisa obter um token de acesso fazendo login.</p>
-
-                    <h4>1. Fazer Login</h4>
-                    <pre><code class="language-bash">POST /api/login
-Content-Type: application/json
-
-{
-  "username": "seu_usuario",
-  "password": "sua_senha"
-}</code></pre>
-
-                    <h4>Resposta de Sucesso</h4>
-                    <pre><code class="language-json">{
-  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-  "token_type": "bearer",
-  "user": {
-    "id": 1,
-    "username": "seu_usuario",
-    "email": "seu@email.com",
-    "subscription_plan": "professional"
-  }
-}</code></pre>
-
-                    <h4>2. Usar o Token</h4>
-                    <p>Inclua o token no header Authorization de todas as requisições:</p>
-                    <pre><code class="language-bash">Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...</code></pre>
-
-                    <div class="info-box warning">
-                        <i class="fas fa-exclamation-triangle"></i>
-                        <div>
-                            <strong>Segurança</strong>
-                            <p>Nunca compartilhe seu token de acesso. Armazene-o de forma segura e renove-o regularmente.</p>
-                        </div>
-                    </div>
-
-                    <h4>Exemplo Completo</h4>
-                    <pre><code class="language-bash">curl -X GET "http://localhost:8000/api/user/profile" \
-  -H "Authorization: Bearer SEU_TOKEN_AQUI" \
-  -H "Content-Type: application/json"</code></pre>
-                </div>
-            </section>
-
-            <!-- API Reference -->
-            <section id="api-reference" class="content-section">
-                <div class="section-header">
-                    <i class="fas fa-code"></i>
-                    <h2>API Reference</h2>
-                </div>
-
-                <!-- User Endpoints -->
-                <div class="content-card">
-                    <h3><i class="fas fa-user"></i> User Endpoints</h3>
-                    
-                    <div class="api-endpoint">
-                        <div class="endpoint-header">
-                            <span class="http-method get">GET</span>
-                            <code>/api/user/profile</code>
-                        </div>
-                        <p>Retorna informações do perfil do usuário autenticado.</p>
-                        <h5>Headers</h5>
-                        <pre><code>Authorization: Bearer {token}</code></pre>
-                        <h5>Resposta (200 OK)</h5>
-                        <pre><code class="language-json">{
-  "id": 1,
-  "username": "usuario",
-  "email": "usuario@email.com",
-  "created_at": "2025-01-01T00:00:00",
-  "subscription_plan": "professional",
-  "subscription_status": "active"
-}</code></pre>
-                    </div>
-
-                    <div class="api-endpoint">
-                        <div class="endpoint-header">
-                            <span class="http-method get">GET</span>
-                            <code>/api/user/subscription-info</code>
-                        </div>
-                        <p>Retorna detalhes da assinatura do usuário.</p>
-                        <h5>Resposta (200 OK)</h5>
-                        <pre><code class="language-json">{
-  "subscription_plan": "professional",
-  "subscription_status": "active",
-  "scans_this_month": 45,
-  "scans_limit": -1,
-  "subscription_start": "2025-01-01T00:00:00",
-  "subscription_end": "2025-02-01T00:00:00"
-}</code></pre>
-                    </div>
-                </div>
-
-                <!-- Scan Endpoints -->
-                <div class="content-card">
-                    <h3><i class="fas fa-search"></i> Scan Endpoints</h3>
-                    
-                    <div class="api-endpoint">
-                        <div class="endpoint-header">
-                            <span class="http-method post">POST</span>
-                            <code>/api/scan/ports</code>
-                        </div>
-                        <p>Realiza scan de portas em um alvo especificado.</p>
-                        <h5>Body (JSON)</h5>
-                        <pre><code class="language-json">{
-  "target": "192.168.1.1",
-  "ports": "1-1000"
-}</code></pre>
-                        <h5>Resposta (200 OK)</h5>
-                        <pre><code class="language-json">{
-  "target": "192.168.1.1",
-  "scan_date": "2025-12-05T10:30:00",
-  "total_ports_scanned": 1000,
-  "open_ports": [
-    {
-      "port": 22,
-      "service": "ssh",
-      "version": "OpenSSH 8.2",
-      "state": "open",
-      "risk_level": "medium"
-    },
-    {
-      "port": 80,
-      "service": "http",
-      "version": "nginx 1.18.0",
-      "state": "open",
-      "risk_level": "low"
-    }
-  ]
-}</code></pre>
-                    </div>
-
-                    <div class="api-endpoint">
-                        <div class="endpoint-header">
-                            <span class="http-method post">POST</span>
-                            <code>/api/scan/code</code>
-                        </div>
-                        <p>Analisa código-fonte em busca de vulnerabilidades.</p>
-                        <h5>Body (multipart/form-data)</h5>
-                        <pre><code>file: arquivo.py (binary)</code></pre>
-                        <h5>Resposta (200 OK)</h5>
-                        <pre><code class="language-json">{
-  "filename": "arquivo.py",
-  "scan_date": "2025-12-05T10:30:00",
-  "vulnerabilities_found": 3,
-  "vulnerabilities": [
-    {
-      "severity": "high",
-      "type": "SQL Injection",
-      "line": 45,
-      "description": "Possível SQL Injection detectado",
-      "recommendation": "Use prepared statements"
-    }
-  ]
-}</code></pre>
-                    </div>
-                </div>
-
-                <!-- Reports Endpoints -->
-                <div class="content-card">
-                    <h3><i class="fas fa-file-alt"></i> Reports Endpoints</h3>
-                    
-                    <div class="api-endpoint">
-                        <div class="endpoint-header">
-                            <span class="http-method get">GET</span>
-                            <code>/api/reports</code>
-                        </div>
-                        <p>Lista todos os relatórios de scans do usuário.</p>
-                        <h5>Query Parameters</h5>
-                        <pre><code>?page=1&limit=10&type=port_scan</code></pre>
-                        <h5>Resposta (200 OK)</h5>
-                        <pre><code class="language-json">{
-  "total": 150,
-  "page": 1,
-  "limit": 10,
-  "reports": [
-    {
-      "id": 1,
-      "type": "port_scan",
-      "target": "192.168.1.1",
-      "created_at": "2025-12-05T10:30:00",
-      "status": "completed"
-    }
-  ]
-}</code></pre>
-                    </div>
-
-                    <div class="api-endpoint">
-                        <div class="endpoint-header">
-                            <span class="http-method get">GET</span>
-                            <code>/api/reports/{id}</code>
-                        </div>
-                        <p>Retorna detalhes de um relatório específico.</p>
-                        <h5>Resposta (200 OK)</h5>
-                        <pre><code class="language-json">{
-  "id": 1,
-  "type": "port_scan",
-  "target": "192.168.1.1",
-  "created_at": "2025-12-05T10:30:00",
-  "results": { /* dados do scan */ }
-}</code></pre>
-                    </div>
-                </div>
-            </section>
-
-            <!-- Integrations -->
-            <section id="integrations" class="content-section">
-                <div class="section-header">
-                    <i class="fas fa-plug"></i>
-                    <h2>Integrações</h2>
-                </div>
-
-                <div class="content-card">
-                    <h3>Integração com CI/CD</h3>
-                    <p>Integre a Iron Net em seu pipeline de CI/CD para testes automatizados de segurança.</p>
-
-                    <h4>GitHub Actions</h4>
-                    <pre><code class="language-yaml">name: Security Scan
-on: [push]
-
-jobs:
-  security-scan:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-      
-      - name: Run Security Scan
-        run: |
-          curl -X POST "https://api.securityscanner.com/v1/scan/code" \
-            -H "Authorization: Bearer ${{ secrets.SECURITY_SCANNER_TOKEN }}" \
-            -F "file=@./src/main.py"</code></pre>
-
-                    <h4>GitLab CI</h4>
-                    <pre><code class="language-yaml">security-scan:
-  stage: test
-  script:
-    - |
-      curl -X POST "https://api.securityscanner.com/v1/scan/code" \
-        -H "Authorization: Bearer $SECURITY_SCANNER_TOKEN" \
-        -F "file=@./src/main.py"
-  only:
-    - main</code></pre>
-
-                    <h4>Jenkins Pipeline</h4>
-                    <pre><code class="language-groovy">pipeline {
-    agent any
-    stages {
-        stage('Security Scan') {
-            steps {
-                sh '''
-                    curl -X POST "https://api.securityscanner.com/v1/scan/code" \
-                      -H "Authorization: Bearer ${SECURITY_SCANNER_TOKEN}" \
-                      -F "file=@./src/main.py"
-                '''
-            }
-        }
-    }
-}</code></pre>
-                </div>
-
-                <div class="content-card">
-                    <h3>Webhooks</h3>
-                    <p>Configure webhooks para receber notificações em tempo real sobre scans concluídos.</p>
-
-                    <h4>Configurar Webhook</h4>
-                    <pre><code class="language-bash">POST /api/webhooks
-Content-Type: application/json
-
-{
-  "url": "https://sua-api.com/webhook",
-  "events": ["scan.completed", "scan.failed"],
-  "secret": "seu_secret_para_validacao"
-}</code></pre>
-
-                    <h4>Payload do Webhook</h4>
-                    <pre><code class="language-json">{
-  "event": "scan.completed",
-  "timestamp": "2025-12-05T10:30:00",
-  "scan": {
-    "id": 123,
-    "type": "port_scan",
-    "target": "192.168.1.1",
-    "results": { /* resultados */ }
-  }
-}</code></pre>
-                </div>
-            </section>
-
-            <!-- Examples -->
-            <section id="examples" class="content-section">
-                <div class="section-header">
-                    <i class="fas fa-code-branch"></i>
-                    <h2>Exemplos de Código</h2>
-                </div>
-
-                <div class="content-card">
-                    <h3>Python</h3>
-                    <pre><code class="language-python">import requests
-
-# Login e obter token
-response = requests.post(
-    "http://localhost:8000/api/login",
-    json={"username": "usuario", "password": "senha"}
-)
-token = response.json()["access_token"]
-
-# Fazer scan de portas
-headers = {"Authorization": f"Bearer {token}"}
-scan_response = requests.post(
-    "http://localhost:8000/api/scan/ports",
-    headers=headers,
-    json={"target": "192.168.1.1", "ports": "1-1000"}
-)
-
-print(scan_response.json())</code></pre>
-                </div>
-
-                <div class="content-card">
-                    <h3>JavaScript (Node.js)</h3>
-                    <pre><code class="language-javascript">const axios = require('axios');
-
-async function securityScan() {
-  // Login
-  const loginResponse = await axios.post(
-    'http://localhost:8000/api/login',
-    { username: 'usuario', password: 'senha' }
-  );
-  
-  const token = loginResponse.data.access_token;
-  
-  // Scan de portas
-  const scanResponse = await axios.post(
-    'http://localhost:8000/api/scan/ports',
-    { target: '192.168.1.1', ports: '1-1000' },
-    { headers: { Authorization: `Bearer ${token}` } }
-  );
-  
-  console.log(scanResponse.data);
-}
-
-securityScan();</code></pre>
-                </div>
-
-                <div class="content-card">
-                    <h3>cURL</h3>
-                    <pre><code class="language-bash"># 1. Login e salvar token
-TOKEN=$(curl -X POST "http://localhost:8000/api/login" \
-  -H "Content-Type: application/json" \
-  -d '{"username":"usuario","password":"senha"}' \
-  | jq -r '.access_token')
-
-# 2. Fazer scan
-curl -X POST "http://localhost:8000/api/scan/ports" \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"target":"192.168.1.1","ports":"1-1000"}'</code></pre>
-                </div>
-
-                <div class="content-card">
-                    <h3>PHP</h3>
-                    <pre><code class="language-php">&lt;?php
-
-// Login
-$ch = curl_init('http://localhost:8000/api/login');
-curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-curl_setopt($ch, CURLOPT_POST, true);
-curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode([
-    'username' => 'usuario',
-    'password' => 'senha'
-]));
-curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
-
-$response = curl_exec($ch);
-$token = json_decode($response)->access_token;
-
-// Scan de portas
-$ch = curl_init('http://localhost:8000/api/scan/ports');
-curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-curl_setopt($ch, CURLOPT_POST, true);
-curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode([
-    'target' => '192.168.1.1',
-    'ports' => '1-1000'
-]));
-curl_setopt($ch, CURLOPT_HTTPHEADER, [
-    'Content-Type: application/json',
-    "Authorization: Bearer $token"
-]);
-
-$result = curl_exec($ch);
-echo $result;
-
-?&gt;</code></pre>
-                </div>
-            </section>
-
-            <!-- Errors -->
-            <section id="errors" class="content-section">
-                <div class="section-header">
-                    <i class="fas fa-exclamation-triangle"></i>
-                    <h2>Códigos de Erro</h2>
-                </div>
-
-                <div class="content-card">
-                    <h3>HTTP Status Codes</h3>
-                    
-                    <table class="support-table">
-                        <thead>
-                            <tr>
-                                <th>Código</th>
-                                <th>Significado</th>
-                                <th>Descrição</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr>
-                                <td><span class="badge badge-starter">200</span></td>
-                                <td>OK</td>
-                                <td>Requisição bem-sucedida</td>
-                            </tr>
-                            <tr>
-                                <td><span class="badge badge-professional">201</span></td>
-                                <td>Created</td>
-                                <td>Recurso criado com sucesso</td>
-                            </tr>
-                            <tr>
-                                <td><span class="badge badge-free">400</span></td>
-                                <td>Bad Request</td>
-                                <td>Dados inválidos na requisição</td>
-                            </tr>
-                            <tr>
-                                <td><span class="badge badge-free">401</span></td>
-                                <td>Unauthorized</td>
-                                <td>Token inválido ou ausente</td>
-                            </tr>
-                            <tr>
-                                <td><span class="badge badge-free">403</span></td>
-                                <td>Forbidden</td>
-                                <td>Sem permissão para acessar recurso</td>
-                            </tr>
-                            <tr>
-                                <td><span class="badge badge-free">404</span></td>
-                                <td>Not Found</td>
-                                <td>Recurso não encontrado</td>
-                            </tr>
-                            <tr>
-                                <td><span class="badge badge-premium">429</span></td>
-                                <td>Too Many Requests</td>
-                                <td>Limite de requisições excedido</td>
-                            </tr>
-                            <tr>
-                                <td><span class="badge badge-free">500</span></td>
-                                <td>Internal Server Error</td>
-                                <td>Erro interno do servidor</td>
-                            </tr>
-                        </tbody>
-                    </table>
-
-                    <h4>Formato de Erro</h4>
-                    <pre><code class="language-json">{
-  "error": "unauthorized",
-  "message": "Token inválido ou expirado",
-  "status_code": 401,
-  "timestamp": "2025-12-05T10:30:00"
-}</code></pre>
-
-                    <h4>Erros Comuns</h4>
-                    
-                    <div class="info-box warning">
-                        <i class="fas fa-exclamation-triangle"></i>
-                        <div>
-                            <strong>401 Unauthorized</strong>
-                            <p>Verifique se o token está correto e não expirou. Faça login novamente se necessário.</p>
-                        </div>
-                    </div>
-
-                    <div class="info-box warning">
-                        <i class="fas fa-exclamation-triangle"></i>
-                        <div>
-                            <strong>403 Forbidden - Limite Excedido</strong>
-                            <p>Você atingiu o limite de scans do seu plano. Faça upgrade ou aguarde a renovação mensal.</p>
-                        </div>
-                    </div>
-
-                    <div class="info-box warning">
-                        <i class="fas fa-exclamation-triangle"></i>
-                        <div>
-                            <strong>429 Too Many Requests</strong>
-                            <p>Aguarde alguns segundos antes de fazer nova requisição. Rate limit: 100 requisições/minuto.</p>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="content-card">
-                    <h3>Rate Limiting</h3>
-                    <p>A API possui limites de taxa para garantir a qualidade do serviço:</p>
-                    
-                    <ul class="feature-list">
-                        <li><i class="fas fa-info-circle"></i> <strong>FREE:</strong> 10 requisições/minuto</li>
-                        <li><i class="fas fa-info-circle"></i> <strong>Starter:</strong> 50 requisições/minuto</li>
-                        <li><i class="fas fa-info-circle"></i> <strong>Professional:</strong> 100 requisições/minuto</li>
-                        <li><i class="fas fa-info-circle"></i> <strong>Enterprise:</strong> 500 requisições/minuto</li>
-                    </ul>
-
-                    <h4>Headers de Rate Limit</h4>
-                    <pre><code>X-RateLimit-Limit: 100
-X-RateLimit-Remaining: 95
-X-RateLimit-Reset: 1638705600</code></pre>
-                </div>
-            </section>
-
-            <!-- Support -->
-            <div class="content-card">
-                <h3>Precisa de Ajuda?</h3>
-                <p>Se você tiver dúvidas sobre a API ou encontrar problemas, entre em contato:</p>
-                <div class="info-box info">
-                    <i class="fas fa-envelope"></i>
-                    <div>
-                        <strong>Suporte Técnico</strong>
-                        <p>Email: <a href="mailto:mac526@hotmail.com">mac526@hotmail.com</a></p>
-                        <p>Tempo de resposta: 24-48 horas (Professional/Enterprise: 4-12 horas)</p>
-                    </div>
-                </div>
-            </div>
+    <main class="docs-main" id="docs-main">
+      <section class="docs-hero docs-section" id="inicio" data-search="início visão geral ajuda documentação iron ai">
+        <div class="hero-copy">
+          <span class="docs-eyebrow"><i></i> GUIA OFICIAL DA PLATAFORMA</span>
+          <h1>Da primeira análise à operação contínua de segurança.</h1>
+          <p>Aprenda a configurar, usar e validar cada recurso da Iron AI com orientações objetivas, exemplos reais e práticas seguras.</p>
+          <div class="hero-actions">
+            <a class="docs-button primary" href="#primeiros-passos"><i class="fa-solid fa-play"></i> Começar guia de 15 minutos</a>
+            <button class="docs-button ghost" data-open-search><i class="fa-solid fa-magnifying-glass"></i> Encontrar uma resposta</button>
+          </div>
+          <div class="hero-meta"><span><i class="fa-solid fa-universal-access"></i> Acesso em todos os planos</span><span><i class="fa-solid fa-rotate"></i> Atualizada em agosto de 2026</span></div>
         </div>
+        <aside class="quick-start-card">
+          <div class="quick-start-head"><span><i class="fa-solid fa-flag-checkered"></i> Seu progresso</span><strong id="guide-progress-label">0%</strong></div>
+          <div class="progress-track"><i id="guide-progress-bar"></i></div>
+          <label><input type="checkbox" data-guide-step="account"><span><b>1</b><em><strong>Entrar e proteger a conta</strong><small>Login, chave inicial e MFA</small></em></span></label>
+          <label><input type="checkbox" data-guide-step="asset"><span><b>2</b><em><strong>Cadastrar o primeiro ativo</strong><small>Domínio, criticidade e autorização</small></em></span></label>
+          <label><input type="checkbox" data-guide-step="scan"><span><b>3</b><em><strong>Executar uma análise</strong><small>Scan seguro e acompanhamento do job</small></em></span></label>
+          <label><input type="checkbox" data-guide-step="risk"><span><b>4</b><em><strong>Tratar o primeiro risco</strong><small>Evidência, prioridade e correção</small></em></span></label>
+          <label><input type="checkbox" data-guide-step="report"><span><b>5</b><em><strong>Gerar um relatório</strong><small>Executivo ou técnico em PDF</small></em></span></label>
+          <button id="reset-guide">Reiniciar progresso</button>
+        </aside>
+      </section>
+
+      <section class="docs-section" id="primeiros-passos" data-search="primeiros passos onboarding cadastrar ativo scan relatório tutorial">
+        <header class="section-heading"><span class="section-index">01</span><div><span class="docs-eyebrow">COMECE COM SEGURANÇA</span><h2>Primeiros passos em 15 minutos</h2><p>Este fluxo cria uma base confiável sem exigir conhecimento avançado.</p></div></header>
+        <div class="step-timeline">
+          <article><span>01</span><div><h3>Entre na sua organização</h3><p>Use usuário e senha. No primeiro acesso, informe a chave recebida por email. Se a conta já estiver conectada em outro dispositivo, confirme conscientemente a substituição da sessão.</p><div class="callout tip"><i class="fa-solid fa-lightbulb"></i><p>Ative o MFA em <b>Configurações → Segurança</b> antes de conectar integrações.</p></div></div></article>
+          <article><span>02</span><div><h3>Conclua o onboarding</h3><p>Informe o domínio principal, ambiente de nuvem, fonte de código e porte da empresa. Esses dados orientam a experiência; eles não iniciam ataques nem scans automaticamente.</p></div></article>
+          <article><span>03</span><div><h3>Cadastre um ativo autorizado</h3><p>Acesse <b>Ativos → Adicionar ativo</b>. Informe nome, tipo, URL, ambiente, criticidade e exposição. Cadastre somente sistemas próprios ou com autorização formal.</p><a class="inline-link" href="/platform.html#assets">Abrir Ativos <i class="fa-solid fa-arrow-right"></i></a></div></article>
+          <article><span>04</span><div><h3>Execute o primeiro scan</h3><p>Selecione o ativo e use <b>Analisar ativo</b>. Escolha o perfil adequado, confirme a autorização e acompanhe o processamento em Monitoramento.</p></div></article>
+          <article><span>05</span><div><h3>Priorize e comunique</h3><p>Abra o finding mais relevante, confira evidência e recomendação, defina o status e gere um relatório para compartilhar o resultado.</p></div></article>
+        </div>
+        <div class="success-panel"><i class="fa-solid fa-circle-check"></i><div><strong>Resultado esperado</strong><p>Ao final, a Visão Geral mostra o ativo, o Security Score e os riscos persistidos. Se não houver findings, isso significa apenas que aquela análise não encontrou os padrões cobertos — não é garantia de ausência de vulnerabilidades.</p></div></div>
+      </section>
+
+      <section class="docs-section" id="conceitos" data-search="conceitos organização tenant ativo finding risco score tarefa evidência">
+        <header class="section-heading"><span class="section-index">02</span><div><span class="docs-eyebrow">ENTENDA O MODELO</span><h2>Conceitos essenciais</h2><p>Os mesmos conceitos aparecem em toda a plataforma.</p></div></header>
+        <div class="concept-grid">
+          <article><i class="fa-solid fa-building"></i><h3>Organização</h3><p>Workspace isolado que reúne usuários, ativos, riscos, relatórios, integrações e auditoria.</p></article>
+          <article><i class="fa-solid fa-server"></i><h3>Ativo</h3><p>Domínio, API, aplicação, repositório ou sistema que sua empresa precisa proteger.</p></article>
+          <article><i class="fa-solid fa-magnifying-glass-chart"></i><h3>Scan e job</h3><p>A análise coleta evidências. O job registra fila, execução, conclusão ou falha.</p></article>
+          <article><i class="fa-solid fa-bug"></i><h3>Finding</h3><p>Constatação consolidada com severidade, confiança, exposição, evidência e recomendação.</p></article>
+          <article><i class="fa-solid fa-gauge-high"></i><h3>Risk Score</h3><p>Prioridade determinística que combina fatos técnicos e contexto. Não é percentual de invulnerabilidade.</p></article>
+          <article><i class="fa-solid fa-list-check"></i><h3>Remediação</h3><p>Tarefa rastreável para transformar um finding confirmado em correção acompanhada.</p></article>
+        </div>
+      </section>
+
+      <section class="docs-section" id="visao-geral" data-search="dashboard visão geral score métricas timeline atualizar recomendações">
+        <header class="section-heading"><span class="section-index">03</span><div><span class="docs-eyebrow">OPERAÇÃO DIÁRIA</span><h2>Como ler a Visão Geral</h2><p>Use o dashboard para decidir onde agir primeiro.</p></div><span class="plan-badge all">TODOS OS PLANOS</span></header>
+        <div class="feature-layout">
+          <div>
+            <ol class="numbered-guide">
+              <li><b>Comece pelo Security Score.</b><span>Leia a classificação e a explicação. Uma mudança de score deve ser interpretada junto dos findings.</span></li>
+              <li><b>Confira as quatro métricas.</b><span>Críticos, altos, ativos expostos e correções abertas mostram urgência e carga operacional.</span></li>
+              <li><b>Abra os principais riscos.</b><span>A lista é priorizada; clique para ver evidência e tratamento.</span></li>
+              <li><b>Observe a evolução.</b><span>Use 30, 90 ou 365 dias para acompanhar snapshots de postura.</span></li>
+              <li><b>Leia a timeline.</b><span>Ela registra ações relevantes do workspace e facilita auditoria.</span></li>
+            </ol>
+          </div>
+          <aside class="practice-card"><span>BOA ROTINA</span><h3>Revisão semanal de 20 minutos</h3><ul><li>Atualize os dados pelo botão do topo.</li><li>Revise críticos e altos ainda abertos.</li><li>Confira tarefas de remediação atrasadas.</li><li>Gere um relatório executivo quando houver mudança material.</li></ul></aside>
+        </div>
+      </section>
+
+      <section class="docs-section" id="ativos-scans" data-search="ativos scan alvo target autorização ssrf domínio api fila job perfil análise">
+        <header class="section-heading"><span class="section-index">04</span><div><span class="docs-eyebrow">SUPERFÍCIE AUTORIZADA</span><h2>Ativos e scans</h2><p>Cadastre o que importa e execute análises proporcionais ao ambiente.</p></div><span class="plan-badge all">TODOS OS PLANOS</span></header>
+        <div class="two-column">
+          <article class="guide-card"><div class="guide-icon"><i class="fa-solid fa-plus"></i></div><h3>Cadastrar um ativo</h3><ol><li>Abra <b>Ativos</b> e clique em <b>Adicionar ativo</b>.</li><li>Escolha domínio, API, aplicação, repositório ou outro tipo disponível.</li><li>Informe uma URL HTTPS quando aplicável.</li><li>Defina ambiente, criticidade e se está exposto à internet.</li><li>Salve e confirme o item na tabela.</li></ol></article>
+          <article class="guide-card"><div class="guide-icon"><i class="fa-solid fa-radar"></i></div><h3>Analisar um ativo</h3><ol><li>Selecione o ativo correto.</li><li>Escolha o perfil de análise.</li><li>Confirme que possui autorização.</li><li>Inicie o job e acompanhe o status.</li><li>Após a conclusão, abra Riscos para revisar os findings.</li></ol></article>
+        </div>
+        <div class="callout danger"><i class="fa-solid fa-shield-halved"></i><div><strong>Regra de autorização</strong><p>Nunca use a plataforma contra terceiros sem permissão explícita. Prefira homologação para análises mais profundas. A proteção SSRF e as validações de destino reduzem risco, mas não substituem governança.</p></div></div>
+        <details class="docs-accordion"><summary>O scan terminou sem riscos. O ativo está seguro?<i class="fa-solid fa-chevron-down"></i></summary><div><p>Não necessariamente. O resultado cobre apenas verificações realizadas naquele momento. Autenticação, regras de negócio, infraestrutura interna e vulnerabilidades novas podem exigir outras evidências e testes especializados.</p></div></details>
+        <details class="docs-accordion"><summary>O job falhou. O que verificar?<i class="fa-solid fa-chevron-down"></i></summary><div><ul><li>URL e DNS do ativo.</li><li>HTTPS e certificado acessíveis.</li><li>Bloqueio por firewall, WAF ou rate limit.</li><li>Worker ativo em produção.</li><li>Se o destino redireciona para rede privada ou host diferente.</li></ul></div></details>
+      </section>
+
+      <section class="docs-section" id="riscos" data-search="riscos findings severidade score status resolver falso positivo aceito remediação jira">
+        <header class="section-heading"><span class="section-index">05</span><div><span class="docs-eyebrow">PRIORIZAÇÃO E TRATAMENTO</span><h2>Riscos e correções</h2><p>Transforme evidência técnica em trabalho verificável.</p></div><span class="plan-badge all">TODOS OS PLANOS</span></header>
+        <div class="status-flow">
+          <div><span class="status-dot open"></span><b>Aberto</b><small>Aguardando triagem</small></div><i class="fa-solid fa-arrow-right"></i>
+          <div><span class="status-dot progress"></span><b>Em correção</b><small>Responsável atuando</small></div><i class="fa-solid fa-arrow-right"></i>
+          <div><span class="status-dot resolved"></span><b>Resolvido</b><small>Correção validada</small></div>
+        </div>
+        <div class="three-column">
+          <article class="guide-card"><h3>Triagem</h3><p>Confirme ativo, evidência, severidade, confiança e exposição. Use falso positivo apenas com justificativa técnica.</p></article>
+          <article class="guide-card"><h3>Tratamento</h3><p>Leia a remediação, crie uma tarefa e defina prioridade. Se houver Jira conectado, envie o finding para o projeto correto.</p></article>
+          <article class="guide-card"><h3>Validação</h3><p>Após corrigir, execute nova análise. Marque como resolvido quando houver evidência de que a condição não está mais presente.</p></article>
+        </div>
+        <div class="callout warning"><i class="fa-solid fa-scale-balanced"></i><div><strong>Risco aceito não é risco eliminado</strong><p>Use esse status somente após decisão documentada, responsável definido e prazo de revisão.</p></div></div>
+      </section>
+
+      <section class="docs-section" id="monitoramento" data-search="monitoramento tempo real sensor nginx cloudflare waf incidente bloquear ip telemetria professional">
+        <header class="section-heading"><span class="section-index">06</span><div><span class="docs-eyebrow">DETECÇÃO E RESPOSTA</span><h2>Monitoramento em tempo real</h2><p>Receba telemetria defensiva e contenha uma origem com aprovação humana.</p></div><span class="plan-badge professional">PROFESSIONAL+</span></header>
+        <div class="architecture-strip">
+          <div><i class="fa-solid fa-globe"></i><span><b>Ativo</b><small>Nginx, proxy ou WAF</small></span></div><i class="fa-solid fa-arrow-right"></i>
+          <div><i class="fa-solid fa-satellite-dish"></i><span><b>Sensor assinado</b><small>Metadados sanitizados</small></span></div><i class="fa-solid fa-arrow-right"></i>
+          <div><i class="fa-solid fa-brain"></i><span><b>Correlação</b><small>Evento e remediação</small></span></div><i class="fa-solid fa-arrow-right"></i>
+          <div><i class="fa-solid fa-shield-halved"></i><span><b>Cloudflare</b><small>Bloqueio aprovado</small></span></div>
+        </div>
+        <div class="two-column">
+          <article class="guide-card"><div class="guide-icon"><i class="fa-solid fa-satellite-dish"></i></div><h3>Conectar telemetria</h3><ol><li>Abra <b>Monitoramento → Conectar telemetria</b>.</li><li>Escolha o ativo e dê um nome ao sensor.</li><li>Copie a chave exibida uma única vez.</li><li>Execute o coletor no servidor do proxy.</li><li>Confirme “sensor ativo” após a primeira telemetria.</li></ol></article>
+          <article class="guide-card"><div class="guide-icon"><i class="fa-brands fa-cloudflare"></i></div><h3>Conectar o WAF</h3><ol><li>Crie um API Token restrito à zona.</li><li>Informe Zone ID e token.</li><li>A plataforma valida a zona antes de salvar.</li><li>Revise o IP do incidente.</li><li>Aprove o bloqueio somente depois da validação humana.</li></ol></article>
+        </div>
+        <div class="code-block"><div><span><i class="fa-solid fa-terminal"></i> Exemplo do coletor Nginx</span><button data-copy-code><i class="fa-regular fa-copy"></i> Copiar</button></div><pre><code>IRON_AI_SENSOR_KEY='chave_exibida_uma_vez' python3 iron_ai_sensor.py \
+  --log /var/log/nginx/access.log \
+  --endpoint https://app.sua-iron-ai.com</code></pre></div>
+        <div class="callout danger"><i class="fa-solid fa-ban"></i><div><strong>Antes de bloquear</strong><p>Confirme o IP real do cliente e nunca bloqueie seu IP administrativo, CDN, proxy, load balancer ou endereço compartilhado. Teste primeiro em homologação com uma VPS controlada.</p></div></div>
+        <details class="docs-accordion"><summary>Como testar o bloqueio sem colocar produção em risco?<i class="fa-solid fa-chevron-down"></i></summary><div><ol><li>Use uma zona de homologação.</li><li>Faça requisições inofensivas a partir de uma VPS própria.</li><li>Confira se o incidente mostra o IP exato da VPS.</li><li>Aprove o bloqueio e valide a recusa somente daquela origem.</li><li>Teste a disponibilidade por outra conexão.</li><li>Remova a regra pela plataforma.</li></ol></div></details>
+      </section>
+
+      <section class="docs-section" id="relatorios" data-search="relatório pdf executivo técnico gerar download métricas evidência">
+        <header class="section-heading"><span class="section-index">07</span><div><span class="docs-eyebrow">COMUNICAÇÃO PROFISSIONAL</span><h2>Relatórios executivos e técnicos</h2><p>Os PDFs são construídos a partir de fatos persistidos da organização.</p></div><span class="plan-badge all">TODOS OS PLANOS</span></header>
+        <div class="report-comparison">
+          <article><div class="report-type-icon executive"><i class="fa-solid fa-chart-pie"></i></div><span>PARA GESTÃO</span><h3>Executivo</h3><p>Score, exposição, distribuição de severidade, evolução, conformidade, principais riscos e recomendações.</p><b>Use em:</b><ul><li>Reuniões de direção</li><li>Acompanhamento mensal</li><li>Priorização de investimento</li></ul></article>
+          <article><div class="report-type-icon technical"><i class="fa-solid fa-code"></i></div><span>PARA TIMES TÉCNICOS</span><h3>Técnico</h3><p>Ativos, findings detalhados, evidências, CVE/CWE quando disponíveis, score e orientação de correção.</p><b>Use em:</b><ul><li>Planejamento de sprint</li><li>Validação de remediação</li><li>Compartilhamento com fornecedores</li></ul></article>
+        </div>
+        <ol class="numbered-guide compact"><li><b>Abra Relatórios.</b><span>Escolha Executivo ou Técnico.</span></li><li><b>Gere o documento.</b><span>A plataforma cria um snapshot com os dados atuais.</span></li><li><b>Revise antes de compartilhar.</b><span>Confirme período, organização e sensibilidade das evidências.</span></li><li><b>Baixe o PDF.</b><span>O histórico permanece no workspace.</span></li></ol>
+      </section>
+
+      <section class="docs-section" id="conformidade" data-search="conformidade lgpd evidência controle auditoria certificação índice prontidão">
+        <header class="section-heading"><span class="section-index">08</span><div><span class="docs-eyebrow">GOVERNANÇA</span><h2>Conformidade e evidências</h2><p>Acompanhe prontidão sem confundir indicador com certificação.</p></div><span class="plan-badge all">TODOS OS PLANOS</span></header>
+        <div class="feature-layout">
+          <ol class="numbered-guide">
+            <li><b>Atualize as evidências automáticas.</b><span>Inventário, scans, riscos e auditoria alimentam controles verificáveis.</span></li>
+            <li><b>Revise controles manuais.</b><span>Owners e admins podem registrar documento, data e responsável.</span></li>
+            <li><b>Use status coerentes.</b><span>Não iniciado, em andamento e implementado devem refletir evidência existente.</span></li>
+            <li><b>Exporte para auditoria.</b><span>Enterprise pode gerar o pacote operacional nas configurações.</span></li>
+          </ol>
+          <aside class="practice-card"><span>IMPORTANTE</span><h3>O índice mede prontidão</h3><p>Ele não representa certificação ISO, SOC 2, parecer jurídico ou auditoria independente. Use-o para organizar trabalho e evidências.</p></aside>
+        </div>
+      </section>
+
+      <section class="docs-section" id="iron-ai" data-search="iron ai copiloto ia perguntas ações aprovar executar remediação groq kimi contexto">
+        <header class="section-heading"><span class="section-index">09</span><div><span class="docs-eyebrow">COPILOTO CONTEXTUAL</span><h2>Como usar a Iron AI</h2><p>Pergunte sobre os dados autorizados da sua organização e mantenha decisões sob controle humano.</p></div><span class="plan-badge all">TODOS OS PLANOS</span></header>
+        <div class="prompt-grid">
+          <button data-copy-prompt>“Quais são os três riscos que devo corrigir primeiro e por quê?”<i class="fa-regular fa-copy"></i></button>
+          <button data-copy-prompt>“Explique este finding para uma pessoa não técnica.”<i class="fa-regular fa-copy"></i></button>
+          <button data-copy-prompt>“Crie um plano de remediação de 7 dias com prioridades.”<i class="fa-regular fa-copy"></i></button>
+          <button data-copy-prompt>“Prepare um resumo da postura atual para a diretoria.”<i class="fa-regular fa-copy"></i></button>
+        </div>
+        <div class="ai-safety-flow"><div><i class="fa-solid fa-comment-dots"></i><b>1. Pergunta</b><small>Você define o objetivo</small></div><i class="fa-solid fa-chevron-right"></i><div><i class="fa-solid fa-lightbulb"></i><b>2. Proposta</b><small>A IA sugere uma ação</small></div><i class="fa-solid fa-chevron-right"></i><div><i class="fa-solid fa-user-check"></i><b>3. Aprovação</b><small>Owner ou admin revisa</small></div><i class="fa-solid fa-chevron-right"></i><div><i class="fa-solid fa-list-check"></i><b>4. Execução</b><small>Tarefa criada e auditada</small></div></div>
+        <div class="callout tip"><i class="fa-solid fa-wand-magic-sparkles"></i><div><strong>O que a ação real faz hoje</strong><p>A ação permitida cria uma tarefa de remediação para um finding existente. Ela exige aprovação de owner/admin antes da execução e fica na auditoria. A IA não altera firewall, código ou infraestrutura silenciosamente.</p></div></div>
+        <details class="docs-accordion"><summary>A IA respondeu “fallback local”. O que significa?<i class="fa-solid fa-chevron-down"></i></summary><div><p>O provedor externo não está conectado ou respondeu com falha. A plataforma continua oferecendo uma resposta determinística limitada. Confira <b>Configurações → Segurança da plataforma</b> e as credenciais do provedor no ambiente.</p></div></details>
+      </section>
+
+      <section class="docs-section" id="integracoes" data-search="integrações github gitlab azure devops jira token pat sincronizar repositórios">
+        <header class="section-heading"><span class="section-index">10</span><div><span class="docs-eyebrow">CONEXÕES</span><h2>Integrações</h2><p>Conecte fontes externas com credenciais de menor privilégio.</p></div><span class="plan-badge all">PLATAFORMA PRINCIPAL</span></header>
+        <div class="integration-doc-grid">
+          <article><i class="fa-brands fa-github"></i><h3>GitHub</h3><p>Valida o token e sincroniza repositórios como ativos.</p><ol><li>Crie token somente leitura.</li><li>Cole em Integrações.</li><li>Conecte e use Sincronizar.</li></ol></article>
+          <article><i class="fa-brands fa-gitlab"></i><h3>GitLab</h3><p>Funciona com GitLab.com ou uma instalação pública HTTPS.</p><ol><li>Informe a URL base.</li><li>Use token de leitura.</li><li>Sincronize projetos.</li></ol></article>
+          <article><i class="fa-brands fa-microsoft"></i><h3>Azure DevOps</h3><p>Importa projetos e repositórios usando PAT.</p><ol><li>Informe a organização.</li><li>Use PAT mínimo.</li><li>Sincronize os ativos.</li></ol></article>
+          <article><i class="fa-brands fa-jira"></i><h3>Jira</h3><p>Valida projetos e cria issues a partir de findings.</p><ol><li>Informe URL, email e token.</li><li>Escolha o projeto.</li><li>Crie a tarefa no finding.</li></ol></article>
+        </div>
+        <div class="callout warning"><i class="fa-solid fa-key"></i><div><strong>Proteja as credenciais</strong><p>Use contas técnicas, escopos mínimos e rotação periódica. Tokens são criptografados no cofre da plataforma, mas a segurança também depende das permissões concedidas no provedor.</p></div></div>
+      </section>
+
+      <section class="docs-section" id="seguranca-conta" data-search="configurações segurança conta mfa totp sso oidc sessão chave recuperação">
+        <header class="section-heading"><span class="section-index">11</span><div><span class="docs-eyebrow">IDENTIDADE E ACESSO</span><h2>Conta, MFA e SSO</h2><p>Proteja o acesso antes de ampliar integrações e automações.</p></div></header>
+        <div class="two-column">
+          <article class="guide-card"><div class="guide-icon"><i class="fa-solid fa-mobile-screen-button"></i></div><h3>Ativar MFA</h3><ol><li>Abra <b>Configurações → Segurança</b>.</li><li>Clique em Configurar MFA.</li><li>Adicione a chave ao aplicativo autenticador.</li><li>Confirme com um código de 6 dígitos.</li><li>Guarde os códigos de recuperação fora do computador.</li></ol><span class="plan-badge all">TODOS OS PLANOS</span></article>
+          <article class="guide-card"><div class="guide-icon"><i class="fa-solid fa-building-shield"></i></div><h3>Configurar SSO OIDC</h3><ol><li>Cadastre a aplicação no provedor de identidade.</li><li>Informe issuer, client ID e client secret.</li><li>Defina domínios permitidos.</li><li>Mantenha a exigência de claim MFA.</li><li>Valide com um usuário provisionado.</li></ol><span class="plan-badge enterprise">ENTERPRISE</span></article>
+        </div>
+        <div class="callout tip"><i class="fa-solid fa-clock-rotate-left"></i><div><strong>Sessão única</strong><p>A Iron AI mantém uma sessão ativa por conta. Ao substituir uma sessão, confirme que foi você. Sessões inativas expiram e tokens antigos deixam de funcionar.</p></div></div>
+      </section>
+
+      <section class="docs-section" id="planos-pagamentos" data-search="planos starter professional enterprise preço pagamento stripe cancelar renovar vencimento 7 dias">
+        <header class="section-heading"><span class="section-index">12</span><div><span class="docs-eyebrow">ASSINATURA E VIGÊNCIA</span><h2>Planos e pagamentos</h2><p>Entenda cobrança, acesso, cancelamento e renovação.</p></div></header>
+        <div class="plan-table-wrap"><table class="plan-table"><thead><tr><th>Plano</th><th>Preço</th><th>Vigência</th><th>Capacidade principal</th></tr></thead><tbody><tr><td><b>Starter</b></td><td>R$ 389,90/mês</td><td>Recorrente</td><td>100 scans mensais e plataforma essencial</td></tr><tr><td><b>Professional</b></td><td>R$ 3.789,90</td><td>4 meses</td><td>Scans ilimitados e monitoramento em tempo real</td></tr><tr><td><b>Enterprise</b></td><td>R$ 8.989,90</td><td>1 ano</td><td>Shield, SSO e recursos avançados</td></tr></tbody></table></div>
+        <div class="two-column">
+          <article class="guide-card"><h3>Cancelar Starter</h3><p>Em <b>Configurações → Plano e uso</b>, selecione Cancelar assinatura e digite a confirmação. Dentro da janela de 7 dias após o pagamento, a aplicação solicita o estorno ao Stripe. Depois disso, cancela a recorrência sem estorno automático.</p></article>
+          <article class="guide-card"><h3>Renovar prazo fixo</h3><p>Ao vencer Professional ou Enterprise, o login é bloqueado e mostra a renovação. <b>Renovar no Stripe</b> abre um checkout protegido; <b>Cancelar</b> retorna ao login. O novo prazo começa após o webhook confirmar o pagamento.</p></article>
+        </div>
+        <div class="callout warning"><i class="fa-solid fa-credit-card"></i><div><strong>Parcelamento</strong><p>Professional e Enterprise solicitam parcelamento ao Stripe. As opções exibidas dependem da conta, região e cartão elegíveis. Sempre confira valor e parcelas na tela do provedor antes de pagar.</p></div></div>
+      </section>
+
+      <section class="docs-section" id="devsecops" data-search="devsecops pipeline ci cd sarif semgrep trivy checkov sonar security gate api key">
+        <header class="section-heading"><span class="section-index">13</span><div><span class="docs-eyebrow">AUTOMAÇÃO SEGURA</span><h2>CI/CD e Security Gate</h2><p>Injete findings normalizados ou SARIF e use a resposta para decidir o pipeline.</p></div><span class="plan-badge advanced">OWNER / ADMIN</span></header>
+        <ol class="numbered-guide"><li><b>Cadastre o repositório como ativo.</b><span>Ele será o destino dos findings.</span></li><li><b>Abra Configurações → DevSecOps.</b><span>Crie uma chave com nome e validade.</span></li><li><b>Copie a chave imediatamente.</b><span>Somente o hash fica armazenado.</span></li><li><b>Envie SARIF ou findings.</b><span>Use o header X-Iron-AI-Key.</span></li><li><b>Interrompa o job se o gate falhar.</b><span>Leia quality_gate.passed na resposta.</span></li></ol>
+        <div class="code-block"><div><span><i class="fa-solid fa-code"></i> Ingestão normalizada</span><button data-copy-code><i class="fa-regular fa-copy"></i> Copiar</button></div><pre><code>curl -X POST 'https://app.sua-iron-ai.com/api/pipeline/ingest' \
+  -H 'Content-Type: application/json' \
+  -H 'X-Iron-AI-Key: iai_SUA_CHAVE' \
+  -d '{
+    "asset_id": 42,
+    "source": "semgrep",
+    "format": "normalized",
+    "complete_scan": true,
+    "gate_fail_on": "high",
+    "gate_max_allowed": 0,
+    "findings": [{
+      "title": "SQL montado por concatenação",
+      "severity": "high",
+      "location": "app/repository.py:84",
+      "remediation": "Use parâmetros preparados"
+    }]
+  }'</code></pre></div>
+        <div class="callout danger"><i class="fa-solid fa-lock"></i><div><strong>Não exponha a chave</strong><p>Armazene-a no secret manager do CI, nunca no repositório, log ou artefato. Revogue imediatamente se houver vazamento.</p></div></div>
+      </section>
+
+      <section class="docs-section" id="shield" data-search="iron ai shield viggio target incidente porta uptime disponibilidade enterprise bloquear ip appsec">
+        <header class="section-heading"><span class="section-index">14</span><div><span class="docs-eyebrow">OPERAÇÃO ENTERPRISE</span><h2>Iron AI Shield</h2><p>Acompanhe targets, disponibilidade, incidentes e verificações especializadas.</p></div><span class="plan-badge enterprise">ENTERPRISE</span></header>
+        <div class="three-column">
+          <article class="guide-card"><h3>1. Cadastrar target</h3><p>Informe nome, tipo, endereço, portas, intervalo e limiar de alerta. Use somente ativos autorizados.</p></article>
+          <article class="guide-card"><h3>2. Acompanhar checks</h3><p>Observe status, latência, disponibilidade e incidentes. Execute verificação manual quando precisar validar imediatamente.</p></article>
+          <article class="guide-card"><h3>3. Responder</h3><p>Investigue incidentes, registre status, use bloqueios controlados e exporte o relatório completo.</p></article>
+        </div>
+        <div class="callout warning"><i class="fa-solid fa-server"></i><div><strong>Operação contínua exige processos ativos</strong><p>Em produção, mantenha web, worker e scheduler executando e monitorados. A interface sozinha não executa verificações recorrentes em segundo plano.</p></div></div>
+      </section>
+
+      <section class="docs-section" id="ferramentas-avancadas" data-search="ferramentas avançadas desenvolvedor enterprise labs sqli xss portas dependências docker graphql phishing">
+        <header class="section-heading"><span class="section-index">15</span><div><span class="docs-eyebrow">IRON AI LABS</span><h2>Área do desenvolvedor</h2><p>Ferramentas especializadas com dupla autorização.</p></div><span class="plan-badge enterprise">ENTERPRISE + DEVELOPER</span></header>
+        <div class="feature-layout">
+          <div><p class="lead">O acesso exige assinatura Enterprise ativa e a permissão explícita <code>is_developer</code>. Ser administrador não ignora essas exigências.</p><ul class="check-list"><li><i class="fa-solid fa-check"></i> Scanners de código, API, dependências, containers e GraphQL</li><li><i class="fa-solid fa-check"></i> Análises técnicas de portas, headers, DNS e superfície</li><li><i class="fa-solid fa-check"></i> DAST autenticado com credencial protegida</li><li><i class="fa-solid fa-check"></i> Ferramentas defensivas e laboratórios autorizados</li></ul></div>
+          <aside class="practice-card"><span>CONTROLE DE ACESSO</span><h3>Como liberar</h3><ol><li>Confirme Enterprise ativo.</li><li>No admin, habilite Desenvolvedor para o usuário correto.</li><li>Peça novo login.</li><li>Valide o link Área do desenvolvedor.</li></ol></aside>
+        </div>
+        <div class="callout danger"><i class="fa-solid fa-triangle-exclamation"></i><div><strong>Uso profissional e autorizado</strong><p>Essas ferramentas podem gerar tráfego sensível. Comece em homologação, limite escopo e intensidade e preserve evidências da autorização.</p></div></div>
+      </section>
+
+      <section class="docs-section" id="api" data-search="api autenticação curl bearer token endpoints exemplos login sensores relatórios">
+        <header class="section-heading"><span class="section-index">16</span><div><span class="docs-eyebrow">REFERÊNCIA PRÁTICA</span><h2>API e exemplos</h2><p>A interface usa a API autenticada sob o prefixo <code>/api</code>.</p></div></header>
+        <div class="callout tip"><i class="fa-solid fa-circle-info"></i><div><strong>Escolha a credencial correta</strong><p>Use Bearer token para sessão de usuário, <code>X-Iron-AI-Key</code> para pipeline e <code>X-Iron-AI-Sensor-Key</code> para telemetria. As chaves não são intercambiáveis.</p></div></div>
+        <div class="code-block"><div><span><b>POST</b> Login de usuário</span><button data-copy-code><i class="fa-regular fa-copy"></i> Copiar</button></div><pre><code>curl -X POST 'http://localhost:8000/api/auth/token' \
+  -H 'Content-Type: application/x-www-form-urlencoded' \
+  --data-urlencode 'username=seu_usuario' \
+  --data-urlencode 'password=sua_senha' \
+  --data-urlencode 'mfa_code=123456'</code></pre></div>
+        <div class="code-block"><div><span><b>GET</b> Ativos da organização</span><button data-copy-code><i class="fa-regular fa-copy"></i> Copiar</button></div><pre><code>curl 'http://localhost:8000/api/assets' \
+  -H 'Authorization: Bearer SEU_TOKEN'</code></pre></div>
+        <div class="code-block"><div><span><b>POST</b> Telemetria defensiva</span><button data-copy-code><i class="fa-regular fa-copy"></i> Copiar</button></div><pre><code>curl -X POST 'https://app.sua-iron-ai.com/api/security-monitoring/ingest' \
+  -H 'Content-Type: application/json' \
+  -H 'X-Iron-AI-Sensor-Key: iais_SUA_CHAVE' \
+  -d '{"events":[{
+    "signal":"web_scan",
+    "source_ip":"IP_PUBLICO_CONTROLADO",
+    "method":"GET",
+    "path":"/.env",
+    "status_code":404,
+    "request_count":32,
+    "window_seconds":60,
+    "source":"waf"
+  }]}'</code></pre></div>
+        <div class="api-status-grid"><div><b>200 / 201</b><span>Operação concluída</span></div><div><b>400 / 422</b><span>Dados inválidos</span></div><div><b>401</b><span>Credencial inválida ou expirada</span></div><div><b>402</b><span>Renovação necessária</span></div><div><b>403</b><span>Plano ou papel insuficiente</span></div><div><b>409 / 429</b><span>Conflito ou limite excedido</span></div></div>
+      </section>
+
+      <section class="docs-section" id="solucao-problemas" data-search="erro problemas não funciona login 400 porta 8000 stripe ai redis banco worker troubleshooting">
+        <header class="section-heading"><span class="section-index">17</span><div><span class="docs-eyebrow">DIAGNÓSTICO</span><h2>Solução de problemas</h2><p>Comece pelo sintoma e valide a camada correta.</p></div></header>
+        <div class="troubleshooting-list">
+          <details class="docs-accordion" open><summary>O servidor informa “address already in use”<i class="fa-solid fa-chevron-down"></i></summary><div><p>Já existe um processo usando a porta 8000. Encerre o processo anterior com Ctrl+C no terminal em que ele foi iniciado ou identifique o PID antes de iniciar novamente. Não execute duas instâncias locais na mesma porta.</p></div></details>
+          <details class="docs-accordion"><summary>As páginas retornam 400 Bad Request<i class="fa-solid fa-chevron-down"></i></summary><div><p>Confira <code>ALLOWED_HOSTS</code>, <code>FRONTEND_URL</code> e o host usado no navegador. Localmente, inclua <code>localhost</code> e <code>127.0.0.1</code>; em produção, use somente o domínio real.</p></div></details>
+          <details class="docs-accordion"><summary>A IA não responde pelo provedor externo<i class="fa-solid fa-chevron-down"></i></summary><div><p>Confira <code>AI_PROVIDER</code>, chave, modelo e conectividade. Em Configurações, valide se aparece “Conectada”. Reinicie o processo após alterar o ambiente.</p></div></details>
+          <details class="docs-accordion"><summary>O checkout não abre<i class="fa-solid fa-chevron-down"></i></summary><div><p>Valide <code>STRIPE_SECRET_KEY</code>, <code>STRIPE_WEBHOOK_SECRET</code>, URL pública do webhook e se as chaves pertencem ao mesmo modo test/live. Não misture Price IDs recorrentes e únicos.</p></div></details>
+          <details class="docs-accordion"><summary>Professional ou Enterprise venceu<i class="fa-solid fa-chevron-down"></i></summary><div><p>Entre com as credenciais normais. A tela mostra a modal de renovação. O botão Renovar abre o Stripe; o acesso volta após confirmação do webhook.</p></div></details>
+          <details class="docs-accordion"><summary>O monitoramento não recebe eventos<i class="fa-solid fa-chevron-down"></i></summary><div><p>Confirme plano Professional+, sensor não revogado, chave correta, endpoint HTTPS, relógio do servidor, permissão de leitura do log e se o proxy registra o IP real.</p></div></details>
+          <details class="docs-accordion"><summary>Uma integração falha ao sincronizar<i class="fa-solid fa-chevron-down"></i></summary><div><p>Revise expiração e escopos do token, URL base pública HTTPS, organização/projeto e rate limit do provedor. Desconecte e conecte novamente após rotacionar a credencial.</p></div></details>
+        </div>
+        <div class="diagnostic-card"><div><span class="docs-eyebrow">CHECKLIST LOCAL</span><h3>Validação rápida</h3></div><div class="code-block"><div><span>Terminal</span><button data-copy-code><i class="fa-regular fa-copy"></i> Copiar</button></div><pre><code>./start.sh
+# em outro terminal
+curl -i http://localhost:8000/api/health
+curl -I http://localhost:8000/landing.html</code></pre></div></div>
+      </section>
+
+      <section class="docs-section docs-final" id="ajuda" data-search="ajuda suporte dúvida">
+        <div><span class="docs-eyebrow">AINDA COM DÚVIDA?</span><h2>Volte ao contexto da sua operação.</h2><p>Abra a plataforma, consulte a Iron AI sobre seus riscos ou use esta busca para encontrar o procedimento exato.</p></div><div><button class="docs-button ghost" data-open-search><i class="fa-solid fa-magnifying-glass"></i> Pesquisar</button><a class="docs-button primary" href="/platform.html#ai"><i class="fa-solid fa-wand-magic-sparkles"></i> Abrir Iron AI</a></div>
+      </section>
     </main>
 
-    <!-- Footer -->
-    <footer class="manual-footer">
-        <div class="container">
-            <p>&copy; 2025 Iron Net. Todos os direitos reservados.</p>
-            <p>API v1.0.0 | Documentação atualizada em 05/12/2025</p>
-        </div>
-    </footer>
+    <footer class="docs-footer"><span>Iron AI Security Platform</span><span>Documentação de produto · Agosto de 2026</span><a href="#inicio">Voltar ao topo <i class="fa-solid fa-arrow-up"></i></a></footer>
+  </div>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-bash.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-javascript.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-php.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-yaml.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-json.min.js"></script>
-    <script src="js/manual.js"></script>
+  <div class="search-modal" id="search-modal" role="dialog" aria-modal="true" aria-labelledby="search-title" hidden>
+    <div class="search-dialog">
+      <div class="search-dialog-input"><i class="fa-solid fa-magnifying-glass"></i><input id="docs-search-modal" type="search" placeholder="Ex.: conectar Cloudflare, gerar relatório, MFA..." autocomplete="off"><button id="close-search" aria-label="Fechar">ESC</button></div>
+      <div class="search-results" id="search-results"><div class="search-empty"><i class="fa-solid fa-compass"></i><strong>O que você precisa fazer?</strong><p>Pesquise por uma funcionalidade, erro ou procedimento.</p></div></div>
+    </div>
+  </div>
+
+  <div class="docs-toast" id="docs-toast" role="status"></div>
+  <script src="/js/documentation.js?v=1.0"></script>
 </body>
 </html>

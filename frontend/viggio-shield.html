@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Viggio Shield - Monitoramento de Segurança</title>
+    <title>Iron AI Shield - Monitoramento Contínuo</title><link rel="stylesheet" href="css/ironnet-brand.css?v=1.3">
     <link rel="stylesheet" href="/css/modern-style.css?v=6.4">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
@@ -887,19 +887,22 @@
 
         }
     </style>
+    <link rel="stylesheet" href="css/viggio-iron-ai.css?v=1.0">
 </head>
-<body>
+<body class="viggio-ai-app">
     <div class="viggio-container">
         <!-- Header -->
         <div class="viggio-header">
             <div class="viggio-title">
-                <i class="fas fa-shield-alt shield-icon"></i>
+                <img class="viggio-brand-logo" src="assets/ironnet-logo.jpeg" alt="Iron AI">
                 <div>
-                    <h1>Viggio Shield</h1>
-                    <p style="color: #a0aec0; margin: 5px 0 0 0;">Monitoramento de Segurança em Tempo Real</p>
+                    <div class="viggio-product-line"><span>IRON AI</span><b>ENTERPRISE</b></div>
+                    <h1>Iron AI Shield</h1>
+                    <p style="color: #a0aec0; margin: 5px 0 0 0;">Monitoramento contínuo e AppSec em uma visão operacional</p>
                 </div>
             </div>
             <div class="viggio-header-actions">
+                <a class="btn-small viggio-back" href="/platform.html"><i class="fas fa-arrow-left"></i> Plataforma</a>
                 <button class="btn-small" onclick="downloadViggioFullReport()">
                     <i class="fas fa-file-pdf"></i> Relatório completo
                 </button>
@@ -1124,7 +1127,8 @@
         </div>
     </div>
 
-    <script src="/js/confirm-dialog.js?v=1.0"></script>
+    <script src="/js/confirm-dialog.js?v=1.1"></script>
+    <script src="/js/ui-feedback.js?v=1.0"></script>
     <script>
         // ============= FUNÇÕES AUXILIARES =============
         
@@ -1235,7 +1239,7 @@
                 document.getElementById('appsecFilenameGroup').style.display = 'none';
                 document.getElementById('appsecUrlGroup').style.display = 'none';
                 document.getElementById('appsecSummary').innerHTML = '';
-                document.getElementById('appsecResults').innerHTML = `<div class="appsec-finding low"><strong>Integração passo a passo</strong><ol style="padding-left:20px;line-height:1.8"><li>Em cada scanner, escolha a severidade do Quality Gate.</li><li>Execute o scan via interface ou envie um POST autenticado para <code>/api/viggio-shield/appsec/scan</code>.</li><li>Leia <code>result.quality_gate.passed</code>: <code>false</code> deve encerrar o job com erro.</li><li>Publique <code>result.sarif</code> no seu provedor de CI para centralizar os achados.</li><li>Guarde <code>VIGGIO_URL</code> e <code>VIGGIO_TOKEN</code> como secrets do repositório.</li></ol><button class="btn-primary" onclick="downloadViggioCiTemplate()"><i class="fas fa-download"></i> Baixar template GitHub Actions</button></div>`;
+                document.getElementById('appsecResults').innerHTML = `<div class="appsec-finding low"><strong>Integração Iron AI Security Gates</strong><ol style="padding-left:20px;line-height:1.8"><li>Crie uma chave em Configurações → DevSecOps.</li><li>Envie SARIF para <code>/api/pipeline/ingest</code> usando <code>X-Iron-AI-Key</code>.</li><li>Leia <code>quality_gate.passed</code>: <code>false</code> deve encerrar o job com erro.</li><li>Guarde <code>IRON_AI_URL</code>, <code>IRON_AI_KEY</code> e o ID do ativo como secrets.</li></ol><button class="btn-primary" onclick="downloadViggioCiTemplate()"><i class="fas fa-download"></i> Baixar template GitHub Actions</button></div>`;
                 return;
             }
             document.getElementById('appsecSummary').innerHTML = saved.summary;
@@ -1276,7 +1280,7 @@
         async function runAppSecWorkspaceScan() {
             const scanType = document.getElementById('appsecScanType').value;
             if (scanType === 'governance') return downloadViggioCiTemplate();
-            const body = {scan_type:scanType, filename:document.getElementById('appsecFilename').value.trim(), content:document.getElementById('appsecContent').value, target_url:document.getElementById('appsecTargetUrl').value.trim(), policy:{name:'Viggio Quality Gate',fail_on:document.getElementById('appsecFailOn').value}};
+            const body = {scan_type:scanType, filename:document.getElementById('appsecFilename').value.trim(), content:document.getElementById('appsecContent').value, target_url:document.getElementById('appsecTargetUrl').value.trim(), policy:{name:'Iron AI Quality Gate',fail_on:document.getElementById('appsecFailOn').value}};
             const results = document.getElementById('appsecResults');
             results.innerHTML = '<div class="loading"><i class="fas fa-spinner"></i><p>Executando scanners...</p></div>';
             try {
@@ -1326,8 +1330,8 @@
         function closeAppSecDetail() { document.getElementById('appsecDetailModal').classList.remove('active'); }
 
         function downloadText(filename, content, type='text/plain') { const blob=new Blob([content],{type}); const link=document.createElement('a'); link.href=URL.createObjectURL(blob); link.download=filename; link.click(); URL.revokeObjectURL(link.href); }
-        function downloadSarif(sarif) { downloadText('viggio-results.sarif', JSON.stringify(sarif,null,2), 'application/sarif+json'); }
-        function downloadViggioCiTemplate() { downloadText('viggio-appsec.yml', `name: Viggio AppSec\non: [push, pull_request]\npermissions:\n  contents: read\njobs:\n  sast:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v4\n      - name: Enviar código ao Viggio\n        env:\n          VIGGIO_URL: \${{ secrets.VIGGIO_URL }}\n          VIGGIO_TOKEN: \${{ secrets.VIGGIO_TOKEN }}\n        run: |\n          test -n "$VIGGIO_URL" && test -n "$VIGGIO_TOKEN"\n          jq -n --rawfile content app.py '{scan_type:"sast",filename:"app.py",content:$content,policy:{name:"CI Quality Gate",fail_on:"high"}}' > request.json\n          curl --fail-with-body -sS "$VIGGIO_URL/api/viggio-shield/appsec/scan" \\\n            -H "Authorization: Bearer $VIGGIO_TOKEN" -H "Content-Type: application/json" \\\n            --data @request.json > viggio-result.json\n          jq '.result.sarif' viggio-result.json > viggio-results.sarif\n          test "$(jq -r '.result.quality_gate.passed' viggio-result.json)" = "true"\n      - uses: actions/upload-artifact@v4\n        with:\n          name: viggio-sarif\n          path: viggio-results.sarif\n\n# Antes de usar: crie os secrets VIGGIO_URL (ex.: https://sua-plataforma.com)\n# e VIGGIO_TOKEN no repositório. Ajuste app.py e scan_type para o módulo desejado.\n`, 'text/yaml'); }
+        function downloadSarif(sarif) { downloadText('iron-ai-results.sarif', JSON.stringify(sarif,null,2), 'application/sarif+json'); }
+        function downloadViggioCiTemplate() { downloadText('iron-ai-security-gate.yml', `name: Iron AI Security Gate\non: [push, pull_request]\npermissions:\n  contents: read\njobs:\n  security:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v4\n      - name: Execute seu scanner SARIF\n        run: semgrep scan --sarif --output results.sarif\n      - name: Enviar resultados à Iron AI\n        env:\n          IRON_AI_URL: \${{ secrets.IRON_AI_URL }}\n          IRON_AI_KEY: \${{ secrets.IRON_AI_KEY }}\n          IRON_AI_ASSET_ID: \${{ secrets.IRON_AI_ASSET_ID }}\n        run: |\n          jq -n --argjson asset_id "$IRON_AI_ASSET_ID" --slurpfile sarif results.sarif '{asset_id:$asset_id,source:"Semgrep",format:"sarif",sarif:$sarif[0],gate_fail_on:"high",gate_max_allowed:0}' > request.json\n          curl --fail-with-body -sS "$IRON_AI_URL/api/pipeline/ingest" -H "X-Iron-AI-Key: $IRON_AI_KEY" -H "Content-Type: application/json" --data @request.json > iron-ai-result.json\n          test "$(jq -r '.quality_gate.passed' iron-ai-result.json)" = "true"\n`, 'text/yaml'); }
 
         function showToast(message, type = 'info') {
             // Remove toasts anteriores
@@ -1426,7 +1430,8 @@
                     }
                     
                     const errorData = await response.json().catch(() => ({}));
-                    throw new Error(errorData.detail || `Erro: ${response.status}`);
+                    const detail = errorData.detail;
+                    throw new Error(typeof detail === 'string' ? detail : (detail?.message || `Erro: ${response.status}`));
                 }
 
                 return await response.json();
@@ -1437,8 +1442,24 @@
         }
 
         async function downloadViggioFullReport() {
-            const includeResolved = window.confirm('Incluir incidentes resolvidos e falsos positivos no relatório?');
-            const includeLogs = window.confirm('Incluir histórico completo de verificações e atividades?');
+            const includeResolved = await showConfirmDialog({
+                variant: 'info',
+                icon: 'fa-list-check',
+                title: 'Incluir incidentes tratados?',
+                message: 'Deseja incluir incidentes resolvidos e falsos positivos no relatório?',
+                confirmText: 'Incluir',
+                cancelText: 'Não incluir',
+                confirmIcon: 'fa-check'
+            });
+            const includeLogs = await showConfirmDialog({
+                variant: 'info',
+                icon: 'fa-clock-rotate-left',
+                title: 'Incluir histórico completo?',
+                message: 'Deseja incluir verificações e atividades no relatório?',
+                confirmText: 'Incluir',
+                cancelText: 'Não incluir',
+                confirmIcon: 'fa-check'
+            });
             const token = getToken();
             try {
                 showLoading('Gerando relatório fidedigno...');
@@ -1670,24 +1691,48 @@
         }
 
         async function clearViggioOpenIncidents() {
-            if (!window.confirm('Deseja zerar todos os incidentes abertos? Eles serão marcados como resolvidos.')) return;
+            const confirmed = await showConfirmDialog({
+                variant: 'warning',
+                icon: 'fa-circle-check',
+                title: 'Resolver incidentes abertos?',
+                message: 'Todos os incidentes abertos serão marcados como resolvidos.',
+                details: 'O histórico será preservado para auditoria.',
+                confirmText: 'Marcar como resolvidos',
+                confirmIcon: 'fa-check'
+            });
+            if (!confirmed) return;
             try {
+                showLoading('Atualizando incidentes...');
                 const response = await apiRequest('/viggio-shield/incidents/clear-open', { method: 'POST' });
                 showToast(`${response.resolved_count || 0} incidente(s) aberto(s) zerado(s).`, 'success');
                 await Promise.all([loadDashboard(), loadIncidents()]);
             } catch (error) {
                 showToast('Erro ao zerar incidentes: ' + error.message, 'error');
+            } finally {
+                hideLoading();
             }
         }
 
         async function clearViggioIncidentHistory() {
-            if (!window.confirm('Deseja apagar todo o histórico de incidentes? Esta ação não pode ser desfeita.')) return;
+            const confirmed = await showConfirmDialog({
+                variant: 'danger',
+                icon: 'fa-trash-can',
+                title: 'Apagar histórico de incidentes?',
+                message: 'Esta ação remove permanentemente todo o histórico de incidentes.',
+                details: 'A operação não pode ser desfeita.',
+                confirmText: 'Apagar histórico',
+                confirmIcon: 'fa-trash-can'
+            });
+            if (!confirmed) return;
             try {
+                showLoading('Removendo histórico...');
                 const response = await apiRequest('/viggio-shield/incidents/clear-history', { method: 'POST' });
                 showToast(`${response.removed_count || 0} incidente(s) removido(s).`, 'success');
                 await Promise.all([loadDashboard(), loadIncidents()]);
             } catch (error) {
                 showToast('Erro ao limpar histórico: ' + error.message, 'error');
+            } finally {
+                hideLoading();
             }
         }
 
@@ -1877,18 +1922,30 @@
         // ============= INICIALIZAÇÃO =============
         
         document.addEventListener('DOMContentLoaded', async () => {
-            console.log('🚀 Iniciando Viggio Shield...');
+            console.log('🚀 Iniciando Iron AI Shield...');
             
             // Verifica autenticação
             const token = getToken();
             if (!token) {
-                showToast('Você precisa fazer login para acessar o Viggio Shield', 'error');
+                showToast('Você precisa fazer login para acessar o Iron AI Shield', 'error');
                 setTimeout(() => window.location.href = '/index.html', 2000);
+                return;
+            }
+
+            try {
+                const subscription = await apiRequest('/user/subscription-info');
+                if (subscription.subscription_plan !== 'enterprise' || subscription.subscription_status !== 'active') {
+                    showToast('O Iron AI Shield requer uma assinatura Enterprise ativa.', 'warning');
+                    setTimeout(() => window.location.replace('/pricing.html?required=enterprise&feature=viggio'), 1200);
+                    return;
+                }
+            } catch (error) {
+                showToast('Não foi possível validar sua assinatura: ' + error.message, 'error');
                 return;
             }
             
             // Carrega dados iniciais
-            showLoading('Carregando Viggio Shield...');
+            showLoading('Carregando Iron AI Shield...');
             try {
                 await Promise.all([
                     loadDashboard(),
@@ -1896,7 +1953,7 @@
                     loadIncidents()
                 ]);
                 hideLoading();
-                showToast('✅ Viggio Shield carregado com sucesso!', 'success');
+                showToast('✅ Iron AI Shield carregado com sucesso!', 'success');
             } catch (error) {
                 hideLoading();
                 showToast('Erro ao carregar dados: ' + error.message, 'error');

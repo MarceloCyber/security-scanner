@@ -23,6 +23,9 @@
             .platform-confirm-cancel:hover{background:var(--bg-elevated,#334155);color:var(--text,#fff)}
             .platform-confirm-submit{background:linear-gradient(135deg,#ef4444,#dc2626);color:#fff;box-shadow:0 6px 18px rgba(239,68,68,.25)}
             .platform-confirm-submit:hover{transform:translateY(-1px);box-shadow:0 9px 24px rgba(239,68,68,.35)}
+            .platform-confirm-dialog[data-variant="warning"] .platform-confirm-icon{background:rgba(245,158,11,.14);color:#f59e0b}.platform-confirm-dialog[data-variant="warning"] .platform-confirm-kicker{color:#f6ad55}.platform-confirm-dialog[data-variant="warning"] .platform-confirm-submit{background:linear-gradient(135deg,#f59e0b,#d97706);box-shadow:0 6px 18px rgba(245,158,11,.22)}
+            .platform-confirm-dialog[data-variant="info"] .platform-confirm-icon{background:rgba(168,85,247,.14);color:#c084fc}.platform-confirm-dialog[data-variant="info"] .platform-confirm-kicker{color:#c084fc}.platform-confirm-dialog[data-variant="info"] .platform-confirm-submit{background:linear-gradient(135deg,#a855f7,#6d28d9);box-shadow:0 6px 18px rgba(168,85,247,.24)}
+            .platform-confirm-input{width:100%;min-height:44px;margin-top:16px;padding:10px 13px;border:1px solid var(--border,#475569);border-radius:9px;background:rgba(2,6,23,.38);color:var(--text,#fff);font:inherit;outline:none}.platform-confirm-input:focus{border-color:#a855f7;box-shadow:0 0 0 3px rgba(168,85,247,.13)}
             .platform-confirm-button:focus-visible{outline:3px solid rgba(59,130,246,.4);outline-offset:2px}
             @media(max-width:520px){.platform-confirm-main{padding:22px 20px 17px}.platform-confirm-actions{padding:15px 20px}.platform-confirm-actions{flex-direction:column-reverse}.platform-confirm-button{width:100%}}
             @media(prefers-reduced-motion:reduce){.platform-confirm-overlay,.platform-confirm-dialog,.platform-confirm-button{transition:none}}
@@ -40,6 +43,7 @@
 
             const dialog = document.createElement('div');
             dialog.className = 'platform-confirm-dialog';
+            dialog.dataset.variant = config.variant || 'danger';
             dialog.setAttribute('role', 'alertdialog');
             dialog.setAttribute('aria-modal', 'true');
 
@@ -49,7 +53,8 @@
             heading.className = 'platform-confirm-heading';
             const icon = document.createElement('div');
             icon.className = 'platform-confirm-icon';
-            icon.innerHTML = '<i class="fas fa-trash-alt" aria-hidden="true"></i>';
+            const defaultIcon = config.variant === 'warning' ? 'fa-triangle-exclamation' : config.variant === 'info' ? 'fa-circle-info' : 'fa-trash-alt';
+            icon.innerHTML = `<i class="fas ${config.icon || defaultIcon}" aria-hidden="true"></i>`;
             const headingText = document.createElement('div');
             const kicker = document.createElement('div');
             kicker.className = 'platform-confirm-kicker';
@@ -63,6 +68,17 @@
             headingText.append(kicker, title);
             heading.append(icon, headingText);
             main.append(heading, message);
+
+            let input = null;
+            if (config.input) {
+                input = document.createElement('input');
+                input.className = 'platform-confirm-input';
+                input.type = config.input.type || 'text';
+                input.placeholder = config.input.placeholder || '';
+                input.autocomplete = config.input.autocomplete || 'off';
+                input.setAttribute('aria-label', config.input.label || config.input.placeholder || 'Confirmação');
+                main.appendChild(input);
+            }
 
             if (config.details !== false) {
                 const note = document.createElement('div');
@@ -83,7 +99,7 @@
             const submit = document.createElement('button');
             submit.type = 'button';
             submit.className = 'platform-confirm-button platform-confirm-submit';
-            submit.innerHTML = '<i class="fas fa-trash-alt" aria-hidden="true"></i> ';
+            submit.innerHTML = `<i class="fas ${config.confirmIcon || defaultIcon}" aria-hidden="true"></i> `;
             submit.appendChild(document.createTextNode(config.confirmText || 'Sim, excluir'));
             actions.append(cancel, submit);
             dialog.append(main, actions);
@@ -108,10 +124,17 @@
                 }
             };
             cancel.addEventListener('click', () => close(false));
-            submit.addEventListener('click', () => close(true));
+            submit.addEventListener('click', () => {
+                if (input && config.input.required && !input.value.trim()) {
+                    input.setAttribute('aria-invalid', 'true');
+                    input.focus();
+                    return;
+                }
+                close(input ? input.value.trim() : true);
+            });
             overlay.addEventListener('click', event => { if (event.target === overlay) close(false); });
             document.addEventListener('keydown', onKeydown);
-            requestAnimationFrame(() => { overlay.classList.add('active'); cancel.focus(); });
+            requestAnimationFrame(() => { overlay.classList.add('active'); (input || cancel).focus(); });
         });
     };
 })();

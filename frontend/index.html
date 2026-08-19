@@ -3,17 +3,37 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Iron Net - Login</title>
+    <title>Iron AI - Login</title>
     <link rel="stylesheet" href="css/style.css?v=2.2">
+    <link rel="stylesheet" href="css/ironnet-brand.css?v=1.3">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="css/auth-modern.css?v=1.0">
 </head>
 <body class="login-page">
     <div class="login-container">
+        <section class="auth-brand-panel">
+            <div class="auth-brand-heading">
+                <img class="auth-logo" src="assets/ironnet-logo.jpeg" alt="Iron AI">
+                <div><strong>Iron AI</strong><span>Security Platform</span></div>
+            </div>
+            <div class="auth-brand-copy">
+                <span class="auth-eyebrow"><i></i> Segurança orientada por evidências</span>
+                <h2>Veja o risco.<br>Entenda o impacto.<br><em>Resolva primeiro o que importa.</em></h2>
+                <p>Ativos, scans autorizados, evidências e remediação reunidos em uma experiência criada para equipes enxutas.</p>
+            </div>
+            <div class="auth-live-list">
+                <div><i class="fas fa-wave-square"></i><span><strong>Monitoramento contínuo</strong><small>HTTP, TLS e superfície exposta</small></span></div>
+                <div><i class="fas fa-wand-magic-sparkles"></i><span><strong>Copiloto com contexto real</strong><small>Respostas baseadas nos dados do seu ambiente</small></span></div>
+                <div><i class="fas fa-list-check"></i><span><strong>Prioridade clara</strong><small>Evidência, impacto e caminho de correção</small></span></div>
+            </div>
+            <div class="auth-brand-foot"><span><i></i> Plataforma operacional</span><small>Proteção para PMEs</small></div>
+        </section>
         <div class="login-box">
             <div class="logo-section">
                 <i class="fas fa-shield-halved"></i>
-                <h1>Iron Net</h1>
-                <p>Análise de Segurança OWASP Top 10</p>
+                <span class="auth-form-kicker">Acesso seguro</span>
+                <h1>Iron AI</h1>
+                <p>Entre para acessar seu workspace de segurança.</p>
             </div>
             
             <form id="loginForm" class="auth-form">
@@ -34,11 +54,21 @@
                     </div>
                 </div>
 
-                <div class="form-group">
-                    <label for="access_key"><i class="fas fa-key"></i> Chave de acesso (primeiro login)</label>
-                    <input type="text" id="access_key" name="access_key" autocomplete="one-time-code" placeholder="Cole a chave recebida por email">
-                    <small style="display:block; margin-top:6px; color:#94a3b8;">Após validada, ela não será solicitada novamente.</small>
-                </div>
+                <details class="auth-advanced-fields">
+                    <summary><span><i class="fas fa-shield-keyhole"></i> Primeiro acesso ou MFA</span><i class="fas fa-chevron-down"></i></summary>
+                    <div class="auth-advanced-content">
+                        <div class="form-group">
+                            <label for="access_key"><i class="fas fa-key"></i> Chave de acesso</label>
+                            <input type="text" id="access_key" name="access_key" autocomplete="one-time-code" placeholder="Cole a chave recebida por email">
+                            <small>Solicitada somente no primeiro login.</small>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="mfa_code"><i class="fas fa-mobile-screen-button"></i> Código MFA</label>
+                            <input type="text" id="mfa_code" name="mfa_code" inputmode="numeric" autocomplete="one-time-code" placeholder="6 dígitos ou código de recuperação">
+                        </div>
+                    </div>
+                </details>
 
                 <div style="display:flex; justify-content:flex-end; margin-top:-10px; margin-bottom:20px;">
                     <a href="#" onclick="openForgotPasswordModal(); return false;" style="color: #7c3aed; font-weight:600; text-decoration:none;">Esqueceu a senha?</a>
@@ -48,6 +78,7 @@
                     <i class="fas fa-sign-in-alt"></i> Entrar
                 </button>
             </form>
+            <div class="sso-login"><span>ou entre com o provedor da sua empresa</span><div><input id="sso-organization" placeholder="identificador-da-empresa" autocomplete="organization"><button type="button" class="btn" id="sso-login-button"><i class="fas fa-building-shield"></i> SSO Enterprise</button></div></div>
             
             <div class="form-footer">
                 <p>Não tem uma conta? <a href="#" id="showRegister">Registrar-se</a></p>
@@ -60,6 +91,7 @@
         <div class="login-box register-box" style="display: none;">
             <div class="logo-section">
                 <i class="fas fa-user-plus"></i>
+                <span class="auth-form-kicker">Novo workspace</span>
                 <h1>Criar Conta</h1>
                 <p>Registre-se para começar a usar</p>
             </div>
@@ -102,7 +134,9 @@
         </div>
     </div>
     
-    <script src="js/auth.js?v=2.1"></script>
+    <script src="/js/confirm-dialog.js?v=1.1"></script>
+    <script src="/js/ui-feedback.js?v=1.0"></script>
+    <script src="js/auth.js?v=3.2"></script>
     <script>
         function openForgotPasswordModal() {
             document.getElementById('forgotPasswordModal').style.display = 'flex';
@@ -149,6 +183,18 @@
             if (ev.target === modal) { closeForgotPasswordModal(); }
         });
     </script>
+    <div id="renewalModal" class="modal" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="renewalTitle">
+        <div class="modal-content">
+            <span class="auth-form-kicker">PERÍODO ENCERRADO</span>
+            <h2 id="renewalTitle" style="margin:10px 0;color:#fff;">Renove seu acesso à Iron AI</h2>
+            <p id="renewalMessage" style="color:#c4b5d4;line-height:1.65;">Seu plano chegou ao fim. A renovação reativa o acesso pelo mesmo período contratado.</p>
+            <div style="display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap;margin-top:24px;">
+                <button type="button" id="renewalCancel" class="btn" style="width:auto;">Cancelar</button>
+                <button type="button" id="renewalContinue" class="btn btn-primary" style="width:auto;"><i class="fas fa-credit-card"></i> Renovar no Stripe</button>
+            </div>
+            <div id="renewalError" class="message"></div>
+        </div>
+    </div>
     <div id="forgotPasswordModal" class="modal" style="display:none;">
         <div class="modal-content">
             <span class="modal-close" onclick="closeForgotPasswordModal()">&times;</span>
@@ -172,6 +218,7 @@
         .alert { padding: 12px 15px; border-radius: 8px; margin-bottom: 15px; font-size: 14px; }
         .alert-success { background: rgba(16,185,129,0.12); border: 1px solid rgba(16,185,129,0.28); color: #d1fae5; }
         .alert-error { background: rgba(239,68,68,0.12); border: 1px solid rgba(239,68,68,0.28); color: #fecaca; }
+        .sso-login{margin-top:18px;padding-top:18px;border-top:1px solid rgba(255,255,255,.1)}.sso-login>span{display:block;text-align:center;color:#94a3b8;font-size:12px;margin-bottom:10px}.sso-login>div{display:grid;grid-template-columns:1fr auto;gap:8px}.sso-login input{min-width:0}.sso-login button{white-space:nowrap;background:rgba(124,58,237,.12);color:#ddd6fe;border:1px solid rgba(124,58,237,.35)}@media(max-width:560px){.sso-login>div{grid-template-columns:1fr}}
     </style>
     <script>
         (function(){

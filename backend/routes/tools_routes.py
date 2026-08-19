@@ -1351,7 +1351,7 @@ async def generate_report(
 
 <section class="generic-report-note">
     <h3>Observações</h3>
-    <p>Este relatório foi gerado automaticamente pela Iron Net.</p>
+    <p>Este relatório foi gerado automaticamente pela Iron AI.</p>
     <p>Revise os resultados cuidadosamente e tome as ações necessárias para corrigir as vulnerabilidades encontradas.</p>
 </section>
 </article>

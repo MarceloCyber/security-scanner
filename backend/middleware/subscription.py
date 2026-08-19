@@ -6,63 +6,28 @@ from sqlalchemy.orm import Session
 from datetime import datetime, timedelta
 from typing import Optional
 from models.user import User
+from models.saas import Organization, OrganizationMember
 from auth import get_current_user
 from database import get_db
 from functools import wraps
 import inspect
+from services.plan_policy import PLAN_POLICY, access_end_for_plan, normalize_plan
 
-# Definição de ferramentas por plano
-# Starter: 5 ferramentas | Professional: 10 ferramentas | Enterprise: todas
+# Ferramentas técnicas avançadas são exclusivas do plano Enterprise.
 #
 # REGRA: todos os itens aqui DEVEM ter página dedicada no dashboard (data-page).
 # ssl_checker / dns_lookup / whois_lookup / header_analyzer são sub-features do
 # Port Scanner (deep scan) e não possuem página própria – por isso não aparecem.
 TOOL_PERMISSIONS = {
-    "starter": [
-        "port_scanner",       # data-page="port-scan"
-        "subdomain_finder",   # data-page="subdomain"
-        "hash_analyzer",      # data-page="hash-analyzer"
-        "encoder_decoder",    # data-page="encoder"
-        "password_strength_checker",  # data-page="password-strength"
-    ],
-    "professional": [
-        # Ferramentas do Starter (5):
-        "port_scanner",
-        "subdomain_finder",
-        "hash_analyzer",
-        "encoder_decoder",
-        "password_strength_checker",
-        # Ferramentas exclusivas do Professional (5):
-        "code_scanner",       # data-page="scanner"
-        "sqli_tester",        # data-page="sql-injection"
-        "xss_tester",         # data-page="xss-tester"
-        "phishing_simulator", # data-page="phishing"
-        "directory_enumerator", # data-page="directory-enum"
-    ],
+    "starter": [],
+    "professional": [],
     "enterprise": "all",  # Acesso ilimitado
 }
 
 # Páginas do dashboard (data-page) permitidas por plano
 PLAN_DASHBOARD_TOOLS = {
-    "starter": [
-        "port-scan",
-        "subdomain",
-        "hash-analyzer",
-        "encoder",
-        "password-strength",
-    ],
-    "professional": [
-        "port-scan",
-        "subdomain",
-        "hash-analyzer",
-        "encoder",
-        "password-strength",
-        "scanner",
-        "sql-injection",
-        "xss-tester",
-        "phishing",
-        "directory-enum",
-    ],
+    "starter": [],
+    "professional": [],
     "enterprise": "all",
 }
 
@@ -93,8 +58,8 @@ DASHBOARD_TOOL_MAP = {
 }
 
 PLAN_TOOL_COUNTS = {
-    "starter": 5,
-    "professional": 10,
+    "starter": 0,
+    "professional": 0,
     "enterprise": -1,
 }
 
@@ -105,11 +70,27 @@ SCAN_LIMITS = {
     "enterprise": -1     # Ilimitado
 }
 
+# Política comercial única para Starter e Professional. Este valor é usado pelo
+# backend para calcular a elegibilidade de estorno e exposto às interfaces.
+CANCELLATION_WINDOW_DAYS = 7
+
 
 def normalize_subscription_plan(plan: Optional[str]) -> str:
     """Retorna apenas um plano reconhecido, tratando registros legados vazios como Starter."""
-    normalized_plan = (plan or "").strip().lower()
-    return normalized_plan if normalized_plan in TOOL_PERMISSIONS else "starter"
+    return normalize_plan(plan)
+
+
+def sync_owned_organization_plans(user: User, db: Session) -> None:
+    """Mantém o plano das organizações do titular igual à assinatura efetiva."""
+    plan = normalize_subscription_plan(user.subscription_plan)
+    organization_ids = db.query(OrganizationMember.organization_id).filter(
+        OrganizationMember.user_id == user.id,
+        OrganizationMember.role == "owner",
+    )
+    db.query(Organization).filter(Organization.id.in_(organization_ids)).update(
+        {Organization.plan: plan},
+        synchronize_session=False,
+    )
 
 
 def check_subscription_status(user: User) -> dict:
@@ -171,9 +152,6 @@ def check_tool_access(tool_name: str, user: User) -> bool:
     """
     Verifica se o usuário tem acesso à ferramenta
     """
-    if getattr(user, "is_admin", False):
-        return True
-
     plan = normalize_subscription_plan(user.subscription_plan)
     
     # Enterprise tem acesso a tudo
@@ -191,9 +169,6 @@ def check_tool_access(tool_name: str, user: User) -> bool:
 
 def ensure_tool_access(tool_name: str, user: User) -> None:
     """Interrompe a requisição quando a assinatura ou o plano não permite a ferramenta."""
-    if getattr(user, "is_admin", False):
-        return
-
     subscription = check_subscription_status(user)
     if not subscription["valid"]:
         raise HTTPException(
@@ -334,13 +309,16 @@ def get_plan_info(plan_name: str) -> dict:
     plans = {
         "starter": {
             "name": "Starter",
-            "price": 289.90,
+            "price": PLAN_POLICY["starter"]["amount_cents"] / 100,
             "currency": "BRL",
+            "billing_mode": "subscription",
+            "billing_label": "mensal recorrente",
+            "access_months": 1,
             "scans_limit": 100,
             "tools_count": PLAN_TOOL_COUNTS["starter"],
             "features": [
                 "100 scans por mês",
-                "5 ferramentas de segurança",
+                "Plataforma de postura e relatórios",
                 "Relatórios em PDF",
                 "Suporte prioritário"
             ],
@@ -349,13 +327,16 @@ def get_plan_info(plan_name: str) -> dict:
         },
         "professional": {
             "name": "Professional",
-            "price": 439.90,
+            "price": PLAN_POLICY["professional"]["amount_cents"] / 100,
             "currency": "BRL",
+            "billing_mode": "payment",
+            "billing_label": "pagamento único · 4 meses de acesso",
+            "access_months": 4,
             "scans_limit": -1,
             "tools_count": PLAN_TOOL_COUNTS["professional"],
             "features": [
                 "Scans ilimitados",
-                "10 ferramentas de segurança",
+                "Monitoramento de segurança em tempo real e contenção WAF",
                 "API access",
                 "Relatórios avançados",
                 "Suporte 24/7"
@@ -365,8 +346,11 @@ def get_plan_info(plan_name: str) -> dict:
         },
         "enterprise": {
             "name": "Enterprise",
-            "price": None,
+            "price": PLAN_POLICY["enterprise"]["amount_cents"] / 100,
             "currency": "BRL",
+            "billing_mode": "payment",
+            "billing_label": "pagamento único · 1 ano de acesso",
+            "access_months": 12,
             "scans_limit": -1,
             "tools_count": PLAN_TOOL_COUNTS["enterprise"],
             "features": [
@@ -384,18 +368,25 @@ def get_plan_info(plan_name: str) -> dict:
     return plans.get(plan_name, plans["starter"])
 
 
-def upgrade_user_plan(user: User, new_plan: str, duration_months: int, db: Session):
+def upgrade_user_plan(user: User, new_plan: str, duration_months: Optional[int], db: Session):
     """
     Atualiza o plano do usuário
     """
     now = datetime.utcnow()
     
+    new_plan = normalize_subscription_plan(new_plan)
     user.subscription_plan = new_plan
     user.subscription_status = "active"
     user.subscription_start = now
-    user.subscription_end = now + timedelta(days=30 * duration_months)
+    if duration_months is None:
+        user.subscription_end = access_end_for_plan(new_plan, now)
+    else:
+        # Kept for administrative/test callers that explicitly choose a term.
+        from services.plan_policy import add_calendar_months
+        user.subscription_end = add_calendar_months(now, duration_months)
     user.scans_limit = SCAN_LIMITS.get(new_plan, SCAN_LIMITS["starter"])
     user.scans_this_month = 0
+    sync_owned_organization_plans(user, db)
     
     db.commit()
     db.refresh(user)

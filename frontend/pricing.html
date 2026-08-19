@@ -3,8 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Preços - Iron Net</title>
+    <title>Preços - Iron AI</title>
     <link rel="stylesheet" href="css/modern-style.css?v=6.2">
+    <link rel="stylesheet" href="css/ironnet-brand.css?v=1.3">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
         .pricing-container {
@@ -296,17 +297,135 @@
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
+
+        /* Iron AI 2026 — pricing aligned with the product platform */
+        :root {
+            --pricing-bg: #07060f;
+            --pricing-panel: #141020;
+            --pricing-panel-soft: #0d0a16;
+            --pricing-text: #f5f1ff;
+            --pricing-muted: #a79daf;
+            --pricing-line: rgba(196, 167, 255, .14);
+            --pricing-purple: #a855f7;
+            --pricing-purple-dark: #7128dd;
+        }
+
+        body.pricing-page {
+            min-height: 100vh;
+            margin: 0;
+            color: var(--pricing-text);
+            background: radial-gradient(circle at 50% -8%, rgba(124, 58, 237, .24), transparent 32%), var(--pricing-bg) !important;
+            font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        }
+
+        .pricing-nav {
+            position: fixed;
+            inset: 0 0 auto;
+            z-index: 1000;
+            min-height: 68px;
+            padding: .8rem max(5%, calc((100vw - 1240px) / 2));
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--pricing-line);
+            background: rgba(7, 6, 15, .84);
+            backdrop-filter: blur(18px);
+        }
+
+        .pricing-brand { display: inline-flex; align-items: center; gap: .7rem; color: #f7f2ff; font-size: 1.1rem; font-weight: 800; letter-spacing: .1em; text-decoration: none; }
+        .pricing-brand img { width: 40px; height: 40px; border-radius: 12px; object-fit: cover; }
+        .back-to-dashboard { position: static; display: inline-flex; align-items: center; gap: .5rem; padding: .7rem 1rem; border: 1px solid var(--pricing-line); border-radius: 11px; background: rgba(255,255,255,.025); color: #ddd2eb; font-size: .86rem; }
+        .back-to-dashboard:hover { border-color: rgba(168,85,247,.42); background: rgba(168,85,247,.1); color: #fff; }
+
+        .pricing-container { max-width: 1240px; padding: 9.5rem 1.25rem 6rem; }
+        .pricing-header { max-width: 820px; margin: 0 auto 4.5rem; }
+        .pricing-eyebrow { display: inline-flex; align-items: center; gap: .5rem; margin-bottom: 1.2rem; padding: .45rem .75rem; border: 1px solid rgba(168,85,247,.25); border-radius: 999px; background: rgba(168,85,247,.08); color: #d7b9ff; font-size: .72rem; font-weight: 800; letter-spacing: .11em; text-transform: uppercase; }
+        .pricing-header h1 { margin: 0 0 1.1rem; font-size: clamp(2.6rem, 6vw, 4.7rem); line-height: 1; letter-spacing: -.055em; color: #f5efff; background: none; -webkit-text-fill-color: currentColor; }
+        .pricing-header h1 span { color: #b765ff; }
+        .pricing-header > p { max-width: 680px; margin: 0 auto; color: #ada3bb; font-size: 1.05rem; line-height: 1.7; }
+        #payment-runtime-status { margin-top: 1.5rem !important; border-color: var(--pricing-line) !important; border-radius: 12px !important; background: rgba(168,85,247,.065) !important; color: #cab9dd !important; }
+        #enterprise-required-notice { border-color: rgba(255,178,112,.22) !important; background: rgba(255,178,112,.07) !important; }
+        .pricing-assurance { max-width: 780px; margin: 1rem auto 0; display: flex; justify-content: center; flex-wrap: wrap; gap: .6rem 1.2rem; color: #8f859e; font-size: .78rem; }
+        .pricing-assurance span { display: inline-flex; align-items: center; gap: .4rem; }
+        .pricing-assurance i { color: #a855f7; }
+
+        .pricing-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; margin-bottom: 2rem; align-items: stretch; }
+        .pricing-card { min-width: 0; height: 100%; padding: 1.75rem; display: flex; flex-direction: column; text-align: left; border: 1px solid var(--pricing-line); border-radius: 20px; background: linear-gradient(150deg, rgba(24,18,39,.96), rgba(12,9,21,.98)); overflow: hidden; }
+        .pricing-card::after { content: ""; position: absolute; width: 150px; height: 150px; top: -90px; right: -70px; border-radius: 50%; background: rgba(168,85,247,.18); filter: blur(34px); pointer-events: none; }
+        .pricing-card:hover { transform: translateY(-5px); border-color: rgba(168,85,247,.38); box-shadow: 0 26px 70px rgba(0,0,0,.34); }
+        .pricing-card.popular { transform: none; border-color: rgba(168,85,247,.55); box-shadow: inset 0 1px 0 rgba(255,255,255,.04), 0 24px 70px rgba(91,33,182,.14); }
+        .pricing-card.popular:hover { transform: translateY(-5px); }
+        .pricing-card.popular::before { top: 17px; left: auto; right: 17px; transform: none; padding: .35rem .58rem; border: 1px solid rgba(192,132,252,.2); border-radius: 999px; background: rgba(168,85,247,.13); color: #d7b5ff; font-size: .62rem; letter-spacing: .08em; }
+        .plan-icon { width: 46px; height: 46px; margin: 0 0 1.2rem; display: grid; place-items: center; border: 1px solid rgba(168,85,247,.2); border-radius: 13px; background: rgba(168,85,247,.09); font-size: 1.1rem; }
+        .plan-icon.starter, .plan-icon.professional, .plan-icon.enterprise { color: #bc75ff; }
+        .plan-name { font-size: 1.35rem; letter-spacing: -.02em; }
+        .plan-price { margin: .9rem 0 .45rem; color: #f5efff; font-size: clamp(2rem, 3.2vw, 2.7rem); letter-spacing: -.05em; white-space: nowrap; }
+        .plan-price span { margin-left: .3rem; color: #8f859e; font-size: .28em; letter-spacing: 0; }
+        .plan-description { min-height: 48px; margin-bottom: 1rem; color: #a89eae; font-size: .87rem; line-height: 1.5; }
+        .plan-features { flex: 1; margin: .8rem 0 1rem; }
+        .plan-features li { padding: .76rem 0; align-items: flex-start; border-color: rgba(196,167,255,.09); color: #d8cfdf; font-size: .82rem; line-height: 1.4; }
+        .plan-features li i { width: 18px; flex: 0 0 18px; margin: .12rem .5rem 0 0; color: #b565ff; font-size: .85rem; }
+        .plan-features li.disabled { color: #6f6778; text-decoration: none; }
+        .plan-features li.disabled i { color: #514a5a; }
+        .subscribe-btn { min-height: 48px; margin-top: auto; border-radius: 12px; font-size: .9rem; }
+        .subscribe-btn.starter, .subscribe-btn.professional, .subscribe-btn.enterprise { background: linear-gradient(135deg, #ae58fa, #7128dd); color: #fff; }
+        .subscribe-btn.enterprise { border: 1px solid rgba(196,167,255,.2); }
+        .subscribe-btn:hover { transform: translateY(-2px); box-shadow: 0 14px 35px rgba(113,40,221,.28); }
+        .current-plan-badge { width: 100%; padding: .8rem; border: 1px solid rgba(52,211,153,.2); border-radius: 11px; background: rgba(52,211,153,.08); color: #8ae8c1; text-align: center; }
+
+        .payment-methods { margin-top: 1rem; padding: 2rem; display: grid; grid-template-columns: 1fr auto; gap: .5rem 2rem; align-items: center; text-align: left; border: 1px solid var(--pricing-line); border-radius: 18px; background: rgba(18,14,30,.82); }
+        .payment-methods h3 { margin: 0; font-size: 1.05rem; }
+        .payment-icons { grid-column: 2; grid-row: 1 / span 3; gap: 1rem; }
+        .payment-icons i { color: #a855f7; font-size: 2rem; }
+        .payment-methods p { margin: .2rem 0 0 !important; color: #958b9f !important; font-size: .8rem !important; }
+        .payment-methods a { color: #bd78ff !important; }
+
+        .faq-section { max-width: 900px; margin-top: 7rem; }
+        .faq-section h2 { margin-bottom: 2rem; font-size: clamp(2rem, 4vw, 3rem); letter-spacing: -.04em; }
+        .faq-item { margin-bottom: .7rem; padding: 1.2rem 1.35rem; border: 1px solid var(--pricing-line); border-radius: 14px; background: rgba(19,15,31,.74); }
+        .faq-item:hover { border-color: rgba(168,85,247,.32); background: rgba(26,19,42,.86); }
+        .faq-question { color: #eee6f8; font-size: .94rem; }
+        .faq-answer { color: #9f95aa; font-size: .88rem; }
+
+        .cookie-banner .cookie-copy { min-width: 0; }
+
+        @media (max-width: 960px) {
+            .pricing-grid { grid-template-columns: 1fr; max-width: 640px; margin-inline: auto; }
+            .plan-description { min-height: 0; }
+            .pricing-card.popular, .pricing-card.popular:hover { transform: none; }
+        }
+
+        @media (max-width: 680px) {
+            .pricing-nav { padding: .75rem 1rem; }
+            .pricing-brand span { display: none; }
+            .back-to-dashboard { padding: .65rem .8rem; }
+            .pricing-container { padding: 7.5rem 1rem 5rem; }
+            .pricing-header { margin-bottom: 3rem; }
+            .pricing-header h1 { font-size: clamp(2.45rem, 12vw, 3.5rem); }
+            .pricing-assurance { display: grid; justify-content: start; max-width: 310px; }
+            .pricing-card { padding: 1.4rem; }
+            .payment-methods { grid-template-columns: 1fr; text-align: center; }
+            .payment-icons { grid-column: 1; grid-row: auto; margin: .8rem 0; }
+            .faq-section { margin-top: 5rem; }
+            .cookie-banner { padding: .8rem 1rem !important; }
+            .cookie-banner .cookie-copy { flex: 1 1 100%; text-align: center; overflow-wrap: anywhere; }
+        }
     </style>
 </head>
-<body>
-    <a href="landing.html" class="back-to-dashboard">
-        <i class="fas fa-arrow-left"></i> Voltar ao Início
-    </a>
+<body class="pricing-page">
+    <nav class="pricing-nav" aria-label="Navegação de preços">
+        <a href="landing.html" class="pricing-brand"><img src="assets/ironnet-logo.jpeg" alt=""><span>IRON AI</span></a>
+        <a href="landing.html" class="back-to-dashboard"><i class="fas fa-arrow-left"></i> Voltar ao início</a>
+    </nav>
 
     <div class="pricing-container">
         <div class="pricing-header">
-            <h1><i class="fas fa-shield-alt"></i> Escolha seu Plano</h1>
-            <p>Selecione o plano perfeito para suas necessidades de segurança</p>
+            <span class="pricing-eyebrow"><i class="fas fa-circle"></i> Planos Iron AI</span>
+            <h1>Segurança no ritmo da <span>sua empresa.</span></h1>
+            <p>Comece estruturando sua postura, avance para uma operação contínua e libere capacidades especializadas quando sua equipe precisar.</p>
+            <div id="enterprise-required-notice" style="display:none;margin:14px auto 0;max-width:680px;padding:12px 16px;border:1px solid rgba(255,178,112,.25);border-radius:12px;background:rgba(255,178,112,.08);color:#ffd0a3;font-size:.9rem;"><i class="fas fa-gem"></i> O recurso selecionado é exclusivo do plano Enterprise.</div>
+            <div id="payment-runtime-status" style="margin:18px auto 0;max-width:680px;padding:12px 16px;border:1px solid rgba(196,161,255,.18);border-radius:12px;background:rgba(139,92,246,.08);color:#c4a1ff;font-size:.9rem;">Verificando checkout seguro...</div>
+            <div class="pricing-assurance"><span><i class="fas fa-lock"></i> Checkout externo seguro</span><span><i class="fas fa-shield-alt"></i> Dados isolados por organização</span><span><i class="fas fa-file-contract"></i> Termos transparentes</span></div>
         </div>
 
         <div class="pricing-grid" id="pricing-grid">
@@ -319,11 +438,11 @@
                 <i class="fab fa-cc-visa" title="Visa"></i>
                 <i class="fab fa-cc-mastercard" title="Mastercard"></i>
                 <i class="fab fa-cc-amex" title="American Express"></i>
-                <i class="fab fa-pix" title="PIX"></i>
-                <i class="fas fa-barcode" title="Boleto"></i>
+                <i class="fab fa-pix" id="pix-payment-icon" title="PIX indisponível enquanto Mercado Pago não estiver configurado" style="display:none"></i>
+                <i class="fas fa-barcode" id="boleto-payment-icon" title="Boleto indisponível enquanto Mercado Pago não estiver configurado" style="display:none"></i>
             </div>
             <p style="color: #a0aec0; margin-top: 20px;">
-                <i class="fas fa-lock"></i> Pagamento 100% seguro via Stripe e Mercado Pago
+                <i class="fas fa-lock"></i> Checkout processado pelo provedor configurado; a Iron AI não armazena dados do cartão.
             </p>
             <p style="color: #a0aec0; margin-top: 12px; font-size: 0.95em;">
                 Ao prosseguir, você concorda com os
@@ -342,7 +461,7 @@
                     <i class="fas fa-chevron-down"></i>
                 </div>
                 <div class="faq-answer">
-                    Sim! Você pode cancelar sua assinatura a qualquer momento. Você continuará tendo acesso até o final do período pago.
+                    O Starter é recorrente e pode ser cancelado pela plataforma; o estorno automático é solicitado quando o cancelamento ocorre dentro da janela de 7 dias. Professional e Enterprise são licenças de prazo fixo e não geram renovação automática.
                 </div>
             </div>
 
@@ -352,17 +471,17 @@
                     <i class="fas fa-chevron-down"></i>
                 </div>
                 <div class="faq-answer">
-                    Os planos Starter e Professional permitem cancelar em até 10 dias após o primeiro login. Nesse prazo, o valor da primeira cobrança é estornado.
+                    Não se trata de acesso gratuito. O Starter possui janela de cancelamento de até 7 dias após a confirmação do pagamento; quando elegível e confirmado pelo provedor, o pagamento inicial é estornado.
                 </div>
             </div>
 
             <div class="faq-item" onclick="toggleFaq(this)">
                 <div class="faq-question">
-                    Posso fazer upgrade do meu plano?
+                    Como altero meu plano?
                     <i class="fas fa-chevron-down"></i>
                 </div>
                 <div class="faq-answer">
-                    Claro! Você pode fazer upgrade a qualquer momento e pagará apenas a diferença proporcional.
+                    A mudança deve ser feita pelo fluxo de assinatura disponível ou com o suporte comercial. A cobrança aplicável é sempre a apresentada pelo provedor antes da confirmação.
                 </div>
             </div>
 
@@ -372,7 +491,7 @@
                     <i class="fas fa-chevron-down"></i>
                 </div>
                 <div class="faq-answer">
-                    Não, o limite de scans é resetado mensalmente. O plano Enterprise tem acesso ilimitado às ferramentas.
+                    Não. O limite do Starter é renovado mensalmente. Professional e Enterprise possuem scans ilimitados; as ferramentas avançadas e o Iron AI Shield permanecem exclusivos do Enterprise.
                 </div>
             </div>
 
@@ -382,7 +501,7 @@
                     <i class="fas fa-chevron-down"></i>
                 </div>
                 <div class="faq-answer">
-                    aceitamos todos os cartões de crédito via stripe e, em breve, pix e boleto no mercado pago.
+                    Cartões são processados pelo Stripe quando ele e seu webhook estão configurados. PIX e boleto aparecem somente quando a integração Mercado Pago está ativa; o estado atual é mostrado nesta página.
                 </div>
             </div>
         </div>
@@ -399,6 +518,9 @@
             );
         }
 
+        const CHECKOUT_PLAN_KEY = 'iron_ai_pending_checkout_plan';
+        const VALID_CHECKOUT_PLANS = ['starter', 'professional', 'enterprise'];
+
         function showToast(message, type = 'info') {
             // Toast simples sem dependências
             const toast = document.createElement('div');
@@ -407,7 +529,7 @@
                 top: 20px;
                 right: 20px;
                 padding: 15px 20px;
-                background: ${type === 'error' ? '#f56565' : type === 'success' ? '#48bb78' : '#4299e1'};
+                background: ${type === 'error' ? '#dc2626' : type === 'success' ? '#159570' : '#7c3aed'};
                 color: white;
                 border-radius: 8px;
                 z-index: 10000;
@@ -433,7 +555,7 @@
                 align-items: center;
                 z-index: 9999;
             `;
-            loader.innerHTML = '<div style="width: 50px; height: 50px; border: 5px solid #f3f3f3; border-top: 5px solid #667eea; border-radius: 50%; animation: spin 1s linear infinite;"></div>';
+            loader.innerHTML = '<div style="width: 50px; height: 50px; border: 5px solid rgba(255,255,255,.18); border-top: 5px solid #a855f7; border-radius: 50%; animation: spin 1s linear infinite;"></div>';
             document.body.appendChild(loader);
         }
 
@@ -449,7 +571,7 @@
             overlay.id = 'checkoutErrorModal';
             overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:10000;display:flex;align-items:center;justify-content:center;';
             const box = document.createElement('div');
-            box.style.cssText = 'background:#1a1d29;color:#e5e7eb;border:1px solid #2d3748;border-radius:12px;max-width:520px;width:90%;padding:24px;box-shadow:0 20px 50px rgba(0,0,0,0.5);';
+            box.style.cssText = 'background:#141020;color:#f5f1ff;border:1px solid rgba(196,167,255,.18);border-radius:16px;max-width:520px;width:90%;padding:24px;box-shadow:0 24px 70px rgba(0,0,0,0.55);';
             box.innerHTML = `
                 <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
                     <i class="fas fa-clock" style="color:#f6ad55;"></i>
@@ -459,8 +581,8 @@
                     Estamos com instabilidade no provedor de pagamento. Aguarde alguns minutos e tente novamente. Nenhuma cobrança foi realizada.
                 </p>
                 <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px;">
-                    <button id="retryCheckoutBtn" style="background:#667eea;color:#fff;border:none;padding:10px 16px;border-radius:8px;font-weight:600;cursor:pointer;"><i class="fas fa-redo"></i> Tentar novamente</button>
-                    <button id="closeCheckoutErrorBtn" style="background:#2d3748;color:#e5e7eb;border:1px solid #374151;padding:10px 16px;border-radius:8px;font-weight:600;cursor:pointer;">Fechar</button>
+                    <button id="retryCheckoutBtn" style="background:linear-gradient(135deg,#a855f7,#7128dd);color:#fff;border:none;padding:10px 16px;border-radius:9px;font-weight:600;cursor:pointer;"><i class="fas fa-redo"></i> Tentar novamente</button>
+                    <button id="closeCheckoutErrorBtn" style="background:#21192f;color:#e5e7eb;border:1px solid rgba(196,167,255,.16);padding:10px 16px;border-radius:9px;font-weight:600;cursor:pointer;">Fechar</button>
                 </div>
             `;
             overlay.appendChild(box);
@@ -531,16 +653,20 @@
                 name: 'Starter',
                 icon: 'fas fa-rocket',
                 iconClass: 'starter',
-                price: 289.90,
-                description: 'Acesso a 5 ferramentas',
+                price: 389.90,
+                priceSuffix: '/mês',
+                description: 'Base organizada para conhecer ativos, encontrar riscos e orientar correções.',
                 features: [
-                    { text: 'Port Scanner', enabled: true },
-                    { text: 'Subdomain Finder', enabled: true },
-                    { text: 'Hash Analyzer', enabled: true },
-                    { text: 'Encoder / Decoder', enabled: true },
-                    { text: 'Password Checker', enabled: true },
-                    { text: 'Demais ferramentas bloqueadas', enabled: false },
-                    { text: 'Trial de 10 dias após o primeiro login', enabled: true }
+                    { text: 'Inventário de ativos e scans web não destrutivos', enabled: true },
+                    { text: 'Risco priorizado e evidências por organização', enabled: true },
+                    { text: 'Iron AI e ações com aprovação humana', enabled: true },
+                    { text: 'Relatórios executivos e técnicos em PDF', enabled: true },
+                    { text: 'Conformidade, auditoria e integrações', enabled: true },
+                    { text: '100 scans mensais', enabled: true },
+                    { text: 'Scans ilimitados no Professional', enabled: false },
+                    { text: 'Shield e ferramentas avançadas no Enterprise', enabled: false },
+                    { text: 'Cobrança mensal recorrente', enabled: true },
+                    { text: 'Cancelamento em até 7 dias', enabled: true }
                 ],
                 buttonText: 'Assinar agora',
                 buttonClass: 'starter'
@@ -550,18 +676,18 @@
                 name: 'Professional',
                 icon: 'fas fa-crown',
                 iconClass: 'professional',
-                price: 439.90,
-                description: 'Acesso a 10 ferramentas',
+                price: 3789.90,
+                priceSuffix: 'pagamento único',
+                description: 'Quatro meses de operação para equipes que precisam detectar, acompanhar e tratar continuamente.',
                 popular: true,
                 features: [
-                    { text: 'As 5 ferramentas do Starter', enabled: true },
-                    { text: 'Code Scanner', enabled: true },
-                    { text: 'SQL Injection Tester', enabled: true },
-                    { text: 'XSS Tester', enabled: true },
-                    { text: 'Phishing Simulator', enabled: true },
-                    { text: 'Directory Enumeration', enabled: true },
-                    { text: 'Demais ferramentas bloqueadas', enabled: false },
-                    { text: 'Trial de 10 dias após o primeiro login', enabled: true }
+                    { text: 'Todos os recursos do Starter', enabled: true },
+                    { text: 'Scans ilimitados', enabled: true },
+                    { text: 'Monitoramento em tempo real e contenção Cloudflare WAF', enabled: true },
+                    { text: 'Maior capacidade para operação recorrente', enabled: true },
+                    { text: 'Iron AI, relatórios e integrações sem redução funcional', enabled: true },
+                    { text: '4 meses de acesso · pagamento único parcelável', enabled: true },
+                    { text: 'Shield e ferramentas avançadas no Enterprise', enabled: false }
                 ],
                 buttonText: 'Assinar agora',
                 buttonClass: 'professional'
@@ -571,19 +697,21 @@
                 name: 'Enterprise',
                 icon: 'fas fa-building',
                 iconClass: 'enterprise',
-                price: null,
-                priceText: 'Sob Consulta',
-                description: 'Solução completa e personalizada',
+                price: 8989.90,
+                priceSuffix: 'pagamento único',
+                description: 'Capacidade especializada para AppSec, identidade corporativa e integrações avançadas.',
                 features: [
-                    { text: 'Acesso a todas as ferramentas', enabled: true },
-                    { text: 'Scans ilimitados', enabled: true },
-                    { text: 'Multi-usuário (até 10)', enabled: true },
-                    { text: 'Integrações personalizadas', enabled: true },
-                    { text: 'SLA garantido', enabled: true },
-                    { text: 'Gerente de conta dedicado', enabled: true },
-                    { text: 'Consultoria mensal', enabled: true }
+                    { text: 'Todos os recursos do Professional', enabled: true },
+                    { text: 'Iron AI Shield e AppSec contínuo', enabled: true },
+                    { text: 'Ferramentas avançadas para desenvolvedores autorizados', enabled: true },
+                    { text: 'DAST autenticado com credenciais protegidas', enabled: true },
+                    { text: 'SSO/SAML por organização', enabled: true },
+                    { text: 'GitHub, GitLab, Jira e Azure DevOps', enabled: true },
+                    { text: 'Ingestão CI/CD e quality gates', enabled: true },
+                    { text: 'Acesso condicionado à permissão explícita', enabled: true },
+                    { text: '1 ano de acesso · pagamento único parcelável', enabled: true }
                 ],
-                buttonText: 'Falar com Vendas',
+                buttonText: 'Contratar Enterprise',
                 buttonClass: 'enterprise'
             }
         ];
@@ -591,8 +719,26 @@
         // Carregar planos na página
         async function loadPricing() {
             const grid = document.getElementById('pricing-grid');
+            if (new URLSearchParams(window.location.search).get('required') === 'enterprise') {
+                document.getElementById('enterprise-required-notice').style.display = 'block';
+            }
             
             let currentPlan = null;
+            try {
+                const paymentStatus = await apiRequest('/payments/status');
+                const statusElement = document.getElementById('payment-runtime-status');
+                const stripeReady = paymentStatus.stripe_configured && paymentStatus.stripe_webhook_configured;
+                statusElement.hidden = stripeReady;
+                statusElement.innerHTML = stripeReady
+                    ? ''
+                    : '<i class="fas fa-triangle-exclamation"></i> Checkout temporariamente indisponível. Configure Stripe e o webhook antes de assinar.';
+                document.getElementById('pix-payment-icon').style.display = paymentStatus.mercadopago_configured ? '' : 'none';
+                document.getElementById('boleto-payment-icon').style.display = paymentStatus.mercadopago_configured ? '' : 'none';
+            } catch (_) {
+                const statusElement = document.getElementById('payment-runtime-status');
+                statusElement.hidden = false;
+                statusElement.textContent = 'Não foi possível confirmar o provedor de pagamento agora.';
+            }
             
             try {
                 // Tentar buscar informações do usuário (se estiver logado)
@@ -616,9 +762,7 @@
                     `).join('');
                     
                     // Renderizar preço
-                    const priceHTML = plan.priceText 
-                        ? `<div class="plan-price">${plan.priceText}</div>`
-                        : `<div class="plan-price">R$ ${plan.price.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}<span>/mês</span></div>`;
+                    const priceHTML = `<div class="plan-price">R$ ${plan.price.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}<span>${plan.priceSuffix}</span></div>`;
                     
                     return `
                         <div class="pricing-card ${plan.popular ? 'popular' : ''}">
@@ -633,16 +777,10 @@
                             </ul>
                             ${isCurrentPlan ? 
                                 '<div class="current-plan-badge"><i class="fas fa-check"></i> Plano Atual</div>' :
-                                (plan.id === 'enterprise' ? `
-                                    <button class="subscribe-btn enterprise" onclick="contactSales()">
-                                        <i class="fas fa-phone-alt"></i> ${plan.buttonText}
-                                    </button>
-                                ` : `
-                                    <button class="subscribe-btn ${plan.buttonClass}" onclick="subscribeToPlan('${plan.id}')" ${isCurrentPlan ? 'disabled' : ''}>
+                                (`<button class="subscribe-btn ${plan.buttonClass}" onclick="subscribeToPlan('${plan.id}')" ${isCurrentPlan ? 'disabled' : ''}>
                                         <i class="fas fa-shopping-cart"></i>
                                         ${plan.buttonText}
-                                    </button>
-                                `)
+                                    </button>`)
                             }
                         </div>
                     `;
@@ -651,9 +789,14 @@
 
         // Subscrever a um plano
         async function subscribeToPlan(planId) {
+            if (!VALID_CHECKOUT_PLANS.includes(planId)) {
+                showToast('Plano inválido.', 'error');
+                return;
+            }
             if (!getToken()) {
+                sessionStorage.setItem(CHECKOUT_PLAN_KEY, planId);
                 showToast('Faça login para continuar com a assinatura', 'info');
-                window.location.href = 'index.html';
+                window.location.href = `index.html?checkout_plan=${encodeURIComponent(planId)}&next=checkout`;
                 return;
             }
 
@@ -664,6 +807,7 @@
                     body: JSON.stringify({ plan: planId, payment_method: 'credit-card' })
                 });
                 if (resp && resp.checkout_url) {
+                    sessionStorage.removeItem(CHECKOUT_PLAN_KEY);
                     window.location.href = resp.checkout_url;
                 } else {
                     throw new Error('Checkout indisponível');
@@ -679,7 +823,7 @@
         // Contato para vendas (plano Enterprise)
         function contactSales() {
             const message = encodeURIComponent(
-                'Olá! Tenho interesse no plano Enterprise da Iron Net Security Scanner.\n\n' +
+                'Olá! Tenho interesse no plano Enterprise da Iron AI Security Platform.\n\n' +
                 'Gostaria de receber mais informações sobre:\n' +
                 '- Valores e condições\n' +
                 '- Personalização da solução\n' +
@@ -697,13 +841,27 @@
             icon.classList.toggle('fa-chevron-up');
         }
 
-        // Carregar ao iniciar
-        document.addEventListener('DOMContentLoaded', loadPricing);
+        async function initializePricing() {
+            const pricingLoad = loadPricing();
+            const params = new URLSearchParams(window.location.search);
+            const requestedPlan = params.get('checkout_plan') || sessionStorage.getItem(CHECKOUT_PLAN_KEY);
+            if (params.get('resume_checkout') === '1' && VALID_CHECKOUT_PLANS.includes(requestedPlan) && getToken()) {
+                sessionStorage.setItem(CHECKOUT_PLAN_KEY, requestedPlan);
+                history.replaceState({}, '', 'pricing.html');
+                await subscribeToPlan(requestedPlan);
+            }
+            await pricingLoad;
+        }
+
+        // Carregar ao iniciar e retomar o checkout escolhido antes do login.
+        document.addEventListener('DOMContentLoaded', initializePricing);
     (function(){
         if (localStorage.getItem('cookie_consent') === 'accepted') return;
         const banner = document.createElement('div');
+        banner.className = 'cookie-banner';
         banner.style.cssText = 'position:fixed;bottom:0;left:0;right:0;background:#111827;color:#e5e7eb;border-top:1px solid #1f2937;padding:12px 16px;z-index:9999;display:flex;gap:12px;align-items:center;justify-content:center;flex-wrap:wrap;';
         const text = document.createElement('span');
+        text.className = 'cookie-copy';
         text.textContent = 'Usamos cookies essenciais para autenticação e experiência.';
         const link = document.createElement('a');
         link.href = 'cookies.html';

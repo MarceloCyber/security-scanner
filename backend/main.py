@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Request, Response, Body
+from fastapi import FastAPI, HTTPException, Request, Response, Body, Depends
 from fastapi.responses import JSONResponse, HTMLResponse, RedirectResponse
 import psycopg2
 from fastapi.middleware.cors import CORSMiddleware
@@ -16,6 +16,7 @@ from pathlib import Path
 import shutil
 import asyncio
 from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.exceptions import RequestValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
@@ -24,9 +25,11 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from database import engine, Base
 from sqlalchemy import inspect, text
-from routes import auth_routes, scan_routes, extended_scan_routes, tools_routes, redteam_routes, blueteam_routes, payment_routes, user_routes, admin_routes, viggio_shield_routes
+from routes import auth_routes, scan_routes, extended_scan_routes, tools_routes, redteam_routes, blueteam_routes, payment_routes, user_routes, admin_routes, viggio_shield_routes, saas_routes, risk_routes, ai_routes, job_routes, report_routes, integration_routes, ai_action_routes, platform_routes, pipeline_routes, compliance_routes, assurance_routes, sso_routes, security_monitoring_routes
 from utils.email_service import email_service
 from models.public_stats import PublicStats
+from auth import require_enterprise, require_enterprise_developer
+from config import settings
 
 email_log_path = Path(__file__).resolve().parent / 'email.log'
 email_handler = RotatingFileHandler(email_log_path, maxBytes=10 * 1024 * 1024, backupCount=5)
@@ -59,29 +62,30 @@ try:
             "access_key_last4": "VARCHAR",
             "access_key_issued_at": _datetime_type,
             "access_key_used_at": _datetime_type,
-            "access_key_required": "BOOLEAN DEFAULT 0",
+            "access_key_required": "BOOLEAN DEFAULT FALSE",
             "active_session_hash": "VARCHAR",
             "active_session_last_activity": _datetime_type,
+            "is_developer": "BOOLEAN DEFAULT FALSE",
         }
         for _name, _type in _security_columns.items():
             if _name not in _columns:
                 _conn.execute(text(f"ALTER TABLE users ADD COLUMN {_name} {_type}"))
         if "access_key_required" not in _columns:
-            _conn.execute(text("UPDATE users SET access_key_required = 0 WHERE access_key_required IS NULL"))
+            _conn.execute(text("UPDATE users SET access_key_required = FALSE WHERE access_key_required IS NULL"))
         _conn.execute(text(
-            "UPDATE users SET access_key_required = 1 "
+            "UPDATE users SET access_key_required = TRUE "
             "WHERE access_key_hash IS NOT NULL AND access_key_used_at IS NULL AND COALESCE(is_admin, FALSE) = FALSE"
         ))
         _conn.execute(text(
-            "UPDATE users SET access_key_required = 0 "
+            "UPDATE users SET access_key_required = FALSE "
             "WHERE access_key_used_at IS NOT NULL"
         ))
 except Exception as _migration_error:
     logging.getLogger(__name__).warning("Migração de segurança de usuários não aplicada: %s", _migration_error)
 
 app = FastAPI(
-    title="Iron Net API",
-    description="API para análise de segurança de código e APIs baseada no OWASP Top 10",
+    title="Iron AI Security Platform API",
+    description="Plataforma brasileira de postura e segurança contínua para PMEs",
     version="1.0.0",
     docs_url="/api/docs",
     redoc_url="/api/redoc"
@@ -98,21 +102,29 @@ async def validate_email_configuration():
     else:
         email_logger.error('Configuracao SMTP invalida: %s', message)
 
-# Configuração CORS para produção
-ALLOWED_ORIGINS = [
-    "http://localhost:8000",
-    "http://localhost:3000",
-    os.getenv("FRONTEND_URL", "http://localhost:8000")
-]
+# CORS fechado por padrão em produção. Origens adicionais precisam ser explícitas.
+_configured_origins = [item.strip() for item in os.getenv("ALLOWED_ORIGINS", "").split(",") if item.strip()]
+_frontend_origin = os.getenv("FRONTEND_URL", "http://localhost:8000").rstrip("/")
+ALLOWED_ORIGINS = list(dict.fromkeys([_frontend_origin, *_configured_origins]))
+if settings.is_development:
+    ALLOWED_ORIGINS = list(dict.fromkeys([*ALLOWED_ORIGINS, "http://localhost:8000", "http://127.0.0.1:8000", "http://localhost:3000"]))
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=ALLOWED_ORIGINS,
-    allow_origin_regex=r"https://(.+\\.vercel\\.app|.+\\.onrender\\.com)",
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type", "Accept", "X-Requested-With", "X-Organization-ID", "X-Iron-AI-Key"],
 )
+
+from urllib.parse import urlparse
+_allowed_hosts = [item.strip() for item in os.getenv("ALLOWED_HOSTS", "").split(",") if item.strip()]
+_frontend_host = urlparse(_frontend_origin).hostname
+if _frontend_host:
+    _allowed_hosts.append(_frontend_host)
+if settings.is_development or os.getenv("IRON_AI_LOCAL_LAUNCH", "").lower() == "true":
+    _allowed_hosts.extend(["localhost", "127.0.0.1", "0.0.0.0", "testserver"])
+app.add_middleware(TrustedHostMiddleware, allowed_hosts=list(dict.fromkeys(_allowed_hosts)) or ["localhost"])
 
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request, call_next):
@@ -135,7 +147,10 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
             response.headers["Permissions-Policy"] = "geolocation=(self), microphone=(), camera=(self)"
         else:
             response.headers.setdefault("Permissions-Policy", "geolocation=(), microphone=(), camera=()")
-        response.headers.setdefault("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
+        response.headers.setdefault("Cross-Origin-Opener-Policy", "same-origin")
+        response.headers.setdefault("Cross-Origin-Resource-Policy", "same-origin")
+        if forwarded_proto == "https":
+            response.headers.setdefault("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
         response.headers.setdefault(
             "Content-Security-Policy",
             "default-src 'self'; "
@@ -146,7 +161,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
             "connect-src 'self' https://api.mercadopago.com https://api.stripe.com https://ipapi.co https://ip-api.com https://nominatim.openstreetmap.org https://api.ipify.org "
             f"{os.getenv('FRONTEND_URL', 'http://localhost:8000')} http://localhost:8000; "
             "frame-src 'self' https://www.openstreetmap.org https://www.google.com https://maps.google.com; "
-            "frame-ancestors 'none'; base-uri 'self'"
+            "frame-ancestors 'none'; base-uri 'self'; object-src 'none'; form-action 'self'"
         )
         response.headers.setdefault("X-XSS-Protection", "1; mode=block")
         return response
@@ -161,13 +176,11 @@ PLAN_RATE_LIMITS = {
     "enterprise": 500,
 }
 
-# Store em memória (mínimo viável). Em produção use Redis.
-RATE_LIMIT_CACHE = {}
-
 from database import SessionLocal
-from config import settings
 from models.user import User
 from models.scan import Scan
+from models.saas import OrganizationMember
+from services.rate_limit import rate_limit_backend
 
 @app.middleware("http")
 async def rate_limit_middleware(request: Request, call_next):
@@ -182,6 +195,7 @@ async def rate_limit_middleware(request: Request, call_next):
     key = None
     plan = "free"
     username = None
+    organization_id = "public"
     token = request.headers.get("authorization", "")
     if token.lower().startswith("bearer "):
         try:
@@ -196,26 +210,22 @@ async def rate_limit_middleware(request: Request, call_next):
             user = db.query(User).filter(User.username == username).first()
             if user and user.subscription_plan:
                 plan = user.subscription_plan
-            key = f"user:{user.id}" if user else f"user:{username}"
+            if user:
+                membership = db.query(OrganizationMember).filter(OrganizationMember.user_id == user.id).first()
+                organization_id = membership.organization_id if membership else "none"
+            key = f"ratelimit:{organization_id}:{user.id if user else username}:{path}"
         finally:
             db.close()
     else:
         client_ip = request.client.host if request.client else "unknown"
-        key = f"ip:{client_ip}"
+        key = f"ratelimit:public:{client_ip}:{path}"
 
     limit = PLAN_RATE_LIMITS.get(plan, 10)
     client_host = request.client.host if request.client else None
     if client_host in ("127.0.0.1", "::1", "0.0.0.0"):
         limit = max(limit, 200)
-    now = int(time.time())
-    window = now // 60
-    entry = RATE_LIMIT_CACHE.get(key)
-    if not entry or entry.get("window") != window:
-        entry = {"window": window, "count": 0}
-        RATE_LIMIT_CACHE[key] = entry
-
-    if entry["count"] >= limit:
-        reset_ts = (window + 1) * 60
+    allowed, remaining, reset_ts = rate_limit_backend.hit(key, limit, 60)
+    if not allowed:
         return JSONResponse(
             status_code=429,
             content={"detail": "Rate limit exceeded", "plan": plan},
@@ -226,10 +236,7 @@ async def rate_limit_middleware(request: Request, call_next):
             },
         )
 
-    entry["count"] += 1
     response = await call_next(request)
-    remaining = max(limit - entry["count"], 0)
-    reset_ts = (window + 1) * 60
     response.headers["X-RateLimit-Limit"] = str(limit)
     response.headers["X-RateLimit-Remaining"] = str(remaining)
     response.headers["X-RateLimit-Reset"] = str(reset_ts)
@@ -238,7 +245,37 @@ async def rate_limit_middleware(request: Request, call_next):
 # Rotas da API (DEVEM VIR ANTES do mount de arquivos estáticos)
 @app.get("/api/health")
 def health_check():
-    return {"status": "healthy", "message": "Iron Net API is running"}
+    return {"status": "healthy", "message": "Iron AI API is running"}
+
+@app.get("/api/ready")
+def readiness_check():
+    """Dependency-safe readiness probe without exposing internal details."""
+    try:
+        with engine.connect() as connection:
+            connection.execute(text("SELECT 1"))
+        if settings.REDIS_URL and not rate_limit_backend.distributed:
+            raise RuntimeError("distributed coordination unavailable")
+        if not settings.is_development:
+            secret = settings.SECRET_KEY or ""
+            if len(secret) < 48 or any(marker in secret.lower() for marker in ("change", "replace", "secret-key", "...")):
+                raise RuntimeError("unsafe session secret")
+            if engine.dialect.name == "sqlite":
+                raise RuntimeError("production database unavailable")
+            if not settings.REDIS_URL:
+                raise RuntimeError("distributed coordination not configured")
+            if not settings.CREDENTIAL_ENCRYPTION_KEY:
+                raise RuntimeError("credential vault not configured")
+            if not os.getenv("FRONTEND_URL", "").startswith("https://"):
+                raise RuntimeError("https frontend not configured")
+            if not os.getenv("GROQ_API_KEY", "") and not os.getenv("OPENROUTER_API_KEY", "") and not os.getenv("KIMI_API_KEY", "") and not os.getenv("MOONSHOT_API_KEY", ""):
+                raise RuntimeError("AI provider not configured")
+            if not os.getenv("STRIPE_SECRET_KEY", "").startswith("sk_"):
+                raise RuntimeError("Stripe not configured")
+            if not os.getenv("STRIPE_WEBHOOK_SECRET", "").startswith("whsec_"):
+                raise RuntimeError("Stripe webhook not configured")
+        return {"status": "ready"}
+    except Exception:
+        return JSONResponse(status_code=503, content={"status": "not_ready"})
 
 @app.get("/api/public/stats")
 def public_stats():
@@ -347,15 +384,28 @@ async def start_intelligent_automation():
     asyncio.create_task(_automation_loop())
 
 app.include_router(auth_routes.router, prefix="/api/auth", tags=["Authentication"])
-app.include_router(scan_routes.router, prefix="/api", tags=["Scans"])
-app.include_router(extended_scan_routes.router, prefix="/api", tags=["Extended Scans"])
-app.include_router(tools_routes.router, prefix="/api/tools", tags=["Security Tools"])
-app.include_router(redteam_routes.router, prefix="/api", tags=["Red Team"])
-app.include_router(blueteam_routes.router, prefix="/api", tags=["Blue Team"])
+app.include_router(scan_routes.router, prefix="/api", tags=["Scans"], dependencies=[Depends(require_enterprise_developer)])
+app.include_router(extended_scan_routes.router, prefix="/api", tags=["Extended Scans"], dependencies=[Depends(require_enterprise_developer)])
+app.include_router(tools_routes.router, prefix="/api/tools", tags=["Security Tools"], dependencies=[Depends(require_enterprise_developer)])
+app.include_router(redteam_routes.router, prefix="/api", tags=["Red Team"], dependencies=[Depends(require_enterprise_developer)])
+app.include_router(blueteam_routes.router, prefix="/api", tags=["Blue Team"], dependencies=[Depends(require_enterprise_developer)])
 app.include_router(payment_routes.router, prefix="/api", tags=["Payments"])
 app.include_router(user_routes.router, prefix="/api", tags=["User"])
 app.include_router(admin_routes.router, tags=["Admin"])
-app.include_router(viggio_shield_routes.router, tags=["Viggio Shield"])
+app.include_router(viggio_shield_routes.router, tags=["Iron AI Shield"], dependencies=[Depends(require_enterprise)])
+app.include_router(saas_routes.router, prefix="/api", tags=["SaaS Platform"])
+app.include_router(risk_routes.router, prefix="/api", tags=["Risk Intelligence"])
+app.include_router(ai_routes.router, prefix="/api", tags=["Iron AI"])
+app.include_router(job_routes.router, prefix="/api", tags=["Background Jobs"])
+app.include_router(report_routes.router, prefix="/api", tags=["Organization Reports"])
+app.include_router(integration_routes.router, prefix="/api", tags=["Integrations"])
+app.include_router(ai_action_routes.router, prefix="/api", tags=["AI Actions"])
+app.include_router(platform_routes.router, prefix="/api", tags=["Platform Experience"])
+app.include_router(pipeline_routes.router, prefix="/api", tags=["Iron AI DevSecOps"])
+app.include_router(compliance_routes.router, prefix="/api", tags=["Iron AI Compliance"])
+app.include_router(assurance_routes.router, prefix="/api", tags=["Operations and Assurance"])
+app.include_router(sso_routes.router, prefix="/api", tags=["Enterprise SSO"])
+app.include_router(security_monitoring_routes.router, prefix="/api", tags=["Realtime Security Monitoring"])
 
 # Rota de redirecionamento curto (sem /api para links públicos)
 @app.get("/p/{short_id}")
@@ -434,7 +484,7 @@ async def contract_lgpd(plan: str = "Free"):
     <html>
     <head>
         <meta charset="utf-8" />
-        <title>Contrato LGPD - Iron Net</title>
+        <title>Contrato LGPD - Iron AI</title>
         <style>
             body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; background: #f4f6f8; }}
             .container {{ max-width: 860px; margin: 40px auto; background: #fff; padding: 24px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.06); }}
@@ -545,7 +595,7 @@ def _error_page(title: str, message: str, status_code: int = 404):
                 try {{
                     var plan = (localStorage.getItem('userPlan') || 'Free');
                     var user = (localStorage.getItem('username') || 'Usuário');
-                    var subject = 'Suporte Iron Net - Plano ' + String(plan);
+                    var subject = 'Suporte Iron AI - Plano ' + String(plan);
                     var body = 'Usuário: ' + String(user) + '\nPlano: ' + String(plan) + '\nURL: ' + window.location.href + '\nMensagem: ';
                     var mailto = 'mailto:thomaz2523@gmail.com?subject=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(body);
                     var el = document.getElementById('supportLink');

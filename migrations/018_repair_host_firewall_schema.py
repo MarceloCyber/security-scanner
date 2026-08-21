@@ -1,4 +1,4 @@
-"""Add restricted host-firewall containment capabilities to sensors and actions."""
+"""Reconcile host-firewall columns when migration 016 was recorded before completing."""
 
 from pathlib import Path
 import sys
@@ -11,18 +11,19 @@ if str(BACKEND) not in sys.path:
 
 from database import engine  # noqa: E402
 
-VERSION = "016_host_firewall_containment"
+VERSION = "018_repair_host_firewall_schema"
 
 
-def _columns(table):
-    return {item["name"] for item in inspect(engine).get_columns(table)}
+def _columns(table_name):
+    inspector = inspect(engine)
+    return {item["name"] for item in inspector.get_columns(table_name)} if inspector.has_table(table_name) else set()
 
 
 def upgrade():
-    if not inspect(engine).has_table("security_sensors") or not inspect(engine).has_table("containment_actions"):
-        return
     sensor_columns = _columns("security_sensors")
     action_columns = _columns("containment_actions")
+    if not sensor_columns or not action_columns:
+        raise RuntimeError("Realtime monitoring tables are missing; migration 013 must be applied first")
     boolean_type = "BOOLEAN" if engine.dialect.name == "postgresql" else "INTEGER"
     boolean_default = "FALSE" if engine.dialect.name == "postgresql" else "0"
     with engine.begin() as connection:
@@ -35,3 +36,12 @@ def upgrade():
         if "expires_at" not in action_columns:
             connection.execute(text("ALTER TABLE containment_actions ADD COLUMN expires_at TIMESTAMP"))
         connection.execute(text("CREATE INDEX IF NOT EXISTS ix_containment_actions_sensor_status ON containment_actions (sensor_id, status)"))
+
+    repaired_sensors = _columns("security_sensors")
+    repaired_actions = _columns("containment_actions")
+    missing = {
+        "security_sensors": sorted({"containment_enabled", "agent_version"} - repaired_sensors),
+        "containment_actions": sorted({"sensor_id", "expires_at"} - repaired_actions),
+    }
+    if any(missing.values()):
+        raise RuntimeError(f"Host-firewall schema reconciliation failed: {missing}")

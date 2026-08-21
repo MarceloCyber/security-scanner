@@ -5,7 +5,7 @@ services:
     rootDir: .
     buildCommand: pip install -r requirements.txt && pip install -r backend/requirements.txt
     preDeployCommand: python migrations/run.py
-    startCommand: cd backend && python -m uvicorn main:app --host 0.0.0.0 --port $PORT
+    startCommand: python migrations/run.py && cd backend && python -m uvicorn main:app --host 0.0.0.0 --port $PORT
     healthCheckPath: /api/ready
     maxShutdownDelaySeconds: 60
     envVars:

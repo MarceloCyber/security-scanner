@@ -32,6 +32,15 @@
 .install-step pre{margin:4px 0;white-space:pre-wrap;overflow-wrap:anywhere;padding:11px;border-radius:9px;background:#0b0910;color:#d9c5ff;font-size:10px;line-height:1.5}
 .install-safety{padding-top:10px;border-top:1px solid var(--line)}
 .protection-wizard-modal{width:min(680px,calc(100vw - 28px))}
+.protection-wizard-feedback{display:flex;align-items:center;gap:12px;margin:16px 0;padding:14px;border:1px solid rgba(196,161,255,.22);border-radius:13px;background:rgba(139,92,246,.07);color:#c4a1ff}
+.protection-wizard-feedback[hidden]{display:none}
+.protection-wizard-feedback>i{width:36px;height:36px;display:grid;place-items:center;border-radius:11px;background:rgba(139,92,246,.13)}
+.protection-wizard-feedback>span{display:grid;gap:3px}
+.protection-wizard-feedback strong{font-size:12px;color:var(--text)}
+.protection-wizard-feedback small{font-size:10px;line-height:1.45;color:var(--muted)}
+.protection-wizard-feedback.error{border-color:rgba(251,113,133,.3);background:rgba(244,63,94,.07);color:#fda4af}
+#protection-setup-content{transition:opacity .18s ease,filter .18s ease}
+#protection-setup-content.loading{opacity:.38;filter:saturate(.55);pointer-events:none}
 .protection-steps{display:grid;gap:10px;margin:18px 0}
 .protection-steps.simple{grid-template-columns:repeat(2,minmax(0,1fr));align-items:stretch}
 .protection-steps.simple .protection-step{grid-template-columns:38px minmax(0,1fr);align-content:start}
@@ -52,6 +61,8 @@
 .protection-advanced .protection-step{margin:0 10px 10px}
 .protection-step.optional .step-number{font-size:12px}
 .protection-test-box{display:grid;gap:12px;margin-top:12px;padding:15px;border:1px solid rgba(181,108,255,.25);border-radius:13px;background:rgba(139,92,246,.06)}
+.protection-test-box:not([hidden]){animation:protectionBoxIn .24s ease both}
+@keyframes protectionBoxIn{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}
 .protection-test-box[hidden],.test-link-result[hidden]{display:none}
 .test-safety{display:flex;gap:11px;align-items:flex-start;padding:11px;border-radius:10px;background:rgba(245,158,11,.08);color:#fbbf24}
 .test-safety>span{display:grid;gap:3px}

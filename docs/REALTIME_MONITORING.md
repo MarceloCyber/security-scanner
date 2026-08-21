@@ -89,7 +89,7 @@ Não bloqueie endereços compartilhados, IPs de CDN/proxy, sua conexão administ
 
 ## Migration e deploy
 
-O schema do teste assistido é criado por `migrations/017_assisted_containment_tests.py`. O `preDeployCommand` do Render executa `python migrations/run.py`, portanto as migrations pendentes são aplicadas uma vez e registradas em `schema_migrations` antes de iniciar a nova versão da API. As migrations `015`, `016` e `017` são aditivas e idempotentes; não removem nem renomeiam tabelas ou colunas existentes.
+O schema do teste assistido é criado por `migrations/017_assisted_containment_tests.py`. A migration `018_repair_host_firewall_schema.py` reconcilia instalações nas quais a migration 016 não chegou a adicionar todas as colunas. O Render executa `python migrations/run.py` no `preDeployCommand` e novamente, de forma idempotente, antes de iniciar a API. Assim, a aplicação não sobe com código novo e schema antigo mesmo quando a etapa pre-deploy não for executada pelo ambiente. Essas migrations são aditivas: não removem nem renomeiam tabelas ou colunas existentes.
 
 ## Limites reais
 

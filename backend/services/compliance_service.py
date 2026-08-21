@@ -4,8 +4,9 @@ This is a readiness view, not a legal certification. Automated controls are
 computed from tenant data; organizational controls require a named attestation.
 """
 
-from datetime import datetime
+from datetime import datetime, timedelta
 
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from models.saas import Asset, AuditLog, ComplianceAttestation, Finding, PipelineApiKey, ScanJob
@@ -28,8 +29,17 @@ CONTROL_DEFINITIONS = (
 
 
 def _automated_statuses(db: Session, organization_id: int) -> dict[str, tuple[str, str]]:
-    assets = db.query(Asset).filter(Asset.organization_id == organization_id, Asset.status == "active").count()
-    completed_scans = db.query(ScanJob).filter(ScanJob.organization_id == organization_id, ScanJob.status == "completed").count()
+    active_assets = db.query(Asset).filter(Asset.organization_id == organization_id, Asset.status == "active").all()
+    assets = len(active_assets)
+    cutoff = datetime.utcnow() - timedelta(days=30)
+    recent_scans = db.query(ScanJob).filter(
+        ScanJob.organization_id == organization_id,
+        ScanJob.status == "completed",
+        ScanJob.completed_at.isnot(None),
+        ScanJob.completed_at >= cutoff,
+    ).all()
+    covered_asset_ids = {job.asset_id for job in recent_scans if job.asset_id is not None}
+    covered_assets = len({asset.id for asset in active_assets if asset.id in covered_asset_ids})
     critical = db.query(Finding).filter(Finding.organization_id == organization_id, Finding.status.in_(("open", "in_progress")), Finding.severity == "critical").count()
     privileged = (
         db.query(User)
@@ -38,12 +48,17 @@ def _automated_statuses(db: Session, organization_id: int) -> dict[str, tuple[st
         .all()
     )
     audit_entries = db.query(AuditLog).filter(AuditLog.organization_id == organization_id).count()
-    pipeline_keys = db.query(PipelineApiKey).filter(PipelineApiKey.organization_id == organization_id, PipelineApiKey.revoked_at.is_(None)).count()
+    now = datetime.utcnow()
+    pipeline_keys = db.query(PipelineApiKey).filter(
+        PipelineApiKey.organization_id == organization_id,
+        PipelineApiKey.revoked_at.is_(None),
+        or_(PipelineApiKey.expires_at.is_(None), PipelineApiKey.expires_at > now),
+    ).count()
     mfa_ready = bool(privileged) and all(bool(user.mfa_enabled) for user in privileged)
     return {
         "asset_inventory": ("implemented" if assets else "not_started", f"{assets} ativo(s) em acompanhamento"),
-        "continuous_monitoring": ("implemented" if completed_scans else "in_progress" if assets else "not_started", f"{completed_scans} análise(s) concluída(s)"),
-        "critical_risk_treatment": ("implemented" if critical == 0 and completed_scans else "in_progress" if completed_scans else "not_started", f"{critical} risco(s) crítico(s) aberto(s)"),
+        "continuous_monitoring": ("implemented" if assets and covered_assets == assets else "in_progress" if covered_assets else "not_started", f"{covered_assets}/{assets} ativo(s) analisado(s) nos últimos 30 dias"),
+        "critical_risk_treatment": ("implemented" if critical == 0 and recent_scans else "in_progress" if recent_scans else "not_started", f"{critical} risco(s) crítico(s) aberto(s); {len(recent_scans)} análise(s) recente(s)"),
         "privileged_mfa": ("implemented" if mfa_ready else "in_progress" if privileged else "not_started", f"{sum(bool(user.mfa_enabled) for user in privileged)}/{len(privileged)} conta(s) privilegiada(s) com MFA"),
         "audit_trail": ("implemented" if audit_entries else "not_started", f"{audit_entries} evento(s) auditável(is)"),
         "secure_delivery": ("implemented" if pipeline_keys else "not_started", f"{pipeline_keys} chave(s) de pipeline ativa(s)"),

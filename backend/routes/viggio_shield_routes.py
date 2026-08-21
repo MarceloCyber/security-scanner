@@ -626,7 +626,7 @@ async def run_automatic_target_check(target: MonitorTarget, db: Session) -> Dict
 
     target.uptime_percentage = (
         ((target.total_checks - (target.failed_checks or 0)) / target.total_checks) * 100
-        if target.total_checks else 100.0
+        if target.total_checks else None
     )
     db.add(MonitorLog(
         target_id=target.id,
@@ -775,7 +775,7 @@ async def list_monitor_targets(
             "type": target.target_type,
             "address": target.target_address,
             "status": target.status,
-            "uptime": target.uptime_percentage,
+            "uptime": target.uptime_percentage if target.total_checks else None,
             "active_incidents": active_incidents,
             "last_check": target.last_check,
             "created_at": target.created_at
@@ -822,7 +822,7 @@ async def get_target_details(
             "address": target.target_address,
             "ports": target.monitoring_ports,
             "status": target.status,
-            "uptime": target.uptime_percentage,
+            "uptime": target.uptime_percentage if target.total_checks else None,
             "total_checks": target.total_checks,
             "failed_checks": target.failed_checks,
             "last_check": target.last_check,
@@ -1244,12 +1244,9 @@ async def get_dashboard_stats(
         MonitorTarget.is_active == True
     ).all()
     
-    # Trata casos onde uptime_percentage pode ser None/NULL
-    if targets:
-        valid_uptimes = [t.uptime_percentage for t in targets if t.uptime_percentage is not None]
-        avg_uptime = sum(valid_uptimes) / len(valid_uptimes) if valid_uptimes else 100.0
-    else:
-        avg_uptime = 100.0
+    # Sem checagens não existe uptime mensurável; não invente 100%.
+    valid_uptimes = [t.uptime_percentage for t in targets if t.total_checks and t.uptime_percentage is not None]
+    avg_uptime = sum(valid_uptimes) / len(valid_uptimes) if valid_uptimes else None
     
     # Incidentes por tipo (últimos 7 dias)
     week_ago = datetime.utcnow() - timedelta(days=7)
@@ -1263,7 +1260,7 @@ async def get_dashboard_stats(
         "open_incidents": open_incidents,
         "critical_incidents": critical_incidents,
         "blocked_ips": blocked_ips_count,
-        "average_uptime": round(avg_uptime, 2),
+        "average_uptime": round(avg_uptime, 2) if avg_uptime is not None else None,
         "automations_this_month": automations_this_month,
         "automation_monthly_limit": automation_limit,
         "incidents_by_type": dict(incidents_by_type)

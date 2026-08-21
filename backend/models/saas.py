@@ -370,6 +370,46 @@ class SecuritySensor(Base):
     last_seen_at = Column(DateTime, nullable=True)
     expires_at = Column(DateTime, nullable=True)
     revoked_at = Column(DateTime, nullable=True)
+    containment_enabled = Column(Boolean, nullable=False, default=False)
+    agent_version = Column(String(40), nullable=True)
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+
+
+class SensorEnrollment(Base):
+    """Short-lived, single-use token used to install a sensor on an asset."""
+
+    __tablename__ = "sensor_enrollments"
+    __table_args__ = (Index("ix_sensor_enrollments_token", "token_hash"),)
+
+    id = Column(Integer, primary_key=True, index=True)
+    organization_id = Column(Integer, ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False, index=True)
+    asset_id = Column(Integer, ForeignKey("assets.id", ondelete="CASCADE"), nullable=False, index=True)
+    sensor_name = Column(String(120), nullable=False)
+    token_hash = Column(String(64), nullable=False, unique=True)
+    created_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    expires_at = Column(DateTime, nullable=False, index=True)
+    used_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+
+
+class ContainmentTest(Base):
+    """Short-lived public link used to validate the approved blocking flow."""
+
+    __tablename__ = "containment_tests"
+    __table_args__ = (
+        Index("ix_containment_tests_token", "token_hash"),
+        Index("ix_containment_tests_org_created", "organization_id", "created_at"),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    organization_id = Column(Integer, ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False, index=True)
+    asset_id = Column(Integer, ForeignKey("assets.id", ondelete="CASCADE"), nullable=False, index=True)
+    token_hash = Column(String(64), nullable=False, unique=True)
+    created_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    expires_at = Column(DateTime, nullable=False, index=True)
+    opened_at = Column(DateTime, nullable=True)
+    source_ip = Column(String(64), nullable=True)
+    security_event_id = Column(Integer, ForeignKey("security_events.id", ondelete="SET NULL"), nullable=True)
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
 
 
@@ -416,6 +456,7 @@ class ContainmentAction(Base):
     id = Column(Integer, primary_key=True, index=True)
     organization_id = Column(Integer, ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False, index=True)
     security_event_id = Column(Integer, ForeignKey("security_events.id", ondelete="SET NULL"), nullable=True, index=True)
+    sensor_id = Column(Integer, ForeignKey("security_sensors.id", ondelete="SET NULL"), nullable=True, index=True)
     provider = Column(String(40), nullable=False)
     action_type = Column(String(40), nullable=False)
     target = Column(String(255), nullable=False)
@@ -426,4 +467,5 @@ class ContainmentAction(Base):
     error = Column(Text, nullable=True)
     executed_at = Column(DateTime, nullable=True)
     released_at = Column(DateTime, nullable=True)
+    expires_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)

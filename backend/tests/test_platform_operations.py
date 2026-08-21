@@ -8,7 +8,7 @@ from sqlalchemy.orm import sessionmaker
 from config import settings
 from database import Base
 from models.saas import (
-    Asset, ContainmentAction, Finding, Integration, IntegrationCredential, Organization,
+    Asset, ContainmentAction, ContainmentTest, Finding, Integration, IntegrationCredential, Organization,
     OrganizationMember, RemediationTask, SecurityEvent, SecuritySensor, SSOLoginState,
 )
 from models.user import User
@@ -19,7 +19,7 @@ from services.pipeline_service import consolidate_findings, evaluate_gate, norma
 from services.mfa_service import consume_recovery_code, current_code, dump_recovery_hashes, generate_recovery_codes, generate_secret, verify_code
 from services.compliance_service import attest_control, compliance_summary
 from services.heartbeat_service import beat, process_status
-from services.security_monitoring_service import classify_telemetry, correlate_event
+from services.security_monitoring_service import classify_telemetry, correlate_event, is_blockable_ip
 from scanners.web_security_scanner import WebSecurityScanner
 from ai.provider import configured_provider
 from services.report_service import generate_report, render_report_pdf
@@ -30,7 +30,7 @@ from routes.auth_routes import MFACodeRequest, login, mfa_confirm, mfa_disable, 
 from routes.sso_routes import SSOExchange, _hash, exchange_sso
 from routes import security_monitoring_routes
 from routes.security_monitoring_routes import SensorContext, TelemetryBatch, TelemetryItem
-from scripts.iron_ai_sensor import aggregate as aggregate_nginx_logs, parse_line as parse_nginx_line
+from scripts.iron_ai_sensor import aggregate as aggregate_nginx_logs, apply_firewall_action, parse_line as parse_nginx_line
 from middleware.subscription import CANCELLATION_WINDOW_DAYS, sync_owned_organization_plans
 from routes import payment_routes
 from routes.ai_action_routes import approve_action, reject_action, run_action
@@ -122,6 +122,19 @@ def test_realtime_monitoring_detects_scans_and_ignores_normal_traffic():
     assert "Bloqueie" in attack["remediation"]
 
 
+def test_authorized_containment_test_path_creates_only_reconnaissance_event():
+    detected = classify_telemetry({
+        "source_ip": "8.8.8.8",
+        "path": "/.well-known/iron-ai-containment-test?nonce=local-test",
+        "status_code": 404,
+    })
+    assert detected["event_type"] == "reconnaissance"
+    assert detected["severity"] == "medium"
+    assert detected["source_ip"] == "8.8.8.8"
+    assert is_blockable_ip("104.16.1.10") is False
+    assert is_blockable_ip("2606:4700::1111") is False
+
+
 def test_nginx_sensor_sends_only_sanitized_request_metadata():
     line = '8.8.8.8 - - [17/Aug/2026:12:00:00 +0000] "GET /.env HTTP/1.1" 404 123 "-" "nuclei"'
     parsed = parse_nginx_line(line)
@@ -195,6 +208,183 @@ def test_cloudflare_containment_executes_real_provider_path_after_approval(monke
         assert event.containment_status == "blocked"
     finally:
         settings.CREDENTIAL_ENCRYPTION_KEY = original
+
+
+def test_cloudflare_connection_discovers_zone_from_domain(monkeypatch):
+    db, user, organization, _ = _database()
+    user.subscription_plan = "enterprise"
+    organization.plan = "enterprise"
+    membership = db.query(OrganizationMember).filter_by(organization_id=organization.id, user_id=user.id).one()
+    context = security_monitoring_routes.TenantContext(user=user, organization=organization, membership=membership)
+    called = {}
+
+    class CloudflareResponse:
+        status_code = 200
+        def json(self):
+            return {"success": True, "result": [{"id": "b" * 32, "name": "menuus.com.br"}]}
+
+    def fake_get(url, headers, params, timeout):
+        called.update({"url": url, "headers": headers, "params": params, "timeout": timeout})
+        return CloudflareResponse()
+
+    original = settings.CREDENTIAL_ENCRYPTION_KEY
+    settings.CREDENTIAL_ENCRYPTION_KEY = Fernet.generate_key().decode()
+    try:
+        monkeypatch.setattr(security_monitoring_routes.requests, "get", fake_get)
+        payload = security_monitoring_routes.CloudflareConnect(domain="www.menuus.com.br", api_token="cloudflare-token-with-read-write")
+        result = security_monitoring_routes.connect_cloudflare(payload, request=None, context=context, db=db)
+        integration = db.query(Integration).filter_by(organization_id=organization.id, provider="cloudflare_waf").one()
+        assert result == {"connected": True, "zone_name": "menuus.com.br"}
+        assert called["params"]["name"] == "menuus.com.br"
+        assert integration.configuration["zone_id"] == "b" * 32
+    finally:
+        settings.CREDENTIAL_ENCRYPTION_KEY = original
+
+
+def test_approved_host_firewall_action_is_typed_reversible_and_sensor_scoped():
+    db, user, organization, finding = _database()
+    user.subscription_plan = "enterprise"
+    organization.plan = "enterprise"
+    membership = db.query(OrganizationMember).filter_by(organization_id=organization.id, user_id=user.id).one()
+    sensor = SecuritySensor(
+        organization_id=organization.id, asset_id=finding.asset_id, name="Protected Nginx",
+        key_prefix="iais_host_firewall", key_hash="host-firewall-key-hash", created_by=user.id,
+        last_seen_at=datetime.utcnow(), containment_enabled=True, agent_version="1.1",
+    )
+    db.add(sensor)
+    db.flush()
+    event = correlate_event(db, organization.id, finding.asset_id, sensor.id, classify_telemetry({
+        "signal": "web_scan", "source_ip": "8.8.4.4", "path": "/admin", "request_count": 30,
+    }))
+    db.commit()
+    tenant = TenantContext(user=user, organization=organization, membership=membership)
+    result = security_monitoring_routes.contain_event(event.id, request=None, context=tenant, db=db)
+    assert result["status"] == "approved"
+    assert result["coverage"][0]["provider"] == "host_firewall"
+    action = db.query(ContainmentAction).filter_by(security_event_id=event.id, provider="host_firewall").one()
+    assert action.sensor_id == sensor.id and action.expires_at is not None
+
+    sensor_context = SensorContext(organization=organization, sensor=sensor)
+    queued = security_monitoring_routes.sensor_actions(context=sensor_context, capabilities="host_firewall", agent_version="1.1", db=db)
+    assert len(queued["actions"]) == 1
+    assert queued["actions"][0]["id"] == action.id
+    assert queued["actions"][0]["operation"] == "block_ip"
+    assert queued["actions"][0]["ip"] == "8.8.4.4"
+    assert queued["actions"][0]["report_required"] is True
+    assert 60 <= queued["actions"][0]["duration_seconds"] <= 86400
+
+    executed = security_monitoring_routes.report_sensor_action(
+        action.id, security_monitoring_routes.SensorActionResult(status="executed", firewall_backend="nftables"),
+        request=None, context=sensor_context, db=db,
+    )
+    assert executed["status"] == "executed"
+    release = security_monitoring_routes.release_event_containment(event.id, request=None, context=tenant, db=db)
+    assert release["layers"] == [{"provider": "host_firewall", "status": "release_pending"}]
+    queued = security_monitoring_routes.sensor_actions(context=sensor_context, capabilities="host_firewall", agent_version="1.1", db=db)
+    assert queued["actions"][0]["operation"] == "unblock_ip"
+    security_monitoring_routes.report_sensor_action(
+        action.id, security_monitoring_routes.SensorActionResult(status="released", firewall_backend="nftables"),
+        request=None, context=sensor_context, db=db,
+    )
+    db.refresh(action)
+    assert action.status == "released"
+
+
+def test_host_firewall_agent_rejects_unsafe_targets_before_calling_system_tools():
+    with pytest.raises(ValueError):
+        apply_firewall_action({"id": 1, "operation": "block_ip", "ip": "127.0.0.1", "duration_seconds": 60})
+    with pytest.raises(ValueError):
+        apply_firewall_action({"id": 2, "operation": "block_ip", "ip": "104.16.1.1", "duration_seconds": 60})
+    with pytest.raises(ValueError):
+        apply_firewall_action({"id": 3, "operation": "run_command", "ip": "8.8.8.8", "duration_seconds": 60})
+
+
+def _public_request(ip="8.8.4.4", forwarded=None):
+    headers = [(b"user-agent", b"pytest-mobile")]
+    if forwarded:
+        headers.append((b"x-forwarded-for", forwarded.encode()))
+    return Request({
+        "type": "http", "http_version": "1.1", "method": "GET", "scheme": "https",
+        "path": "/api/security-monitoring/containment-tests/open/test", "raw_path": b"",
+        "query_string": b"", "headers": headers,
+        "client": (ip, 43120), "server": ("testserver", 443),
+    })
+
+
+def test_assisted_containment_link_creates_one_auditable_event_without_sensor():
+    db, user, organization, finding = _database()
+    user.subscription_plan = "professional"
+    organization.plan = "professional"
+    membership = db.query(OrganizationMember).filter_by(organization_id=organization.id, user_id=user.id).one()
+    db.add(Integration(organization_id=organization.id, provider="cloudflare_waf", status="connected", configuration={"zone_id": "a" * 32}))
+    db.commit()
+    context = TenantContext(user=user, organization=organization, membership=membership)
+    created = security_monitoring_routes.create_containment_test(
+        security_monitoring_routes.ContainmentTestCreate(asset_id=finding.asset_id),
+        request=None, context=context, db=db,
+    )
+    raw_token = created["path"].rsplit("/", 1)[-1]
+    response = security_monitoring_routes.open_containment_test(raw_token, request=_public_request(), db=db)
+    item = db.query(ContainmentTest).filter_by(id=created["id"]).one()
+    event = db.query(SecurityEvent).filter_by(id=item.security_event_id).one()
+    assert response.status_code == 200
+    assert item.source_ip == "8.8.4.4"
+    assert event.title == "Teste autorizado de bloqueio"
+    assert event.evidence_json["source"] == "assisted_test"
+    security_monitoring_routes.open_containment_test(raw_token, request=_public_request(), db=db)
+    assert db.query(SecurityEvent).filter_by(organization_id=organization.id).count() == 1
+
+
+def test_assisted_containment_link_refuses_private_source_ip():
+    db, user, organization, finding = _database()
+    user.subscription_plan = "enterprise"
+    organization.plan = "enterprise"
+    membership = db.query(OrganizationMember).filter_by(organization_id=organization.id, user_id=user.id).one()
+    sensor = SecuritySensor(
+        organization_id=organization.id, asset_id=finding.asset_id, name="Ready firewall",
+        key_prefix="iais_ready", key_hash="ready-hash", created_by=user.id,
+        last_seen_at=datetime.utcnow(), containment_enabled=True,
+    )
+    db.add(sensor)
+    db.commit()
+    context = TenantContext(user=user, organization=organization, membership=membership)
+    created = security_monitoring_routes.create_containment_test(
+        security_monitoring_routes.ContainmentTestCreate(asset_id=finding.asset_id),
+        request=None, context=context, db=db,
+    )
+    raw_token = created["path"].rsplit("/", 1)[-1]
+    response = security_monitoring_routes.open_containment_test(raw_token, request=_public_request("127.0.0.1"), db=db)
+    assert response.status_code == 400
+    assert db.query(ContainmentTest).filter_by(id=created["id"]).one().security_event_id is None
+    assert security_monitoring_routes._request_source_ip(_public_request("127.0.0.1", "8.8.4.4")) == "8.8.4.4"
+
+
+def test_manual_containment_uses_ready_host_firewall_and_rejects_unsafe_ip():
+    db, user, organization, finding = _database()
+    user.subscription_plan = "enterprise"
+    organization.plan = "enterprise"
+    membership = db.query(OrganizationMember).filter_by(organization_id=organization.id, user_id=user.id).one()
+    db.add(SecuritySensor(
+        organization_id=organization.id, asset_id=finding.asset_id, name="Ready firewall",
+        key_prefix="iais_manual", key_hash="manual-hash", created_by=user.id,
+        last_seen_at=datetime.utcnow(), containment_enabled=True,
+    ))
+    db.commit()
+    context = TenantContext(user=user, organization=organization, membership=membership)
+    result = security_monitoring_routes.manual_containment(
+        security_monitoring_routes.ManualContainmentCreate(asset_id=finding.asset_id, ip_address="8.8.4.4", reason="Tentativas indevidas confirmadas nos logs"),
+        request=None, context=context, db=db,
+    )
+    assert result["status"] == "approved"
+    assert result["coverage"][0]["provider"] == "host_firewall"
+    action = db.query(ContainmentAction).filter_by(security_event_id=result["event_id"]).one()
+    assert action.target == "8.8.4.4"
+    with pytest.raises(HTTPException) as exc:
+        security_monitoring_routes.manual_containment(
+            security_monitoring_routes.ManualContainmentCreate(asset_id=finding.asset_id, ip_address="127.0.0.1", reason="Teste inválido proposital"),
+            request=None, context=context, db=db,
+        )
+    assert exc.value.status_code == 400
 
 
 def test_realtime_monitoring_rejects_starter_on_server():

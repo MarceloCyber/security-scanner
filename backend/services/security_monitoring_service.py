@@ -29,6 +29,15 @@ SCANNER_UA = re.compile(r"(?:nmap|nikto|sqlmap|masscan|nuclei|zgrab|gobuster|dir
 SUSPICIOUS_PATH = re.compile(r"(?:/\.env|/\.git|wp-admin|phpmyadmin|\.\./|%2e%2e|etc/passwd|proc/self|cgi-bin|vendor/phpunit)", re.I)
 SQLI_PATH = re.compile(r"(?:union(?:%20|\s)+select|sleep\(|benchmark\(|or(?:%20|\s)+1=1)", re.I)
 XSS_PATH = re.compile(r"(?:<script|%3cscript|javascript:|onerror=|onload=)", re.I)
+AUTHORIZED_TEST_PATH = re.compile(r"^/\.well-known/iron-ai-containment-test(?:\?|$)", re.I)
+CLOUDFLARE_NETWORKS = tuple(ipaddress.ip_network(value) for value in (
+    "173.245.48.0/20", "103.21.244.0/22", "103.22.200.0/22", "103.31.4.0/22",
+    "141.101.64.0/18", "108.162.192.0/18", "190.93.240.0/20", "188.114.96.0/20",
+    "197.234.240.0/22", "198.41.128.0/17", "162.158.0.0/15", "104.16.0.0/13",
+    "104.24.0.0/14", "172.64.0.0/13", "131.0.72.0/22", "2400:cb00::/32",
+    "2606:4700::/32", "2803:f800::/32", "2405:b500::/32", "2405:8100::/32",
+    "2a06:98c0::/29", "2c0f:f248::/32",
+))
 
 REMEDIATIONS = {
     "port_scan": "Bloqueie temporariamente o IP no WAF, restrinja portas públicas ao mínimo necessário e revise os logs do firewall para identificar outros destinos consultados.",
@@ -60,7 +69,8 @@ def is_blockable_ip(value: str | None) -> bool:
         address = ipaddress.ip_address(value or "")
     except ValueError:
         return False
-    return not any((address.is_private, address.is_loopback, address.is_link_local, address.is_reserved, address.is_multicast, address.is_unspecified))
+    unsafe = any((address.is_private, address.is_loopback, address.is_link_local, address.is_reserved, address.is_multicast, address.is_unspecified))
+    return not unsafe and not any(address in network for network in CLOUDFLARE_NETWORKS)
 
 
 def classify_telemetry(item: dict) -> dict | None:
@@ -74,7 +84,9 @@ def classify_telemetry(item: dict) -> dict | None:
 
     if signal not in SIGNALS:
         rate = count / window
-        if rate >= 30 or count >= 1000:
+        if AUTHORIZED_TEST_PATH.search(path):
+            signal = "reconnaissance"
+        elif rate >= 30 or count >= 1000:
             signal = "ddos"
         elif SQLI_PATH.search(path):
             signal = "sql_injection"

@@ -3,6 +3,7 @@
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 import hashlib
+import ipaddress
 import secrets
 from pathlib import Path
 from typing import Literal, Optional
@@ -17,10 +18,11 @@ from sqlalchemy.orm import Session
 from database import get_db
 from models.saas import (
     Asset, AuditLog, ContainmentAction, ContainmentTest, Integration, IntegrationCredential,
-    Organization, SecurityEvent, SecuritySensor,
+    Organization, ProtectionAllowlist, SecurityAlertSubscription, SecurityEvent, SecuritySensor,
     SensorEnrollment,
 )
 from services.audit_service import record_audit
+from services.alert_service import _send, queue_security_alerts, validate_target
 from services.credential_vault import CredentialVault
 from services.rate_limit import rate_limit_backend
 from services.security_monitoring_service import classify_telemetry, correlate_event, is_blockable_ip, safe_source_ip
@@ -74,6 +76,13 @@ class CloudflareConnect(BaseModel):
     api_token: str = Field(min_length=20, max_length=500)
 
 
+class CloudflareProtectionRequest(BaseModel):
+    api_path_prefix: str = Field(default="/api/", min_length=1, max_length=200, pattern=r"^/[^\r\n]*$")
+    requests_per_period: int = Field(default=120, ge=10, le=100000)
+    period_seconds: Literal[10, 60, 120, 300, 600, 3600] = 60
+    mitigation_seconds: int = Field(default=300, ge=60, le=86400)
+
+
 class SensorActionResult(BaseModel):
     status: Literal["executed", "released", "failed"]
     firewall_backend: Optional[Literal["nftables", "iptables", "ip6tables"]] = None
@@ -90,6 +99,18 @@ class ManualContainmentCreate(BaseModel):
     reason: str = Field(min_length=5, max_length=500)
 
 
+class ProtectionAllowlistCreate(BaseModel):
+    asset_id: Optional[int] = None
+    network: str = Field(min_length=3, max_length=64)
+    label: str = Field(min_length=2, max_length=160)
+
+
+class SecurityAlertSubscriptionCreate(BaseModel):
+    channel: Literal["email", "slack", "teams", "pagerduty"]
+    target: str = Field(min_length=8, max_length=500)
+    minimum_severity: Literal["medium", "high", "critical"] = "high"
+
+
 @dataclass(frozen=True)
 class SensorContext:
     organization: Organization
@@ -98,6 +119,33 @@ class SensorContext:
 
 def _hash_key(value: str) -> str:
     return hashlib.sha256(value.encode()).hexdigest()
+
+
+def _canonical_network(value: str) -> str:
+    try:
+        network = ipaddress.ip_network(value.strip(), strict=False)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail="Informe um IP ou rede CIDR válida") from exc
+    if network.prefixlen == 0:
+        raise HTTPException(status_code=422, detail="A rede inteira não pode ser colocada na allowlist")
+    if network.version == 4 and network.prefixlen < 8:
+        raise HTTPException(status_code=422, detail="Para IPv4, a allowlist precisa ser no mínimo /8")
+    if network.version == 6 and network.prefixlen < 32:
+        raise HTTPException(status_code=422, detail="Para IPv6, a allowlist precisa ser no mínimo /32")
+    return str(network)
+
+
+def _is_allowlisted(db: Session, organization_id: int, asset_id: int | None, value: str | None) -> bool:
+    try:
+        address = ipaddress.ip_address(value or "")
+    except ValueError:
+        return False
+    rows = db.query(ProtectionAllowlist.network).filter(
+        ProtectionAllowlist.organization_id == organization_id,
+        ProtectionAllowlist.active.is_(True),
+        (ProtectionAllowlist.asset_id.is_(None) | (ProtectionAllowlist.asset_id == asset_id)),
+    ).all()
+    return any(address in ipaddress.ip_network(network, strict=False) for (network,) in rows)
 
 
 def _sensor_installer_path() -> Path:
@@ -143,6 +191,63 @@ def _cloudflare_connection(db: Session, organization_id: int):
     if not credential:
         raise HTTPException(status_code=409, detail="Credencial do Cloudflare indisponível")
     return integration, _vault().decrypt(credential.encrypted_secret)
+
+
+def _cloudflare_ruleset_request(method: str, path: str, token: str, payload: dict | None = None):
+    try:
+        response = requests.request(
+            method,
+            f"{CLOUDFLARE_API}{path}",
+            headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
+            json=payload,
+            timeout=15,
+        )
+        data = response.json()
+    except (requests.RequestException, ValueError) as exc:
+        raise HTTPException(status_code=502, detail="Não foi possível consultar a API de proteção do Cloudflare") from exc
+    if response.status_code >= 300 or not data.get("success"):
+        errors = data.get("errors") or []
+        message = errors[0].get("message") if errors and isinstance(errors[0], dict) else "Cloudflare rejeitou a configuração"
+        raise HTTPException(status_code=502, detail=f"Cloudflare: {message}")
+    return data.get("result") or {}
+
+
+def _ensure_cloudflare_entrypoint(zone_id: str, phase: str, token: str) -> dict:
+    path = f"/zones/{zone_id}/rulesets/phases/{phase}/entrypoint"
+    try:
+        response = requests.get(
+            f"{CLOUDFLARE_API}{path}",
+            headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
+            timeout=15,
+        )
+        data = response.json()
+    except (requests.RequestException, ValueError) as exc:
+        raise HTTPException(status_code=502, detail="Não foi possível consultar o entrypoint do Cloudflare") from exc
+    if response.status_code == 200 and data.get("success"):
+        return data.get("result") or {}
+    if response.status_code != 404:
+        errors = data.get("errors") or []
+        message = errors[0].get("message") if errors and isinstance(errors[0], dict) else "Cloudflare rejeitou a consulta do WAF"
+        raise HTTPException(status_code=502, detail=f"Cloudflare: {message}")
+    return _cloudflare_ruleset_request("POST", f"/zones/{zone_id}/rulesets", token, {
+        "name": f"Iron AI {phase}",
+        "description": "Entrypoint gerenciado pela Iron AI; regras existentes são preservadas.",
+        "kind": "zone",
+        "phase": phase,
+        "rules": [],
+    })
+
+
+def _ensure_cloudflare_rule(zone_id: str, phase: str, token: str, rule: dict, marker: str) -> dict:
+    entrypoint = _ensure_cloudflare_entrypoint(zone_id, phase, token)
+    existing = next((item for item in entrypoint.get("rules", []) if item.get("description") == marker), None)
+    if existing:
+        return {"id": existing.get("id"), "created": False, "description": marker}
+    ruleset_id = entrypoint.get("id")
+    if not ruleset_id:
+        raise HTTPException(status_code=502, detail="Cloudflare não retornou o identificador do entrypoint")
+    created = _cloudflare_ruleset_request("POST", f"/zones/{zone_id}/rulesets/{ruleset_id}/rules", token, rule)
+    return {"id": created.get("id"), "created": True, "description": marker}
 
 
 def _event_dict(event: SecurityEvent, asset_name: str | None = None, containment_action_id: int | None = None, containment_provider: str | None = None, containment_available: bool | None = None) -> dict:
@@ -392,6 +497,8 @@ def ingest_telemetry(payload: TelemetryBatch, request: Request, context: SensorC
         classification = classify_telemetry(item.model_dump())
         if classification:
             detected.append(correlate_event(db, context.organization.id, asset.id, context.sensor.id, classification))
+    for event in detected:
+        queue_security_alerts(db, event)
     if detected:
         db.add(AuditLog(
             organization_id=context.organization.id, action="security_events_ingested", resource_type="security_sensor",
@@ -533,7 +640,122 @@ def monitoring_overview(since_id: int = 0, context: TenantContext = Depends(get_
         action_by_event[event.id].provider if event.id in action_by_event else None,
         bool(waf or event.asset_id in host_firewall_assets),
     ) for event, asset_name in rows]
-    return {"events": events, "metrics": {"open": open_count, "critical": critical_count, "last_24h": last_24h, "active_sensors": active_sensors, "host_firewalls": host_firewalls, "active_blocks": active_blocks}, "cloudflare_connected": bool(waf), "host_firewall_ready": host_firewalls > 0, "latest_id": max([event["id"] for event in events], default=since_id)}
+    cloudflare_managed_waf = bool((waf.configuration or {}).get("managed_waf")) if waf else False
+    cloudflare_rate_limit = bool((waf.configuration or {}).get("api_rate_limit")) if waf else False
+    protection_checks = {
+        "cloudflare_connected": bool(waf),
+        "managed_waf_enabled": cloudflare_managed_waf,
+        "edge_rate_limit_enabled": cloudflare_rate_limit,
+        "host_firewall_ready": host_firewalls > 0,
+        "telemetry_active": active_sensors > 0,
+    }
+    protection_level = "healthy" if (cloudflare_managed_waf and cloudflare_rate_limit) or host_firewalls > 0 else "degraded" if waf or active_sensors else "unconfigured"
+    return {"events": events, "metrics": {"open": open_count, "critical": critical_count, "last_24h": last_24h, "active_sensors": active_sensors, "host_firewalls": host_firewalls, "active_blocks": active_blocks}, "cloudflare_connected": bool(waf), "host_firewall_ready": host_firewalls > 0, "protection_status": {"level": protection_level, "checks": protection_checks}, "latest_id": max([event["id"] for event in events], default=since_id)}
+
+
+@router.get("/allowlist")
+def list_protection_allowlist(context: TenantContext = Depends(get_tenant_context), db: Session = Depends(get_db)):
+    _require_realtime_plan(context.user.subscription_plan)
+    rows = db.query(ProtectionAllowlist).filter(ProtectionAllowlist.organization_id == context.organization.id).order_by(ProtectionAllowlist.created_at.desc()).all()
+    return {"allowlist": [{"id": row.id, "asset_id": row.asset_id, "network": row.network, "label": row.label, "active": row.active, "created_at": row.created_at.isoformat()} for row in rows]}
+
+
+@router.post("/allowlist")
+def create_protection_allowlist(payload: ProtectionAllowlistCreate, request: Request, context: TenantContext = Depends(require_roles("owner", "admin")), db: Session = Depends(get_db)):
+    _require_realtime_plan(context.user.subscription_plan)
+    network = _canonical_network(payload.network)
+    if payload.asset_id is not None:
+        asset = db.query(Asset).filter(Asset.id == payload.asset_id, Asset.organization_id == context.organization.id, Asset.status != "inactive").first()
+        if not asset:
+            raise HTTPException(status_code=404, detail="Ativo não encontrado ou inativo")
+    row = db.query(ProtectionAllowlist).filter(
+        ProtectionAllowlist.organization_id == context.organization.id,
+        ProtectionAllowlist.asset_id == payload.asset_id,
+        ProtectionAllowlist.network == network,
+    ).first()
+    if row:
+        row.active = True
+        row.label = payload.label.strip()
+    else:
+        row = ProtectionAllowlist(organization_id=context.organization.id, asset_id=payload.asset_id, network=network, label=payload.label.strip(), created_by=context.user.id)
+        db.add(row)
+        db.flush()
+    record_audit(db, context, "protection_allowlist_added", "protection_allowlist", row.id, request, {"network": network, "asset_id": payload.asset_id})
+    db.commit()
+    return {"id": row.id, "network": row.network, "asset_id": row.asset_id, "label": row.label, "active": row.active}
+
+
+@router.delete("/allowlist/{allowlist_id}")
+def delete_protection_allowlist(allowlist_id: int, request: Request, context: TenantContext = Depends(require_roles("owner", "admin")), db: Session = Depends(get_db)):
+    _require_realtime_plan(context.user.subscription_plan)
+    row = db.query(ProtectionAllowlist).filter(ProtectionAllowlist.id == allowlist_id, ProtectionAllowlist.organization_id == context.organization.id).first()
+    if not row:
+        raise HTTPException(status_code=404, detail="Exceção de proteção não encontrada")
+    row.active = False
+    record_audit(db, context, "protection_allowlist_removed", "protection_allowlist", row.id, request, {"network": row.network, "asset_id": row.asset_id})
+    db.commit()
+    return {"removed": True}
+
+
+@router.get("/alerts")
+def list_security_alerts(context: TenantContext = Depends(get_tenant_context), db: Session = Depends(get_db)):
+    _require_realtime_plan(context.user.subscription_plan)
+    rows = db.query(SecurityAlertSubscription).filter(SecurityAlertSubscription.organization_id == context.organization.id).order_by(SecurityAlertSubscription.created_at.desc()).all()
+    return {"subscriptions": [{"id": row.id, "channel": row.channel, "target_hint": row.target_hint, "minimum_severity": row.minimum_severity, "enabled": row.enabled, "last_sent_at": row.last_sent_at.isoformat() if row.last_sent_at else None, "last_error": row.last_error} for row in rows]}
+
+
+@router.post("/alerts")
+def create_security_alert(payload: SecurityAlertSubscriptionCreate, request: Request, context: TenantContext = Depends(require_roles("owner", "admin")), db: Session = Depends(get_db)):
+    _require_realtime_plan(context.user.subscription_plan)
+    try:
+        target = validate_target(payload.channel, payload.target)
+        encrypted = _vault().encrypt(target)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    row = SecurityAlertSubscription(
+        organization_id=context.organization.id,
+        channel=payload.channel,
+        target_encrypted=encrypted,
+        target_hint=(target[-4:] if payload.channel == "pagerduty" else target[:3] + "…" if payload.channel == "email" else target.split("/")[2]),
+        minimum_severity=payload.minimum_severity,
+        created_by=context.user.id,
+    )
+    db.add(row)
+    db.flush()
+    record_audit(db, context, "security_alert_subscription_created", "security_alert_subscription", row.id, request, {"channel": row.channel, "minimum_severity": row.minimum_severity})
+    db.commit()
+    return {"id": row.id, "channel": row.channel, "target_hint": row.target_hint, "minimum_severity": row.minimum_severity, "enabled": row.enabled}
+
+
+@router.post("/alerts/{subscription_id}/test")
+def test_security_alert(subscription_id: int, request: Request, context: TenantContext = Depends(require_roles("owner", "admin")), db: Session = Depends(get_db)):
+    _require_realtime_plan(context.user.subscription_plan)
+    row = db.query(SecurityAlertSubscription).filter(SecurityAlertSubscription.id == subscription_id, SecurityAlertSubscription.organization_id == context.organization.id, SecurityAlertSubscription.enabled.is_(True)).first()
+    if not row:
+        raise HTTPException(status_code=404, detail="Assinatura de alertas não encontrada")
+    try:
+        _send(row, {"id": "test", "severity": "high", "title": "Teste de integração", "description": "A Iron AI conseguiu enviar este alerta.", "source_ip": None, "path": None})
+    except Exception as exc:
+        row.last_error = str(exc)[:1000]
+        db.commit()
+        raise HTTPException(status_code=502, detail="O canal não confirmou o alerta de teste") from exc
+    row.last_sent_at = datetime.utcnow()
+    row.last_error = None
+    record_audit(db, context, "security_alert_subscription_tested", "security_alert_subscription", row.id, request, {"channel": row.channel})
+    db.commit()
+    return {"sent": True}
+
+
+@router.delete("/alerts/{subscription_id}")
+def delete_security_alert(subscription_id: int, request: Request, context: TenantContext = Depends(require_roles("owner", "admin")), db: Session = Depends(get_db)):
+    _require_realtime_plan(context.user.subscription_plan)
+    row = db.query(SecurityAlertSubscription).filter(SecurityAlertSubscription.id == subscription_id, SecurityAlertSubscription.organization_id == context.organization.id).first()
+    if not row:
+        raise HTTPException(status_code=404, detail="Assinatura de alertas não encontrada")
+    row.enabled = False
+    record_audit(db, context, "security_alert_subscription_disabled", "security_alert_subscription", row.id, request, {"channel": row.channel})
+    db.commit()
+    return {"disabled": True}
 
 
 @router.patch("/events/{event_id}")
@@ -579,7 +801,7 @@ def connect_cloudflare(payload: CloudflareConnect, request: Request, context: Te
         db.add(integration)
         db.flush()
     integration.status = "connected"
-    integration.configuration = {"zone_id": zone_id, "zone_name": str(zone.get("name") or domain)[:255]}
+    integration.configuration = {**(integration.configuration or {}), "zone_id": zone_id, "zone_name": str(zone.get("name") or domain)[:255]}
     encrypted = _vault().encrypt(payload.api_token)
     credential = db.query(IntegrationCredential).filter(IntegrationCredential.integration_id == integration.id).first()
     if credential:
@@ -592,6 +814,50 @@ def connect_cloudflare(payload: CloudflareConnect, request: Request, context: Te
     return {"connected": True, "zone_name": zone.get("name")}
 
 
+@router.post("/cloudflare/protection")
+def enable_cloudflare_protection(payload: CloudflareProtectionRequest, request: Request, context: TenantContext = Depends(require_roles("owner", "admin")), db: Session = Depends(get_db)):
+    """Deploy Cloudflare's managed WAF and a conservative API rate-limit rule."""
+    _require_realtime_plan(context.user.subscription_plan)
+    integration, token = _cloudflare_connection(db, context.organization.id)
+    zone_id = (integration.configuration or {}).get("zone_id")
+    if not zone_id:
+        raise HTTPException(status_code=409, detail="A integração Cloudflare não possui Zone ID")
+    managed_rule = _ensure_cloudflare_rule(zone_id, "http_request_firewall_managed", token, {
+        "description": "Iron AI · Cloudflare Managed WAF",
+        "expression": "true",
+        "action": "execute",
+        "action_parameters": {"id": "efb7b8c949ac4650a09736fc376e9aee"},
+        "enabled": True,
+    }, "Iron AI · Cloudflare Managed WAF")
+    prefix = payload.api_path_prefix.rstrip("/") or "/"
+    rate_rule = _ensure_cloudflare_rule(zone_id, "http_ratelimit", token, {
+        "description": "Iron AI · API rate limiting",
+        "expression": f'starts_with(http.request.uri.path, "{prefix}")',
+        "action": "block",
+        "action_parameters": {
+            "response": {
+                "status_code": 429,
+                "content_type": "application/json",
+                "content": '{"error":"rate_limited","message":"Too many requests. Try again later."}',
+            }
+        },
+        "ratelimit": {
+            "characteristics": ["ip.src", "cf.colo.id"],
+            "period": payload.period_seconds,
+            "requests_per_period": payload.requests_per_period,
+            "mitigation_timeout": payload.mitigation_seconds,
+            "requests_to_origin": True,
+        },
+        "enabled": True,
+    }, "Iron AI · API rate limiting")
+    configuration = {**(integration.configuration or {}), "managed_waf": managed_rule, "api_rate_limit": {**rate_rule, "path_prefix": prefix, "requests_per_period": payload.requests_per_period, "period_seconds": payload.period_seconds, "mitigation_seconds": payload.mitigation_seconds}}
+    integration.configuration = configuration
+    integration.last_synced_at = datetime.utcnow()
+    record_audit(db, context, "cloudflare_protection_enabled", "integration", integration.id, request, {"zone_id": zone_id, "managed_waf_rule_id": managed_rule.get("id"), "rate_limit_rule_id": rate_rule.get("id"), "path_prefix": prefix})
+    db.commit()
+    return {"enabled": True, "managed_waf": managed_rule, "rate_limit": rate_rule, "configuration": configuration["api_rate_limit"]}
+
+
 @router.post("/events/{event_id}/contain")
 def contain_event(event_id: int, request: Request, context: TenantContext = Depends(require_roles("owner", "admin")), db: Session = Depends(get_db)):
     _require_realtime_plan(context.user.subscription_plan)
@@ -602,6 +868,8 @@ def contain_event(event_id: int, request: Request, context: TenantContext = Depe
         raise HTTPException(status_code=409, detail="Reabra o incidente antes de bloquear a origem")
     if not is_blockable_ip(event.source_ip):
         raise HTTPException(status_code=400, detail="O evento não possui um IP público bloqueável")
+    if _is_allowlisted(db, context.organization.id, event.asset_id, event.source_ip):
+        raise HTTPException(status_code=409, detail="Este IP está protegido pela allowlist e não pode ser bloqueado")
     active_actions = db.query(ContainmentAction).filter(
         ContainmentAction.organization_id == context.organization.id,
         ContainmentAction.security_event_id == event.id,
@@ -682,6 +950,8 @@ def manual_containment(payload: ManualContainmentCreate, request: Request, conte
     source_ip = safe_source_ip(payload.ip_address)
     if not is_blockable_ip(source_ip):
         raise HTTPException(status_code=400, detail="Informe um IP público válido. IPs privados, reservados e redes de infraestrutura não podem ser bloqueados")
+    if _is_allowlisted(db, context.organization.id, payload.asset_id, source_ip):
+        raise HTTPException(status_code=409, detail="Este IP está protegido pela allowlist e não pode ser bloqueado")
     asset = db.query(Asset).filter(
         Asset.id == payload.asset_id,
         Asset.organization_id == context.organization.id,

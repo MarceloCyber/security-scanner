@@ -15,6 +15,7 @@ from datetime import datetime
 from pathlib import Path
 import shutil
 import asyncio
+import ipaddress
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.exceptions import RequestValidationError
@@ -178,6 +179,32 @@ PLAN_RATE_LIMITS = {
     "enterprise": 500,
 }
 
+# Only trust CF-Connecting-IP when the immediate peer is actually Cloudflare.
+# Otherwise a client could spoof the header and evade the application limiter.
+_CLOUDFLARE_NETWORKS = tuple(ipaddress.ip_network(value) for value in (
+    "173.245.48.0/20", "103.21.244.0/22", "103.22.200.0/22", "103.31.4.0/22",
+    "141.101.64.0/18", "108.162.192.0/18", "190.93.240.0/20", "188.114.96.0/20",
+    "197.234.240.0/22", "198.41.128.0/17", "162.158.0.0/15", "104.16.0.0/13",
+    "104.24.0.0/14", "172.64.0.0/13", "131.0.72.0/22", "2400:cb00::/32",
+    "2606:4700::/32", "2803:f800::/32", "2405:b500::/32", "2405:8100::/32",
+    "2a06:98c0::/29", "2c0f:f248::/32",
+))
+
+
+def _rate_limit_client_ip(request: Request) -> str:
+    peer = request.client.host if request.client else "unknown"
+    try:
+        peer_address = ipaddress.ip_address(peer)
+    except ValueError:
+        peer_address = None
+    if peer_address and any(peer_address in network for network in _CLOUDFLARE_NETWORKS):
+        candidate = request.headers.get("cf-connecting-ip", "").strip()
+        try:
+            return str(ipaddress.ip_address(candidate))
+        except ValueError:
+            pass
+    return peer
+
 from database import SessionLocal
 from models.user import User
 from models.scan import Scan
@@ -219,7 +246,7 @@ async def rate_limit_middleware(request: Request, call_next):
         finally:
             db.close()
     else:
-        client_ip = request.client.host if request.client else "unknown"
+        client_ip = _rate_limit_client_ip(request)
         key = f"ratelimit:public:{client_ip}:{path}"
 
     limit = PLAN_RATE_LIMITS.get(plan, 10)
@@ -235,6 +262,7 @@ async def rate_limit_middleware(request: Request, call_next):
                 "X-RateLimit-Limit": str(limit),
                 "X-RateLimit-Remaining": "0",
                 "X-RateLimit-Reset": str(reset_ts),
+                "Retry-After": str(max(reset_ts - int(time.time()), 1)),
             },
         )
 

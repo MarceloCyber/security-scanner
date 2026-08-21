@@ -10,6 +10,7 @@ from database import Base
 from models.saas import (
     Asset, ContainmentAction, ContainmentTest, Finding, Integration, IntegrationCredential, Organization,
     OrganizationMember, RemediationTask, SecurityEvent, SecuritySensor, SSOLoginState,
+    SecurityAlertDelivery, SecurityAlertSubscription,
 )
 from models.user import User
 from services.ai_action_service import execute_action, propose_action, transition_remediation_task
@@ -20,6 +21,7 @@ from services.mfa_service import consume_recovery_code, current_code, dump_recov
 from services.compliance_service import attest_control, compliance_summary
 from services.heartbeat_service import beat, process_status
 from services.security_monitoring_service import classify_telemetry, correlate_event, is_blockable_ip
+from services.alert_service import queue_security_alerts, validate_target
 from scanners.web_security_scanner import WebSecurityScanner
 from ai.provider import configured_provider
 from services.report_service import generate_report, render_report_pdf
@@ -241,6 +243,30 @@ def test_cloudflare_connection_discovers_zone_from_domain(monkeypatch):
         settings.CREDENTIAL_ENCRYPTION_KEY = original
 
 
+def test_cloudflare_protection_provisions_managed_waf_and_idempotent_rate_limit(monkeypatch):
+    calls = []
+
+    class Response:
+        status_code = 200
+        def __init__(self, result):
+            self._result = result
+        def json(self):
+            return {"success": True, "result": self._result, "errors": []}
+
+    monkeypatch.setattr(security_monitoring_routes.requests, "get", lambda *args, **kwargs: Response({"id": "entrypoint-1", "rules": []}))
+    def fake_request(method, url, **kwargs):
+        calls.append((method, url, kwargs["json"]))
+        return Response({"id": f"rule-{len(calls)}"})
+    monkeypatch.setattr(security_monitoring_routes.requests, "request", fake_request)
+
+    managed = security_monitoring_routes._ensure_cloudflare_rule(
+        "a" * 32, "http_request_firewall_managed", "token", {"action": "execute"}, "Iron AI · Cloudflare Managed WAF"
+    )
+    rate = security_monitoring_routes._ensure_cloudflare_rule(
+        "a" * 32, "http_ratelimit", "token", {"action": "block"}, "Iron AI · API rate limiting"
+    )
+    assert managed["created"] is True and rate["created"] is True
+    assert len(calls) == 2
 def test_approved_host_firewall_action_is_typed_reversible_and_sensor_scoped():
     db, user, organization, finding = _database()
     user.subscription_plan = "enterprise"
@@ -385,6 +411,48 @@ def test_manual_containment_uses_ready_host_firewall_and_rejects_unsafe_ip():
             request=None, context=context, db=db,
         )
     assert exc.value.status_code == 400
+
+
+def test_protection_allowlist_prevents_manual_containment():
+    db, user, organization, finding = _database()
+    user.subscription_plan = "enterprise"
+    organization.plan = "enterprise"
+    membership = db.query(OrganizationMember).filter_by(organization_id=organization.id, user_id=user.id).one()
+    db.add(SecuritySensor(
+        organization_id=organization.id, asset_id=finding.asset_id, name="Allowlist firewall",
+        key_prefix="iais_allowlist", key_hash="allowlist-hash", created_by=user.id,
+        last_seen_at=datetime.utcnow(), containment_enabled=True,
+    ))
+    db.commit()
+    context = TenantContext(user=user, organization=organization, membership=membership)
+    security_monitoring_routes.create_protection_allowlist(
+        security_monitoring_routes.ProtectionAllowlistCreate(asset_id=finding.asset_id, network="8.8.4.4", label="Equipe de operações"),
+        request=None, context=context, db=db,
+    )
+    with pytest.raises(HTTPException) as exc:
+        security_monitoring_routes.manual_containment(
+            security_monitoring_routes.ManualContainmentCreate(asset_id=finding.asset_id, ip_address="8.8.4.4", reason="Teste de proteção da allowlist"),
+            request=None, context=context, db=db,
+        )
+    assert exc.value.status_code == 409
+
+
+def test_security_alerts_are_queued_once_per_event_subscription():
+    db, user, organization, finding = _database()
+    user.subscription_plan = "enterprise"
+    organization.plan = "enterprise"
+    subscription = SecurityAlertSubscription(
+        organization_id=organization.id, channel="email", target_encrypted="encrypted", target_hint="ope…", minimum_severity="high", created_by=user.id,
+    )
+    db.add(subscription)
+    db.flush()
+    event = correlate_event(db, organization.id, finding.asset_id, None, classify_telemetry({
+        "signal": "web_scan", "source_ip": "8.8.8.8", "path": "/admin", "request_count": 30,
+    }))
+    assert validate_target("slack", "https://hooks.slack.com/services/test") == "https://hooks.slack.com/services/test"
+    assert queue_security_alerts(db, event) == 1
+    assert queue_security_alerts(db, event) == 0
+    assert db.query(SecurityAlertDelivery).filter_by(security_event_id=event.id).count() == 1
 
 
 def test_realtime_monitoring_rejects_starter_on_server():

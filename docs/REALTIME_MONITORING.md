@@ -56,7 +56,15 @@ Signals aceitos: `port_scan`, `web_scan`, `reconnaissance`, `brute_force`, `cred
 
 ## Contenção Cloudflare
 
-Em `Monitoramento > Ativar proteção guiada > Conectar o Cloudflare`, informe o domínio e um API Token restrito com leitura da zona e escrita de regras de acesso do firewall. A plataforma localiza o Zone ID automaticamente; o preenchimento manual continua disponível como opção avançada. A credencial é criptografada e nunca retorna ao navegador.
+Em `Monitoramento > Ativar proteção guiada > Conectar o Cloudflare`, informe o domínio e um API Token restrito com `Zone: Read`, permissão de regras de acesso para bloqueio de IP e `Zone WAF: Write` ou `Zone Rulesets: Write` para provisionar a proteção avançada. A plataforma localiza o Zone ID automaticamente; o preenchimento manual continua disponível como opção avançada. A credencial é criptografada e nunca retorna ao navegador.
+
+Ao concluir a conexão, a Iron AI provisiona pela API oficial do Cloudflare:
+
+- o Cloudflare Managed WAF (`http_request_firewall_managed`), usando o ruleset gerenciado oficial;
+- uma regra de rate limiting na fase `http_ratelimit`, limitada por IP e ponto de presença, inicialmente para caminhos `/api/`, com 120 requisições por 60 segundos e mitigação de 5 minutos;
+- o estado e os identificadores das regras na integração e na auditoria.
+
+Se o token só tiver permissão para consultar a zona ou criar bloqueios de IP, a conexão será salva, mas o painel informará que o WAF/rate limiting não pôde ser provisionado. Nesse caso, ajuste o escopo do token e reconecte. Regras com o mesmo marcador não são duplicadas em novas tentativas.
 
 O bloqueio nunca é automático: owner ou admin precisa confirmar cada IP. A ação cria uma IP Access Rule real no Cloudflare, fica registrada na auditoria e pode ser removida pelo mesmo incidente.
 
@@ -64,7 +72,7 @@ O bloqueio nunca é automático: owner ou admin precisa confirmar cada IP. A aç
 
 O botão `Bloquear IP` não exige que o operador escolha um provedor:
 
-1. Se o Cloudflare estiver conectado, a origem é bloqueada no edge para o domínio protegido.
+1. Se o Cloudflare estiver conectado, a origem é bloqueada no edge para o domínio protegido; o Managed WAF e o rate limiting permanecem ativos independentemente dos bloqueios manuais.
 2. Se houver um sensor ativo com firewall habilitado no servidor do ativo, uma regra local temporária também é enfileirada.
 3. Se apenas uma dessas camadas estiver disponível, a plataforma usa somente essa camada e informa a cobertura real.
 
@@ -73,6 +81,12 @@ Cloudflare não protege SSH, banco de dados, portas diretas ou domínios que nã
 ## Teste seguro do bloqueio real
 
 O teste assistido não exige instalar o sensor. Ele precisa apenas de uma camada pronta — Cloudflare ou firewall do servidor — e de um ativo cadastrado.
+
+## Alertas fora do painel
+
+Em `Monitoramento > Alertas`, o owner/admin pode cadastrar e testar destinos de e-mail, Slack, Microsoft Teams ou PagerDuty. Os destinos ficam criptografados; a plataforma mostra somente uma dica parcial. Alertas de severidade alta e crítica são colocados em uma fila durável e enviados pelo worker, com até cinco tentativas. Uma falha de SMTP ou webhook não interrompe a ingestão de telemetria nem a contenção.
+
+Para e-mail em produção, configure `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD` e `FROM_EMAIL` no serviço web do Render. O worker precisa usar as mesmas variáveis somente se o e-mail for escolhido como canal. Webhooks Slack/Teams e PagerDuty são armazenados por organização e testados antes do uso.
 
 1. Em `Monitoramento > Ativar proteção guiada`, conecte o Cloudflare. Se preferir bloquear diretamente no servidor, conecte o sensor como opção avançada.
 2. Clique em `Testar agora` e depois em `Criar link de teste`.

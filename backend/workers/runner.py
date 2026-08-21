@@ -9,16 +9,18 @@ from services.job_service import claim_next_job
 from services.report_service import generate_report
 from services.web_scan_service import execute_web_scan
 from services.heartbeat_service import beat
+from services.alert_service import deliver_pending_alerts
 
 
 def process_one() -> bool:
     db = SessionLocal()
     try:
         beat(db, "worker")
+        delivered = deliver_pending_alerts(db)
         db.commit()
         job = claim_next_job(db)
         if not job:
-            return False
+            return delivered > 0
         try:
             if job.scanner_type in {"web_security_scan", "authenticated_web_scan"}:
                 execute_web_scan(db, job)

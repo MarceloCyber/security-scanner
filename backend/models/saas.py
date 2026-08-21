@@ -375,6 +375,65 @@ class SecuritySensor(Base):
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
 
 
+class ProtectionAllowlist(Base):
+    """Tenant-owned IP/CIDR exceptions that containment must never block."""
+
+    __tablename__ = "protection_allowlist"
+    __table_args__ = (
+        UniqueConstraint("organization_id", "asset_id", "network", name="uq_protection_allowlist_scope_network"),
+        Index("ix_protection_allowlist_org_active", "organization_id", "active"),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    organization_id = Column(Integer, ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False, index=True)
+    asset_id = Column(Integer, ForeignKey("assets.id", ondelete="CASCADE"), nullable=True, index=True)
+    network = Column(String(64), nullable=False)
+    label = Column(String(160), nullable=False)
+    active = Column(Boolean, nullable=False, default=True)
+    created_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+
+
+class SecurityAlertSubscription(Base):
+    """Encrypted destination used for asynchronous security notifications."""
+
+    __tablename__ = "security_alert_subscriptions"
+    __table_args__ = (Index("ix_security_alert_subscriptions_org_enabled", "organization_id", "enabled"),)
+
+    id = Column(Integer, primary_key=True, index=True)
+    organization_id = Column(Integer, ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False, index=True)
+    channel = Column(String(20), nullable=False)  # email, slack, teams, pagerduty
+    target_encrypted = Column(Text, nullable=False)
+    target_hint = Column(String(160), nullable=True)
+    minimum_severity = Column(String(20), nullable=False, default="high")
+    enabled = Column(Boolean, nullable=False, default=True)
+    created_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    last_sent_at = Column(DateTime, nullable=True)
+    last_error = Column(Text, nullable=True)
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+
+
+class SecurityAlertDelivery(Base):
+    """Durable, deduplicated alert delivery queue."""
+
+    __tablename__ = "security_alert_deliveries"
+    __table_args__ = (
+        UniqueConstraint("subscription_id", "dedupe_key", name="uq_security_alert_delivery_subscription_key"),
+        Index("ix_security_alert_deliveries_status_created", "status", "created_at"),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    organization_id = Column(Integer, ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False, index=True)
+    subscription_id = Column(Integer, ForeignKey("security_alert_subscriptions.id", ondelete="CASCADE"), nullable=False, index=True)
+    security_event_id = Column(Integer, ForeignKey("security_events.id", ondelete="SET NULL"), nullable=True, index=True)
+    dedupe_key = Column(String(160), nullable=False)
+    status = Column(String(20), nullable=False, default="queued")
+    attempts = Column(Integer, nullable=False, default=0)
+    error = Column(Text, nullable=True)
+    sent_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+
+
 class SensorEnrollment(Base):
     """Short-lived, single-use token used to install a sensor on an asset."""
 

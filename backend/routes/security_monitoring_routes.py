@@ -145,7 +145,7 @@ def _cloudflare_connection(db: Session, organization_id: int):
     return integration, _vault().decrypt(credential.encrypted_secret)
 
 
-def _event_dict(event: SecurityEvent, asset_name: str | None = None, containment_action_id: int | None = None, containment_provider: str | None = None) -> dict:
+def _event_dict(event: SecurityEvent, asset_name: str | None = None, containment_action_id: int | None = None, containment_provider: str | None = None, containment_available: bool | None = None) -> dict:
     return {
         "id": event.id, "asset_id": event.asset_id, "asset_name": asset_name,
         "event_type": event.event_type, "severity": event.severity, "title": event.title,
@@ -156,6 +156,7 @@ def _event_dict(event: SecurityEvent, asset_name: str | None = None, containment
         "containment_status": event.containment_status, "occurrence_count": event.occurrence_count,
         "containment_action_id": containment_action_id,
         "containment_provider": containment_provider,
+        "containment_available": containment_available,
         "first_seen_at": event.first_seen_at.isoformat(), "last_seen_at": event.last_seen_at.isoformat(),
     }
 
@@ -517,7 +518,21 @@ def monitoring_overview(since_id: int = 0, context: TenantContext = Depends(get_
     waf = db.query(Integration).filter(Integration.organization_id == context.organization.id, Integration.provider == "cloudflare_waf", Integration.status == "connected").first()
     actions = db.query(ContainmentAction).filter(ContainmentAction.organization_id == context.organization.id, ContainmentAction.status.in_(["approved", "executed", "release_pending"])).order_by(ContainmentAction.created_at.asc()).all()
     action_by_event = {item.security_event_id: item for item in actions if item.security_event_id}
-    events = [_event_dict(event, asset_name, action_by_event[event.id].id if event.id in action_by_event else None, action_by_event[event.id].provider if event.id in action_by_event else None) for event, asset_name in rows]
+    host_firewall_assets = {
+        asset_id for (asset_id,) in db.query(SecuritySensor.asset_id).filter(
+            SecuritySensor.organization_id == context.organization.id,
+            SecuritySensor.revoked_at.is_(None),
+            SecuritySensor.containment_enabled.is_(True),
+            SecuritySensor.last_seen_at >= datetime.utcnow() - timedelta(minutes=5),
+        ).all()
+    }
+    events = [_event_dict(
+        event,
+        asset_name,
+        action_by_event[event.id].id if event.id in action_by_event else None,
+        action_by_event[event.id].provider if event.id in action_by_event else None,
+        bool(waf or event.asset_id in host_firewall_assets),
+    ) for event, asset_name in rows]
     return {"events": events, "metrics": {"open": open_count, "critical": critical_count, "last_24h": last_24h, "active_sensors": active_sensors, "host_firewalls": host_firewalls, "active_blocks": active_blocks}, "cloudflare_connected": bool(waf), "host_firewall_ready": host_firewalls > 0, "latest_id": max([event["id"] for event in events], default=since_id)}
 
 

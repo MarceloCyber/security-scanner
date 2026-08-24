@@ -7,7 +7,7 @@ import requests
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from models.saas import SecurityAlertDelivery, SecurityAlertSubscription, SecurityEvent
+from models.saas import SecurityAlertDelivery, SecurityAlertSubscription, SecurityEvent, SiemAlertDelivery, SiemIncident
 from services.credential_vault import CredentialVault
 from utils.email_service import email_service
 
@@ -125,5 +125,26 @@ def deliver_pending_alerts(db: Session, limit: int = 20) -> int:
             delivery.status = "retry" if delivery.attempts < 5 else "failed"
             delivery.error = str(exc)[:1000]
             subscription.last_error = delivery.error
+    db.commit()
+    return sent
+
+
+def deliver_pending_siem_alerts(db: Session, limit: int = 20) -> int:
+    """Deliver native SIEM incidents through the same configured channels."""
+    deliveries = db.query(SiemAlertDelivery).filter(SiemAlertDelivery.status == "queued", SiemAlertDelivery.attempts < 5).order_by(SiemAlertDelivery.created_at.asc()).limit(limit).all()
+    sent = 0
+    for delivery in deliveries:
+        subscription = db.query(SecurityAlertSubscription).filter(SecurityAlertSubscription.id == delivery.subscription_id, SecurityAlertSubscription.enabled.is_(True)).first()
+        incident = db.query(SiemIncident).filter(SiemIncident.id == delivery.incident_id).first()
+        if not subscription or not incident:
+            delivery.status = "failed"; delivery.error = "Assinatura ou incidente indisponível"; continue
+        delivery.attempts += 1
+        payload = {"id": incident.id, "severity": incident.severity, "title": incident.title, "description": incident.description,
+                   "source_ip": "não informado", "path": "SIEM", "request_count": 1, "detected_at": incident.last_seen_at.isoformat()}
+        try:
+            _send(subscription, payload)
+            delivery.status = "sent"; delivery.sent_at = datetime.utcnow(); subscription.last_sent_at = delivery.sent_at; subscription.last_error = None; sent += 1
+        except Exception as exc:
+            delivery.status = "retry" if delivery.attempts < 5 else "failed"; delivery.error = str(exc)[:1000]; subscription.last_error = delivery.error
     db.commit()
     return sent

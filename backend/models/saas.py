@@ -283,6 +283,166 @@ class ComplianceAttestation(Base):
     updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 
+class SecurityPolicy(Base):
+    """Tenant-owned security policy with a controlled lifecycle."""
+
+    __tablename__ = "security_policies"
+    __table_args__ = (
+        UniqueConstraint("organization_id", "slug", name="uq_security_policy_org_slug"),
+        Index("ix_security_policies_org_status", "organization_id", "status"),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    organization_id = Column(Integer, ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False, index=True)
+    slug = Column(String(120), nullable=False)
+    title = Column(String(255), nullable=False)
+    description = Column(Text, nullable=True)
+    owner_user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    status = Column(String(20), nullable=False, default="draft")
+    review_interval_days = Column(Integer, nullable=False, default=365)
+    next_review_at = Column(DateTime, nullable=True)
+    published_version_id = Column(Integer, nullable=True)
+    created_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class SecurityPolicyVersion(Base):
+    """Immutable policy content version; edits always create a new version."""
+
+    __tablename__ = "security_policy_versions"
+    __table_args__ = (UniqueConstraint("policy_id", "version", name="uq_security_policy_version"),)
+
+    id = Column(Integer, primary_key=True, index=True)
+    organization_id = Column(Integer, ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False, index=True)
+    policy_id = Column(Integer, ForeignKey("security_policies.id", ondelete="CASCADE"), nullable=False, index=True)
+    version = Column(Integer, nullable=False)
+    content = Column(Text, nullable=False)
+    change_summary = Column(String(500), nullable=True)
+    created_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    approved_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    approved_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+
+
+class SecurityPolicyAcknowledgement(Base):
+    """Evidence that a member acknowledged the currently published version."""
+
+    __tablename__ = "security_policy_acknowledgements"
+    __table_args__ = (UniqueConstraint("version_id", "user_id", name="uq_policy_ack_version_user"),)
+
+    id = Column(Integer, primary_key=True, index=True)
+    organization_id = Column(Integer, ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False, index=True)
+    policy_id = Column(Integer, ForeignKey("security_policies.id", ondelete="CASCADE"), nullable=False, index=True)
+    version_id = Column(Integer, ForeignKey("security_policy_versions.id", ondelete="CASCADE"), nullable=False, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    acknowledged_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+
+
+class SiemSource(Base):
+    """Credentialed source for generic SIEM event ingestion."""
+
+    __tablename__ = "siem_sources"
+    __table_args__ = (Index("ix_siem_sources_org_active", "organization_id", "revoked_at"),)
+
+    id = Column(Integer, primary_key=True, index=True)
+    organization_id = Column(Integer, ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False, index=True)
+    asset_id = Column(Integer, ForeignKey("assets.id", ondelete="SET NULL"), nullable=True, index=True)
+    name = Column(String(160), nullable=False)
+    source_type = Column(String(40), nullable=False, default="generic")
+    key_prefix = Column(String(24), nullable=False, index=True)
+    key_hash = Column(String(64), nullable=False, unique=True)
+    config = Column(JSON, nullable=True)
+    created_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    last_seen_at = Column(DateTime, nullable=True)
+    revoked_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+
+
+class SiemRule(Base):
+    """Declarative, tenant-scoped detection rule evaluated on normalized events."""
+
+    __tablename__ = "siem_rules"
+    __table_args__ = (Index("ix_siem_rules_org_enabled", "organization_id", "enabled"),)
+
+    id = Column(Integer, primary_key=True, index=True)
+    organization_id = Column(Integer, ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False, index=True)
+    name = Column(String(160), nullable=False)
+    description = Column(Text, nullable=True)
+    severity = Column(String(20), nullable=False, default="high")
+    conditions = Column(JSON, nullable=False, default=dict)
+    enabled = Column(Boolean, nullable=False, default=True)
+    created_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+
+
+class SiemEvent(Base):
+    """Normalized SIEM event retained for investigation and rule evidence."""
+
+    __tablename__ = "siem_events"
+    __table_args__ = (
+        Index("ix_siem_events_org_received", "organization_id", "received_at"),
+        Index("ix_siem_events_org_type", "organization_id", "event_type"),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    organization_id = Column(Integer, ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False, index=True)
+    source_id = Column(Integer, ForeignKey("siem_sources.id", ondelete="SET NULL"), nullable=True, index=True)
+    asset_id = Column(Integer, ForeignKey("assets.id", ondelete="SET NULL"), nullable=True, index=True)
+    event_type = Column(String(80), nullable=False)
+    severity = Column(String(20), nullable=False, default="informational")
+    occurred_at = Column(DateTime, nullable=False, default=datetime.utcnow, index=True)
+    received_at = Column(DateTime, nullable=False, default=datetime.utcnow, index=True)
+    source_ip = Column(String(64), nullable=True, index=True)
+    user_name = Column(String(255), nullable=True)
+    action = Column(String(120), nullable=True)
+    outcome = Column(String(40), nullable=True)
+    message = Column(Text, nullable=True)
+    payload = Column(JSON, nullable=False, default=dict)
+    fingerprint = Column(String(64), nullable=False, index=True)
+    matched_rule_ids = Column(JSON, nullable=False, default=list)
+
+
+class SiemIncident(Base):
+    """Investigation case opened by one or more SIEM rule matches."""
+
+    __tablename__ = "siem_incidents"
+    __table_args__ = (Index("ix_siem_incidents_org_status", "organization_id", "status"),)
+
+    id = Column(Integer, primary_key=True, index=True)
+    organization_id = Column(Integer, ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False, index=True)
+    rule_id = Column(Integer, ForeignKey("siem_rules.id", ondelete="SET NULL"), nullable=True, index=True)
+    event_id = Column(Integer, ForeignKey("siem_events.id", ondelete="SET NULL"), nullable=True, index=True)
+    title = Column(String(255), nullable=False)
+    description = Column(Text, nullable=False)
+    severity = Column(String(20), nullable=False)
+    status = Column(String(24), nullable=False, default="open")
+    assigned_to = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    resolution = Column(Text, nullable=True)
+    first_seen_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    last_seen_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    resolved_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+
+
+class SiemAlertDelivery(Base):
+    """Durable delivery record for SIEM incidents using alert subscriptions."""
+
+    __tablename__ = "siem_alert_deliveries"
+    __table_args__ = (UniqueConstraint("subscription_id", "incident_id", name="uq_siem_alert_subscription_incident"),)
+
+    id = Column(Integer, primary_key=True, index=True)
+    organization_id = Column(Integer, ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False, index=True)
+    subscription_id = Column(Integer, ForeignKey("security_alert_subscriptions.id", ondelete="CASCADE"), nullable=False, index=True)
+    incident_id = Column(Integer, ForeignKey("siem_incidents.id", ondelete="CASCADE"), nullable=False, index=True)
+    status = Column(String(20), nullable=False, default="queued")
+    attempts = Column(Integer, nullable=False, default=0)
+    error = Column(Text, nullable=True)
+    sent_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+
+
 class AuthenticatedScanProfile(Base):
     __tablename__ = "authenticated_scan_profiles"
     __table_args__ = (UniqueConstraint("organization_id", "asset_id", name="uq_auth_scan_org_asset"),)

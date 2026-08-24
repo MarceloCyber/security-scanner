@@ -1,22 +1,34 @@
 import argparse
+import os
 import time
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from database import SessionLocal
-from models.saas import ScanJob
+from models.saas import ScanJob, SiemEvent
 from risk.engine import create_snapshot
 from services.job_service import claim_next_job
 from services.report_service import generate_report
 from services.web_scan_service import execute_web_scan
 from services.heartbeat_service import beat
-from services.alert_service import deliver_pending_alerts
+from services.alert_service import deliver_pending_alerts, deliver_pending_siem_alerts
+
+
+def purge_expired_siem_events(db) -> int:
+    """Keep raw SIEM payloads bounded while retaining incident records."""
+    try:
+        days = min(max(int(os.getenv("SIEM_RETENTION_DAYS", "90")), 7), 3650)
+    except ValueError:
+        days = 90
+    cutoff = datetime.utcnow() - timedelta(days=days)
+    return db.query(SiemEvent).filter(SiemEvent.received_at < cutoff).delete(synchronize_session=False)
 
 
 def process_one() -> bool:
     db = SessionLocal()
     try:
         beat(db, "worker")
-        delivered = deliver_pending_alerts(db)
+        purge_expired_siem_events(db)
+        delivered = deliver_pending_alerts(db) + deliver_pending_siem_alerts(db)
         db.commit()
         job = claim_next_job(db)
         if not job:

@@ -28,7 +28,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from database import engine, Base
 from sqlalchemy import inspect, text
-from routes import auth_routes, scan_routes, extended_scan_routes, tools_routes, redteam_routes, blueteam_routes, payment_routes, user_routes, admin_routes, viggio_shield_routes, saas_routes, risk_routes, ai_routes, job_routes, report_routes, integration_routes, ai_action_routes, platform_routes, pipeline_routes, compliance_routes, assurance_routes, sso_routes, security_monitoring_routes
+from routes import auth_routes, scan_routes, extended_scan_routes, tools_routes, redteam_routes, blueteam_routes, payment_routes, user_routes, admin_routes, viggio_shield_routes, saas_routes, risk_routes, ai_routes, job_routes, report_routes, integration_routes, ai_action_routes, platform_routes, pipeline_routes, compliance_routes, assurance_routes, sso_routes, security_monitoring_routes, policy_routes, siem_routes
 from utils.email_service import email_service
 from models.public_stats import PublicStats
 from auth import require_enterprise, require_enterprise_developer
@@ -441,6 +441,8 @@ app.include_router(compliance_routes.router, prefix="/api", tags=["Iron AI Compl
 app.include_router(assurance_routes.router, prefix="/api", tags=["Operations and Assurance"])
 app.include_router(sso_routes.router, prefix="/api", tags=["Enterprise SSO"])
 app.include_router(security_monitoring_routes.router, prefix="/api", tags=["Realtime Security Monitoring"])
+app.include_router(policy_routes.router, prefix="/api", tags=["Security Policies"])
+app.include_router(siem_routes.router, prefix="/api", tags=["Native SIEM"])
 
 # Rota de redirecionamento curto (sem /api para links públicos)
 @app.get("/p/{short_id}")

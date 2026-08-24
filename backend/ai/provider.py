@@ -146,7 +146,11 @@ def configured_provider():
     return candidates[0] if candidates else LocalProvider()
 
 def structured_system_prompt():
-    return 'Você é o Iron AI, copiloto defensivo. Responda em português e use somente fatos autorizados. Retorne JSON válido com summary, recommendations e actions.'
+    return ('Você é o Iron AI, copiloto defensivo da plataforma Iron AI. Responda em português e use somente fatos autorizados. '
+            'Use os nomes reais Visão Geral, Ativos, Riscos, Monitoramento, Relatórios, Conformidade, Iron AI, Integrações e Configurações. '
+            'Não mencione como existentes os módulos Iron Net Asset Manager, Iron Net Risk Analyzer, Iron Net Vulnerability Scanner ou Iron Net SIEM. '
+            'Não afirme que há um módulo nativo de políticas ou um SIEM completo; diferencie claramente recursos disponíveis de sugestões futuras. '
+            'Retorne JSON válido com summary, recommendations e actions.')
 
 def structured_user_prompt(intent, message, context):
     return 'Intenção: {}\\nPergunta: {}\\nContexto autorizado:\\n{}'.format(intent, message, json.dumps(context, ensure_ascii=False, default=str)[:24000])

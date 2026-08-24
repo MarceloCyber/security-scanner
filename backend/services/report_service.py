@@ -14,7 +14,11 @@ from reportlab.lib.units import mm
 from reportlab.platypus import HRFlowable, Image, PageBreak, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 from sqlalchemy.orm import Session
 
-from models.saas import Asset, Finding, Integration, Organization, RemediationTask, Report, ScanJob, SecuritySnapshot
+from models.saas import (
+    Asset, AuditLog, Finding, Integration, Organization, OrganizationMember, RemediationTask, Report, ScanJob,
+    SecurityEvent, SecurityPolicy, SecurityPolicyAcknowledgement, SecurityPolicyVersion, SecuritySnapshot,
+    SiemEvent, SiemIncident, SiemRule, SiemSource,
+)
 from models.user import User
 from risk.engine import organization_security_score
 from services.compliance_service import compliance_summary
@@ -70,7 +74,7 @@ def _recommendations(metrics, compliance, tasks):
 
 
 def generate_report(db: Session, organization_id: int, user_id: int, report_type: str, period_days: int = 30) -> Report:
-    if report_type not in {"executive", "technical"}:
+    if report_type not in {"executive", "technical", "general"}:
         raise ValueError("Unsupported report type")
     period_days = min(max(period_days, 1), 365)
     generated_at = datetime.utcnow()
@@ -124,7 +128,7 @@ def generate_report(db: Session, organization_id: int, user_id: int, report_type
         "integrations": [{"provider": item.provider, "status": item.status, "last_synced_at": _iso(item.last_synced_at)} for item in integrations],
         "trend": trend, "executive_summary": narrative, "recommendations": _recommendations(metrics, compliance, remediation), "top_risks": top_risks,
     }
-    if report_type == "technical":
+    if report_type in {"technical", "general"}:
         payload["assets"] = [{"id": item.id, "name": _asset_label(item), "type": item.type, "environment": item.environment, "criticality": item.criticality, "internet_exposed": item.internet_exposed, "status": item.status, "last_seen_at": _iso(item.last_seen_at)} for item in assets]
         payload["scan_jobs"] = [{"id": item.id, "asset_id": item.asset_id, "scanner_type": item.scanner_type, "status": item.status, "progress": item.progress, "error": item.error, "created_at": _iso(item.created_at), "completed_at": _iso(item.completed_at)} for item in scans[:200]]
         payload["findings_detail"] = [{
@@ -134,6 +138,42 @@ def generate_report(db: Session, organization_id: int, user_id: int, report_type
             "cve": item.cve, "cwe": item.cwe, "cvss": item.cvss_score, "confidence": item.confidence,
             "occurrence_count": item.occurrence_count, "first_seen_at": _iso(item.first_seen_at), "last_seen_at": _iso(item.last_seen_at), "remediation": item.remediation,
         } for item in findings[:500]]
+    if report_type == "general":
+        policies = db.query(SecurityPolicy).filter(SecurityPolicy.organization_id == organization_id).order_by(SecurityPolicy.title.asc()).all()
+        policy_ids = [item.id for item in policies]
+        versions = db.query(SecurityPolicyVersion).filter(SecurityPolicyVersion.organization_id == organization_id).order_by(SecurityPolicyVersion.policy_id.asc(), SecurityPolicyVersion.version.desc()).all() if policy_ids else []
+        acknowledgements = db.query(SecurityPolicyAcknowledgement).filter(SecurityPolicyAcknowledgement.organization_id == organization_id).all()
+        sources = db.query(SiemSource).filter(SiemSource.organization_id == organization_id).order_by(SiemSource.created_at.desc()).all()
+        rules = db.query(SiemRule).filter(SiemRule.organization_id == organization_id).order_by(SiemRule.created_at.desc()).all()
+        siem_events = db.query(SiemEvent).filter(SiemEvent.organization_id == organization_id, SiemEvent.received_at >= since).order_by(SiemEvent.received_at.desc()).limit(500).all()
+        incidents = db.query(SiemIncident).filter(SiemIncident.organization_id == organization_id, SiemIncident.created_at >= since).order_by(SiemIncident.created_at.desc()).limit(200).all()
+        security_events = db.query(SecurityEvent).filter(SecurityEvent.organization_id == organization_id, SecurityEvent.created_at >= since).order_by(SecurityEvent.created_at.desc()).limit(500).all()
+        audit_logs = db.query(AuditLog).filter(AuditLog.organization_id == organization_id, AuditLog.created_at >= since).order_by(AuditLog.created_at.desc()).limit(1000).all()
+        members = db.query(OrganizationMember).filter(OrganizationMember.organization_id == organization_id).order_by(OrganizationMember.role.asc()).all()
+        versions_by_policy = {}
+        for version in versions:
+            versions_by_policy.setdefault(version.policy_id, []).append({
+                "id": version.id, "version": version.version, "content": version.content,
+                "change_summary": version.change_summary, "created_by": version.created_by,
+                "approved_by": version.approved_by, "approved_at": _iso(version.approved_at), "created_at": _iso(version.created_at),
+            })
+        payload["platform_inventory"] = {
+            "assets": payload.get("assets", []), "findings": payload.get("findings_detail", []),
+            "scan_jobs": payload.get("scan_jobs", []),
+            "remediation_tasks": [{"id": item.id, "finding_id": item.finding_id, "title": item.title, "description": item.description, "priority": item.priority, "status": item.status, "assigned_to": item.assigned_to, "due_date": _iso(item.due_date), "created_at": _iso(item.created_at), "completed_at": _iso(item.completed_at)} for item in tasks],
+            "snapshots": trend,
+            "integrations": payload.get("integrations", []),
+            "organization_members": [{"id": item.id, "user_id": item.user_id, "role": item.role, "created_at": _iso(item.created_at)} for item in members],
+        }
+        payload["governance"] = {"policies": [{"id": item.id, "slug": item.slug, "title": item.title, "description": item.description, "owner_user_id": item.owner_user_id, "status": item.status, "review_interval_days": item.review_interval_days, "next_review_at": _iso(item.next_review_at), "published_version_id": item.published_version_id, "created_by": item.created_by, "created_at": _iso(item.created_at), "updated_at": _iso(item.updated_at), "versions": versions_by_policy.get(item.id, []), "acknowledgements": sum(1 for ack in acknowledgements if ack.policy_id == item.id), "acknowledgement_details": [{"version_id": ack.version_id, "user_id": ack.user_id, "acknowledged_at": _iso(ack.acknowledged_at)} for ack in acknowledgements if ack.policy_id == item.id]} for item in policies]}
+        payload["siem"] = {
+            "sources": [{"id": item.id, "asset_id": item.asset_id, "name": item.name, "source_type": item.source_type, "key_prefix": item.key_prefix, "config": item.config or {}, "last_seen_at": _iso(item.last_seen_at), "revoked_at": _iso(item.revoked_at), "created_at": _iso(item.created_at)} for item in sources],
+            "rules": [{"id": item.id, "name": item.name, "description": item.description, "severity": item.severity, "conditions": item.conditions, "enabled": item.enabled, "created_by": item.created_by, "created_at": _iso(item.created_at), "updated_at": _iso(item.updated_at)} for item in rules],
+            "events": [{"id": item.id, "source_id": item.source_id, "asset_id": item.asset_id, "event_type": item.event_type, "severity": item.severity, "occurred_at": _iso(item.occurred_at), "received_at": _iso(item.received_at), "source_ip": item.source_ip, "user_name": item.user_name, "action": item.action, "outcome": item.outcome, "message": item.message, "payload": item.payload, "matched_rule_ids": item.matched_rule_ids} for item in siem_events],
+            "incidents": [{"id": item.id, "rule_id": item.rule_id, "event_id": item.event_id, "title": item.title, "description": item.description, "severity": item.severity, "status": item.status, "assigned_to": item.assigned_to, "resolution": item.resolution, "first_seen_at": _iso(item.first_seen_at), "last_seen_at": _iso(item.last_seen_at), "resolved_at": _iso(item.resolved_at), "created_at": _iso(item.created_at)} for item in incidents],
+        }
+        payload["monitoring"] = [{"id": item.id, "asset_id": item.asset_id, "event_type": item.event_type, "severity": item.severity, "title": item.title, "description": item.description, "source_ip": item.source_ip, "request_path": item.request_path, "status_code": item.status_code, "request_count": item.request_count, "evidence": item.evidence_json, "status": item.status, "containment_status": item.containment_status, "occurrence_count": item.occurrence_count, "first_seen_at": _iso(item.first_seen_at), "last_seen_at": _iso(item.last_seen_at), "created_at": _iso(item.created_at)} for item in security_events]
+        payload["audit"] = [{"id": item.id, "user_id": item.user_id, "action": item.action, "resource_type": item.resource_type, "resource_id": item.resource_id, "ip_address": item.ip_address, "metadata": item.metadata_json or {}, "created_at": _iso(item.created_at)} for item in audit_logs]
     report = Report(organization_id=organization_id, created_by=user_id, report_type=report_type, period_days=period_days, payload=payload)
     db.add(report)
     db.flush()
@@ -197,7 +237,7 @@ def _header_footer(canvas, document, payload):
 
 
 def _cover(story, report, payload, styles):
-    report_name = "Relatório Executivo de Segurança" if report.report_type == "executive" else "Relatório Técnico de Segurança"
+    report_name = {"executive": "Relatório Executivo de Segurança", "technical": "Relatório Técnico de Segurança", "general": "Relatório Geral Completo da Plataforma"}.get(report.report_type, "Relatório de Segurança")
     story.append(Spacer(1, 13 * mm))
     if LOGO_PATH.exists():
         logo = Image(str(LOGO_PATH), width=20 * mm, height=20 * mm)
@@ -347,6 +387,38 @@ def _technical_operations(story, payload, styles):
     story.extend([table, Paragraph("Observações de uso", styles["h2"]), _text("Este documento é uma fotografia técnica dos registros da plataforma. Evidências devem ser validadas no contexto do ativo antes da aplicação de correções. Ausência de findings não comprova ausência de vulnerabilidades; cobertura depende dos ativos cadastrados, integrações e scanners executados.", styles["body"])])
 
 
+def _general_governance_and_siem(story, payload, styles):
+    governance = payload.get("governance") or {}
+    _section(story, "5. Governança, políticas e conformidade", styles)
+    policy_rows = [[_text("POLÍTICA", styles["table_header"]), _text("STATUS", styles["table_header"]), _text("VERSÃO PUBLICADA", styles["table_header"]), _text("ACEITES", styles["table_header"]), _text("PRÓXIMA REVISÃO", styles["table_header"])]]
+    for policy in governance.get("policies") or []:
+        published = next((item for item in policy.get("versions") or [] if item.get("id") == policy.get("published_version_id")), None)
+        policy_rows.append([_text(policy.get("title"), styles["table_bold"], 70), _text(policy.get("status"), styles["table"]), _text(published.get("version") if published else "—", styles["center"]), _text(policy.get("acknowledgements", 0), styles["center"]), _text(_date(policy.get("next_review_at")), styles["table"])])
+    if len(policy_rows) == 1:
+        policy_rows.append([_text("Nenhuma política cadastrada.", styles["table"]), "", "", "", ""])
+    policy_table = Table(policy_rows, colWidths=[61 * mm, 25 * mm, 31 * mm, 21 * mm, 31 * mm], repeatRows=1)
+    policy_table.setStyle(TableStyle([("BACKGROUND", (0, 0), (-1, 0), NAVY), ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, PANEL]), ("BOX", (0, 0), (-1, -1), 0.5, LINE), ("INNERGRID", (0, 0), (-1, -1), 0.35, LINE), ("VALIGN", (0, 0), (-1, -1), "TOP"), ("PADDING", (0, 0), (-1, -1), 5)]))
+    story.extend([policy_table, Paragraph("Detalhes dos itens", styles["h2"])])
+    for policy in governance.get("policies") or []:
+        story.extend([_text(f"{policy.get('title')} · {policy.get('slug')}", styles["table_bold"]), _text(policy.get("description") or "Sem descrição", styles["small"]), _text(f"Versões: {len(policy.get('versions') or [])} · Intervalo de revisão: {policy.get('review_interval_days') or '—'} dias", styles["small"])])
+    siem = payload.get("siem") or {}
+    _section(story, "6. SIEM nativo e monitoramento", styles, "Fontes, regras, eventos e incidentes persistidos no período selecionado.")
+    siem_rows = [[_text("INDICADOR", styles["table_header"]), _text("QUANTIDADE", styles["table_header"]), _text("DETALHE", styles["table_header"])]]
+    siem_rows.extend([[_text(label, styles["table_bold"]), _text(len(siem.get(key) or []), styles["center"]), _text(detail, styles["table"])] for label, key, detail in (("Fontes cadastradas", "sources", "Chaves identificadas apenas pelo prefixo"), ("Regras de detecção", "rules", "Condições declarativas avaliadas"), ("Eventos recebidos", "events", "Eventos normalizados no período"), ("Incidentes", "incidents", "Casos para investigação e resposta"), ("Sinais de monitoramento", "monitoring", "Telemetria defensiva correlacionada"))])
+    siem_table = Table(siem_rows, colWidths=[54 * mm, 27 * mm, 88 * mm], repeatRows=1)
+    siem_table.setStyle(TableStyle([("BACKGROUND", (0, 0), (-1, 0), NAVY), ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, PANEL]), ("BOX", (0, 0), (-1, -1), 0.5, LINE), ("INNERGRID", (0, 0), (-1, -1), 0.35, LINE), ("VALIGN", (0, 0), (-1, -1), "TOP"), ("PADDING", (0, 0), (-1, -1), 5)]))
+    story.extend([siem_table, Paragraph("Incidentes registrados", styles["h2"])])
+    incidents = siem.get("incidents") or []
+    incident_rows = [[_text("ID", styles["table_header"]), _text("TÍTULO", styles["table_header"]), _text("SEVERIDADE", styles["table_header"]), _text("STATUS", styles["table_header"]), _text("DATA", styles["table_header"])]]
+    for incident in incidents[:100]:
+        incident_rows.append([_text(f"#{incident.get('id')}", styles["table_bold"]), _text(incident.get("title"), styles["table"], 85), _text(SEVERITY_LABELS.get(incident.get("severity"), incident.get("severity")), styles["table"]), _text(STATUS_LABELS.get(incident.get("status"), incident.get("status")), styles["table"]), _text(_date(incident.get("created_at"), True), styles["table"])])
+    if len(incident_rows) == 1:
+        incident_rows.append([_text("Nenhum incidente registrado.", styles["table"]), "", "", "", ""])
+    incident_table = Table(incident_rows, colWidths=[15 * mm, 73 * mm, 26 * mm, 28 * mm, 27 * mm], repeatRows=1)
+    incident_table.setStyle(TableStyle([("BACKGROUND", (0, 0), (-1, 0), NAVY), ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, PANEL]), ("BOX", (0, 0), (-1, -1), 0.5, LINE), ("INNERGRID", (0, 0), (-1, -1), 0.35, LINE), ("VALIGN", (0, 0), (-1, -1), "TOP"), ("PADDING", (0, 0), (-1, -1), 5)]))
+    story.extend([incident_table, Paragraph("Auditoria da plataforma", styles["h2"]), _text(f"{len(payload.get('audit') or [])} registros de auditoria foram incluídos, juntamente com os dados de inventário, riscos, tarefas, integrações, membros e execução persistidos.", styles["body"])])
+
+
 def render_report_pdf(report: Report) -> bytes:
     output = BytesIO()
     styles = _styles()
@@ -359,6 +431,12 @@ def render_report_pdf(report: Report) -> bytes:
         _technical_assets(story, payload, styles)
         _technical_findings(story, payload, styles)
         _technical_operations(story, payload, styles)
+    elif report.report_type == "general":
+        _technical_summary(story, payload, styles)
+        _technical_assets(story, payload, styles)
+        _technical_findings(story, payload, styles)
+        _technical_operations(story, payload, styles)
+        _general_governance_and_siem(story, payload, styles)
     else:
         _render_executive(story, payload, styles)
     document.build(story, onFirstPage=lambda canvas, doc: _header_footer(canvas, doc, payload), onLaterPages=lambda canvas, doc: _header_footer(canvas, doc, payload))

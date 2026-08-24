@@ -28,6 +28,17 @@ def list_reports(context: TenantContext = Depends(get_tenant_context), db: Sessi
     return {"reports": [{"id": report.id, "report_type": report.report_type, "period_days": report.period_days, "status": report.status, "created_at": report.created_at.isoformat()} for report in reports]}
 
 
+@router.delete("/reports/{report_id}")
+def delete_report(report_id: int, request: Request, context: TenantContext = Depends(require_roles("owner", "admin")), db: Session = Depends(get_db)):
+    report = db.query(Report).filter(Report.id == report_id, Report.organization_id == context.organization.id).first()
+    if not report:
+        raise HTTPException(status_code=404, detail="Report not found")
+    record_audit(db, context, "report_deleted", "report", report.id, request, {"type": report.report_type})
+    db.delete(report)
+    db.commit()
+    return {"deleted": True, "id": report_id}
+
+
 @router.get("/reports/{report_id}")
 def report_detail(report_id: int, context: TenantContext = Depends(get_tenant_context), db: Session = Depends(get_db)):
     report = db.query(Report).filter(Report.id == report_id, Report.organization_id == context.organization.id).first()

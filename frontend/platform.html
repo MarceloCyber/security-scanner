@@ -12,6 +12,9 @@
   <link rel="stylesheet" href="/css/sensor-install.css?v=1.6">
   <link rel="stylesheet" href="/css/ironnet-brand.css?v=1.3">
   <link rel="stylesheet" href="/css/policies-siem.css?v=1.0">
+  <style>
+    .report-types{grid-template-columns:repeat(3,minmax(0,1fr))}.report-type{display:flex;flex-direction:column}.report-type p{flex:1}.report-type.general{background:radial-gradient(circle at 100% 0,rgba(190,139,255,.13),transparent 42%),var(--surface)}.general .report-icon{background:rgba(190,139,255,.1);color:#c59bff}.report-actions{display:flex;align-items:center;gap:10px}.report-delete{color:var(--muted)}.report-delete:hover{color:var(--red)}@media(max-width:1100px){.report-types{grid-template-columns:1fr 1fr}}@media(max-width:520px){.report-types{grid-template-columns:1fr}}
+  </style>
 </head>
 <body>
   <div class="app-loading" id="app-loading"><div class="brand-mark"><i class="fa-solid fa-shield-halved"></i></div><div class="loading-line"></div><p>Preparando sua visão de segurança...</p></div>
@@ -97,7 +100,7 @@
 
     <section class="view" id="view-reports">
       <div class="view-heading"><div><span class="eyebrow">COMUNICAÇÃO</span><h1>Relatórios</h1><p>Visões executivas e técnicas construídas com métricas reais.</p></div></div>
-      <div class="report-types"><article class="report-type executive"><div class="report-icon"><i class="fa-solid fa-chart-pie"></i></div><span>PARA GESTÃO</span><h2>Relatório Executivo</h2><p>Score, tendência, principais riscos e progresso em linguagem de negócio.</p><button class="primary-button" data-generate-report="executive">Gerar relatório</button></article><article class="report-type technical"><div class="report-icon"><i class="fa-solid fa-code"></i></div><span>PARA TIMES TÉCNICOS</span><h2>Relatório Técnico</h2><p>Evidências, CVEs, score, scanners e orientações detalhadas.</p><button class="secondary-button" data-generate-report="technical">Gerar relatório</button></article></div>
+      <div class="report-types"><article class="report-type executive"><div class="report-icon"><i class="fa-solid fa-chart-pie"></i></div><span>PARA GESTÃO</span><h2>Relatório Executivo</h2><p>Score, tendência, principais riscos e progresso em linguagem de negócio.</p><button class="primary-button" data-generate-report="executive">Gerar relatório</button></article><article class="report-type technical"><div class="report-icon"><i class="fa-solid fa-code"></i></div><span>PARA TIMES TÉCNICOS</span><h2>Relatório Técnico</h2><p>Evidências, CVEs, score, scanners e orientações detalhadas.</p><button class="secondary-button" data-generate-report="technical">Gerar relatório</button></article><article class="report-type general"><div class="report-icon"><i class="fa-solid fa-layer-group"></i></div><span>VISÃO COMPLETA</span><h2>Relatório Geral</h2><p>Todos os dados da plataforma: ativos, riscos, tarefas, políticas, SIEM, monitoramento e auditoria.</p><button class="secondary-button" data-generate-report="general">Gerar relatório completo</button></article></div>
       <article class="panel"><div class="panel-header"><div><span class="eyebrow">HISTÓRICO</span><h2>Relatórios gerados</h2></div></div><div id="reports-list" class="reports-list"></div></article>
     </section>
 

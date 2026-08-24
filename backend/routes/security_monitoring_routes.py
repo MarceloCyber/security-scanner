@@ -26,6 +26,7 @@ from services.alert_service import _send, queue_security_alerts, validate_target
 from services.credential_vault import CredentialVault
 from services.rate_limit import rate_limit_backend
 from services.security_monitoring_service import classify_telemetry, correlate_event, is_blockable_ip, safe_source_ip
+from services.siem_service import mirror_security_event
 from services.tenant import TenantContext, get_tenant_context, require_roles
 from services.plan_policy import REALTIME_MONITORING_PLANS, normalize_plan
 
@@ -499,6 +500,7 @@ def ingest_telemetry(payload: TelemetryBatch, request: Request, context: SensorC
             detected.append(correlate_event(db, context.organization.id, asset.id, context.sensor.id, classification))
     for event in detected:
         queue_security_alerts(db, event)
+        mirror_security_event(db, event)
     if detected:
         db.add(AuditLog(
             organization_id=context.organization.id, action="security_events_ingested", resource_type="security_sensor",
@@ -592,6 +594,7 @@ def open_containment_test(raw_token: str, request: Request, db: Session = Depend
     event.title = "Teste autorizado de bloqueio"
     event.description = f"Teste autorizado iniciado pelo administrador a partir do IP {source_ip}. Nenhum ataque foi executado."
     event.remediation = "Confira o IP de teste e aprove o bloqueio somente se ele pertencer à conexão usada no teste."
+    mirror_security_event(db, event)
     item.opened_at = datetime.utcnow()
     item.source_ip = source_ip
     item.security_event_id = event.id
@@ -972,6 +975,7 @@ def manual_containment(payload: ManualContainmentCreate, request: Request, conte
     event.description = f"Bloqueio solicitado por {context.user.username}: {payload.reason.strip()}"
     event.remediation = "Revise a evidência e remova o bloqueio quando a origem deixar de representar risco."
     event.evidence_json = {"source": "manual_approval", "reason": payload.reason.strip(), "requested_by": context.user.id}
+    mirror_security_event(db, event)
     record_audit(db, context, "manual_containment_requested", "security_event", event.id, request, {"asset_id": asset.id, "source_ip": source_ip, "reason": payload.reason.strip()})
     db.flush()
     result = contain_event(event.id, request=request, context=context, db=db)

@@ -316,12 +316,12 @@ def _render_executive(story, payload, styles):
     operational = [[_text("NOVOS RISCOS", styles["label"]), _text("RISCOS RESOLVIDOS", styles["label"]), _text("SCANS CONCLUÍDOS", styles["label"]), _text("PRONTIDÃO DE CONTROLES", styles["label"])], [_text(metrics.get("new_findings", 0), styles["metric"]), _text(metrics.get("resolved_findings", 0), styles["metric"]), _text((metrics.get("scan_jobs") or {}).get("completed", 0), styles["metric"]), _text(f"{compliance.get('score', 0)}%", styles["metric"])]]
     table = Table(operational, colWidths=[42 * mm] * 4)
     table.setStyle(TableStyle([("BACKGROUND", (0, 0), (-1, -1), PANEL), ("BOX", (0, 0), (-1, -1), 0.5, LINE), ("INNERGRID", (0, 0), (-1, -1), 0.35, LINE), ("VALIGN", (0, 0), (-1, -1), "MIDDLE"), ("PADDING", (0, 0), (-1, -1), 6)]))
-    story.extend([table, Paragraph("Distribuição dos riscos ativos", styles["h2"]), _severity_table(metrics, styles), PageBreak()])
+    story.extend([table, Paragraph("Distribuição dos riscos ativos", styles["h2"]), _severity_table(metrics, styles)])
     _section(story, "2. Riscos prioritários", styles, "Itens ativos ordenados pelo score de risco calculado pela plataforma.")
     story.extend([_top_risks_table(payload.get("top_risks") or [], styles), Paragraph("Capacidade de remediação", styles["h2"])])
     remediation_rows = [["Tarefas totais", remediation.get("total", 0)], ["Em aberto", remediation.get("open", 0)], ["Em andamento", remediation.get("in_progress", 0)], ["Concluídas", remediation.get("completed", 0)], ["Vencidas", remediation.get("overdue", 0)]]
     story.append(Table([[_text(label, styles["table"]), _text(value, styles["table_bold"])] for label, value in remediation_rows], colWidths=[130 * mm, 38 * mm], style=TableStyle([("ROWBACKGROUNDS", (0, 0), (-1, -1), [colors.white, PANEL]), ("BOX", (0, 0), (-1, -1), 0.5, LINE), ("INNERGRID", (0, 0), (-1, -1), 0.35, LINE), ("ALIGN", (1, 0), (1, -1), "RIGHT"), ("PADDING", (0, 0), (-1, -1), 6)])))
-    story.extend([Paragraph("Plano recomendado", styles["h2"]), _recommendation_table(payload.get("recommendations") or [], styles), PageBreak()])
+    story.extend([Paragraph("Plano recomendado", styles["h2"]), _recommendation_table(payload.get("recommendations") or [], styles)])
     _section(story, "3. Governança e cobertura", styles, "Indicadores operacionais baseados em evidências disponíveis na Iron AI.")
     controls_rows = [[_text("CONTROLE", styles["table_header"]), _text("REFERÊNCIA", styles["table_header"]), _text("STATUS", styles["table_header"]), _text("EVIDÊNCIA", styles["table_header"])]]
     for item in compliance.get("controls") or []:
@@ -337,7 +337,7 @@ def _technical_summary(story, payload, styles):
     story.extend([_metric_cards(metrics, styles), Spacer(1, 5 * mm)])
     scope = [["Ativos no escopo", metrics.get("assets_total", 0)], ["Ativos expostos", metrics.get("assets_exposed", 0)], ["Scans executados no período", (metrics.get("scan_jobs") or {}).get("total", 0)], ["Scans concluídos", (metrics.get("scan_jobs") or {}).get("completed", 0)], ["Scans com falha", (metrics.get("scan_jobs") or {}).get("failed", 0)], ["Integrações conectadas", metrics.get("integrations_connected", 0)]]
     story.append(Table([[_text(label, styles["table"]), _text(value, styles["table_bold"])] for label, value in scope], colWidths=[130 * mm, 38 * mm], style=TableStyle([("ROWBACKGROUNDS", (0, 0), (-1, -1), [colors.white, PANEL]), ("BOX", (0, 0), (-1, -1), 0.5, LINE), ("INNERGRID", (0, 0), (-1, -1), 0.35, LINE), ("ALIGN", (1, 0), (1, -1), "RIGHT"), ("PADDING", (0, 0), (-1, -1), 6)])))
-    story.extend([Paragraph("Distribuição por severidade", styles["h2"]), _severity_table(metrics, styles), Paragraph("Metodologia", styles["h2"]), _text("O Security Score e a priorização combinam severidade, exposição à internet, criticidade do ativo, confiança, explorabilidade, idade e recorrência. O relatório representa o estado persistido na plataforma na data de emissão; validação manual pode ser necessária antes de mudanças em produção.", styles["body"]), PageBreak()])
+    story.extend([Paragraph("Distribuição por severidade", styles["h2"]), _severity_table(metrics, styles), Paragraph("Metodologia", styles["h2"]), _text("O Security Score e a priorização combinam severidade, exposição à internet, criticidade do ativo, confiança, explorabilidade, idade e recorrência. O relatório representa o estado persistido na plataforma na data de emissão; validação manual pode ser necessária antes de mudanças em produção.", styles["body"])])
 
 
 def _technical_assets(story, payload, styles):
@@ -349,7 +349,7 @@ def _technical_assets(story, payload, styles):
         rows.append([_text("Nenhum ativo registrado.", styles["table"]), "", "", "", "", ""])
     table = Table(rows, colWidths=[54 * mm, 22 * mm, 24 * mm, 25 * mm, 20 * mm, 23 * mm], repeatRows=1)
     table.setStyle(TableStyle([("BACKGROUND", (0, 0), (-1, 0), NAVY), ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, PANEL]), ("BOX", (0, 0), (-1, -1), 0.5, LINE), ("INNERGRID", (0, 0), (-1, -1), 0.35, LINE), ("VALIGN", (0, 0), (-1, -1), "TOP"), ("PADDING", (0, 0), (-1, -1), 5)]))
-    story.extend([table, PageBreak()])
+    story.append(table)
 
 
 def _finding_block(item, index, styles):
@@ -371,7 +371,6 @@ def _technical_findings(story, payload, styles):
         story.append(_text("Nenhum finding foi registrado no escopo deste relatório.", styles["body"]))
     for index, item in enumerate(findings, 1):
         story.extend(_finding_block(item, index, styles))
-    story.append(PageBreak())
 
 
 def _technical_operations(story, payload, styles):

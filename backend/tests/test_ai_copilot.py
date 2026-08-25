@@ -19,6 +19,17 @@ def test_provider_order_keeps_groq_primary_and_skips_empty_optional_providers(mo
     assert [provider.name for provider in providers] == ["groq", "kimi"]
 
 
+def test_openrouter_ox_alpha_provider_is_configurable(monkeypatch):
+    monkeypatch.setenv("AI_PROVIDER", "openrouter")
+    monkeypatch.setenv("OPENROUTER_API_KEY", "test-openrouter")
+    monkeypatch.setenv("OPENROUTER_MODEL", "stealth/ox-alpha")
+    monkeypatch.setenv("OPENROUTER_HTTP_REFERER", "https://iron.example")
+    provider = provider_candidates()[0]
+    assert provider.name == "openrouter"
+    assert provider.model == "stealth/ox-alpha"
+    assert provider.base_url == "https://openrouter.ai/api/v1/chat/completions"
+
+
 def test_provider_payload_contains_reasoning_and_allowlisted_tools(monkeypatch):
     provider = OpenAICompatibleProvider("https://example.test/chat", "test-key", "test-model", "groq", "medium")
     captured = {}

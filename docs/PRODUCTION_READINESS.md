@@ -71,6 +71,8 @@ FROM_NAME=Iron AI
 
 Para usar Kimi K3 no lugar da Groq, configure `AI_PROVIDER=kimi`, `KIMI_API_KEY`, `KIMI_MODEL=kimi-k3` e `KIMI_REASONING_EFFORT=high`. Não mantenha duas chaves sem definir explicitamente `AI_PROVIDER`.
 
+Para usar a Ox Alpha pela OpenRouter, configure `AI_PROVIDER=openrouter`, `OPENROUTER_API_KEY`, `OPENROUTER_MODEL=stealth/ox-alpha` e mantenha `OPENROUTER_CHAT_URL=https://openrouter.ai/api/v1/chat/completions`. O modelo é um preview de provedor anônimo; valide JSON estruturado, streaming e ferramentas em homologação antes de torná-lo o padrão de produção.
+
 Para PIX/boleto, acrescente:
 
 ```dotenv

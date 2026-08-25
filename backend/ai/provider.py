@@ -78,7 +78,15 @@ class OpenAICompatibleProvider(AIProvider):
         return body
     def _request(self, messages, reasoning_effort, tools=None, stream=False, structured=False):
         try:
-            response = requests.post(self.base_url, headers={'Authorization': 'Bearer ' + self.api_key, 'Content-Type': 'application/json'}, json=self._body(messages, reasoning_effort, tools, stream, structured), timeout=(8, 60), stream=stream)
+            headers = {'Authorization': 'Bearer ' + self.api_key, 'Content-Type': 'application/json'}
+            if self.name == 'openrouter':
+                referer = os.getenv('OPENROUTER_HTTP_REFERER') or os.getenv('FRONTEND_URL')
+                title = os.getenv('OPENROUTER_TITLE', 'Iron AI')
+                if referer:
+                    headers['HTTP-Referer'] = referer
+                if title:
+                    headers['X-OpenRouter-Title'] = title
+            response = requests.post(self.base_url, headers=headers, json=self._body(messages, reasoning_effort, tools, stream, structured), timeout=(8, 60), stream=stream)
             response.encoding = 'utf-8'
             return response
         except requests.RequestException as exc:
@@ -123,16 +131,19 @@ class OpenAICompatibleProvider(AIProvider):
 
 def provider_candidates(preferred=None):
     choice = (preferred or os.getenv('AI_PROVIDER') or 'auto').strip().lower()
-    choice = {'google': 'gemini', 'moonshot': 'kimi'}.get(choice, choice)
+    choice = {'google': 'gemini', 'moonshot': 'kimi', 'ox': 'openrouter', 'ox-alpha': 'openrouter'}.get(choice, choice)
     groq = os.getenv('GROQ_API_KEY') or os.getenv('GROQ_KEY')
     gemini = os.getenv('GEMINI_API_KEY') or os.getenv('GOOGLE_API_KEY')
     kimi = os.getenv('KIMI_API_KEY') or os.getenv('MOONSHOT_API_KEY')
+    openrouter = os.getenv('OPENROUTER_API_KEY')
     specs = {
         'groq': (groq, 'https://api.groq.com/openai/v1/chat/completions', os.getenv('GROQ_MODEL', 'openai/gpt-oss-20b'), 'medium', .15, 2048),
         'gemini': (gemini, os.getenv('GEMINI_CHAT_URL', 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions'), os.getenv('GEMINI_MODEL', 'gemini-3.1-flash-lite'), os.getenv('GEMINI_REASONING_EFFORT', 'low'), .15, 2048),
-        'kimi': (kimi, os.getenv('KIMI_CHAT_URL', 'https://api.moonshot.ai/v1/chat/completions'), os.getenv('KIMI_MODEL', 'kimi-k2.6'), os.getenv('KIMI_REASONING_EFFORT', 'high'), 1.0, 16384)
+        'kimi': (kimi, os.getenv('KIMI_CHAT_URL', 'https://api.moonshot.ai/v1/chat/completions'), os.getenv('KIMI_MODEL', 'kimi-k2.6'), os.getenv('KIMI_REASONING_EFFORT', 'high'), 1.0, 16384),
+        'openrouter': (openrouter, os.getenv('OPENROUTER_CHAT_URL', 'https://openrouter.ai/api/v1/chat/completions'), os.getenv('OPENROUTER_MODEL', 'stealth/ox-alpha'), os.getenv('OPENROUTER_REASONING_EFFORT', 'medium'), .2, int(os.getenv('OPENROUTER_MAX_COMPLETION_TOKENS', '16384')))
     }
-    order = ['groq', 'gemini', 'kimi'] if choice == 'auto' else [choice] + [name for name in ('groq', 'gemini', 'kimi') if name != choice]
+    provider_order = ('groq', 'gemini', 'kimi', 'openrouter')
+    order = list(provider_order) if choice == 'auto' else [choice] + [name for name in provider_order if name != choice]
     result = []
     for name in order:
         if name not in specs or not specs[name][0]:
